@@ -35,6 +35,14 @@ jobs:
       - name: Download golangci-lint tool dependencies
         run: go mod download -modfile=tools/golangci-lint/go.tool.mod
 
+      - name: Install Linux GUI build dependencies (Fyne/GLFW)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libgl1-mesa-dev \
+            xorg-dev
+
       - name: Vet
         run: make vet
 
