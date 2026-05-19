@@ -13,8 +13,11 @@ SQLC_BIN := $(TOOLS_BIN_DIR)/sqlc
 GOLANGCI_TOOL_DIR := ./tools/golangci-lint
 GOLANGCI_TOOL_MODFILE := go.tool.mod
 GOLANGCI_BIN := $(TOOLS_BIN_DIR)/golangci-lint
+GORELEASER_TOOL_DIR := ./tools/goreleaser
+GORELEASER_TOOL_MODFILE := go.tool.mod
+GORELEASER_BIN := $(TOOLS_BIN_DIR)/goreleaser
 
-.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install sqlc-generate db-check goose-status goose-create vet lint lint-install ci-check clean
+.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install sqlc-generate db-check goose-status goose-create vet lint lint-install goreleaser-install goreleaser-check goreleaser-local goreleaser-snapshot ci-check clean
 
 help:
 	@echo "Targets:"
@@ -29,6 +32,9 @@ help:
 	@echo "  make db-check - Regenerate sqlc code and run tests"
 	@echo "  make vet    - Run go vet"
 	@echo "  make lint   - Run golangci-lint v2"
+	@echo "  make goreleaser-check - Validate .goreleaser.yaml"
+	@echo "  make goreleaser-local - Build binary for current OS/ARCH via GoReleaser"
+	@echo "  make goreleaser-snapshot - Build release artifacts locally (no publish)"
 	@echo "  make ci-check - Run vet, lint, tests and build"
 	@echo "  make goose-status                   - Goose status via go mod tool"
 	@echo "  make goose-create NAME=add_table    - Create SQL migration"
@@ -62,11 +68,13 @@ tools-list:
 	go list -modfile=$(GOOSE_TOOL_DIR)/$(GOOSE_TOOL_MODFILE) tool
 	go list -modfile=$(SQLC_TOOL_DIR)/$(SQLC_TOOL_MODFILE) tool
 	go list -modfile=$(GOLANGCI_TOOL_DIR)/$(GOLANGCI_TOOL_MODFILE) tool
+	go list -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) tool
 
 tools-verify:
 	go mod verify -modfile=$(GOOSE_TOOL_DIR)/$(GOOSE_TOOL_MODFILE)
 	go mod verify -modfile=$(SQLC_TOOL_DIR)/$(SQLC_TOOL_MODFILE)
 	go mod verify -modfile=$(GOLANGCI_TOOL_DIR)/$(GOLANGCI_TOOL_MODFILE)
+	go mod verify -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE)
 
 goose-install:
 	mkdir -p $(TOOLS_BIN_DIR)
@@ -90,6 +98,25 @@ lint-install:
 
 lint: lint-install
 	$(GOLANGCI_BIN) run ./...
+
+goreleaser-install:
+	mkdir -p $(TOOLS_BIN_DIR)
+	GOBIN=$$(pwd)/$(TOOLS_BIN_DIR) go install -C $(GORELEASER_TOOL_DIR) -modfile=$(GORELEASER_TOOL_MODFILE) github.com/goreleaser/goreleaser/v2
+
+goreleaser-check:
+	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser check
+
+goreleaser-local:
+	mkdir -p $(BIN_DIR)
+	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser build \
+		--clean \
+		--snapshot \
+		--single-target \
+		--id fallout-tracker \
+		--output "$(BIN_DIR)/$(APP_NAME)-$$(go env GOOS)-$$(go env GOARCH)$$(go env GOEXE)"
+
+goreleaser-snapshot:
+	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser release --snapshot --clean --skip=publish
 
 ci-check: vet lint test build
 

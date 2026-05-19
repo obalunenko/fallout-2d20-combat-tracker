@@ -4,3 +4,5 @@ tools/bin/
 bin/
 
 tracker.db
+
+dist/

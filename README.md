@@ -43,6 +43,7 @@ Use `NEW ENCOUNTER` in the app header, then:
   - `tools/goose/go.tool.mod`
   - `tools/sqlc/go.tool.mod`
   - `tools/golangci-lint/go.tool.mod`
+  - `tools/goreleaser/go.tool.mod`
 
 Examples:
 
@@ -57,7 +58,47 @@ make tools-verify
 ## Run
 
 ```bash
-go run ./cmd/fallout-tracker
+make run
+```
+
+## Build (local)
+
+```bash
+make build
+```
+
+GoReleaser build for current platform only:
+
+```bash
+make goreleaser-local
+```
+
+This creates:
+
+- `./bin/fallout-tracker-<goos>-<goarch>[.exe]`
+
+Validate release config:
+
+```bash
+make goreleaser-check
+```
+
+## Release (tag)
+
+Tag push `v*` triggers GitHub Actions workflow:
+
+- file: `.github/workflows/release.yml`
+- targets: `linux/amd64`, `windows/amd64`, `darwin/arm64`
+- behavior:
+  - build binaries with GoReleaser (single target per matrix job)
+  - upload them as workflow artifacts
+  - attach binaries to GitHub Release assets for that tag
+
+Example:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ## Verify
