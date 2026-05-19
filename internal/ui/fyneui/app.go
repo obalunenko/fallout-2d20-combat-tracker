@@ -41,6 +41,8 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		activeCampaign *domain.Campaign
 		selectedIndex  int
 	)
+	var showApplyDamageDialogForIndex func(int)
+	var showHealDialogForIndex func(int)
 
 	roundLabel := widget.NewLabel("")
 	activeLabel := widget.NewLabel("")
@@ -54,25 +56,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	partyAPLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	threatLabel.TextStyle = fyne.TextStyle{Monospace: true}
 
-	eventLog := []string{"[BOOT] Pip-Boy combat tracker initialized"}
-	logList := widget.NewList(
-		func() int { return len(eventLog) },
-		func() fyne.CanvasObject {
-			label := widget.NewLabel("log entry")
-			label.TextStyle = fyne.TextStyle{Monospace: true}
-			label.Wrapping = fyne.TextWrapWord
-			return label
-		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			if i < 0 || i >= len(eventLog) {
-				return
-			}
-			o.(*widget.Label).SetText(eventLog[i])
-		},
-	)
+	logOutput := widget.NewMultiLineEntry()
+	logOutput.TextStyle = fyne.TextStyle{Monospace: true}
+	logOutput.Wrapping = fyne.TextWrapWord
+	logOutput.SetMinRowsVisible(18)
+	logOutput.Disable()
+	logOutput.SetText("[BOOT] Pip-Boy combat tracker initialized")
 	setEventLog := func(lines []string) {
-		eventLog = lines
-		logList.Refresh()
+		logOutput.SetText(strings.Join(lines, "\n"))
 	}
 
 	combatantLine := func(c domain.Combatant) string {
@@ -129,10 +120,22 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			return
 		}
 
-		for _, c := range enc.Combatants {
+		for i, c := range enc.Combatants {
+			idx := i
 			line := widget.NewLabel(combatantLine(c))
 			line.TextStyle = fyne.TextStyle{Monospace: true, Bold: c.Active}
-			encounterOrderBox.Add(line)
+
+			damageBtn := widget.NewButton("DMG", func() {
+				showApplyDamageDialogForIndex(idx)
+			})
+			healBtn := widget.NewButton("HEAL", func() {
+				showHealDialogForIndex(idx)
+			})
+			damageBtn.Importance = widget.LowImportance
+			healBtn.Importance = widget.LowImportance
+
+			row := container.NewBorder(nil, nil, nil, container.NewGridWithColumns(2, damageBtn, healBtn), line)
+			encounterOrderBox.Add(row)
 		}
 		encounterOrderBox.Refresh()
 	}
@@ -158,8 +161,6 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	var showEncounterListDialog func()
 	var showCreateCampaignDialog func()
 	var showCampaignListDialog func()
-	var showApplyDamageDialogForIndex func(int)
-	var showHealDialogForIndex func(int)
 	var refreshDataLog func()
 
 	nextTurnBtn := widget.NewButton("Next Turn", func() {
@@ -247,7 +248,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		"SELECTED COMBATANT",
 		container.NewVBox(selectedLabel, widget.NewSeparator(), container.NewGridWithColumns(2, applyDamageBtn, healBtn)),
 	)
-	logPanel := pipPanel("DATA LOG", logList)
+	logPanel := pipPanel("DATA LOG", logOutput)
 
 	statTabContent := container.NewVBox(
 		turnPanel,
@@ -257,7 +258,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		encounterOrderPanel,
 	)
 	invTabContent := container.NewGridWithColumns(2, combatantsPanel, selectedPanel)
-	dataTabContent := container.NewVBox(logPanel)
+	dataTabContent := container.NewBorder(nil, nil, nil, nil, logPanel)
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("STAT", container.NewPadded(statTabContent)),
@@ -1217,7 +1218,7 @@ func installSignalShutdown(app fyne.App, onShutdown func()) func() {
 		select {
 		case <-signals:
 			onShutdown()
-			app.Quit()
+			fyne.Do(app.Quit)
 		case <-done:
 		}
 	}()

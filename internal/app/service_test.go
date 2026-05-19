@@ -210,7 +210,7 @@ func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 	enc, err := svc.GetEncounter()
 	require.NoError(t, err)
 	require.Len(t, enc.Combatants, 2)
-	assert.Equal(t, -3, enc.Combatants[1].HP)
+	assert.Equal(t, 0, enc.Combatants[1].HP)
 	assert.True(t, enc.Combatants[1].Defeated)
 }
 
@@ -247,7 +247,7 @@ func TestHealPersistsAndCanRevive(t *testing.T) {
 
 	enc, err := svc.GetEncounter()
 	require.NoError(t, err)
-	assert.Equal(t, 1, enc.Combatants[0].HP)
+	assert.Equal(t, 5, enc.Combatants[0].HP)
 	assert.False(t, enc.Combatants[0].Defeated)
 }
 

@@ -195,6 +195,7 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, amoun
 
 	target.HP -= effective
 	if target.HP <= 0 {
+		target.HP = 0
 		target.Defeated = true
 	}
 	return effective, nil

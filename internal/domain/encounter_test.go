@@ -143,7 +143,7 @@ func TestApplyDamageMarksDefeatedWhenHPZeroOrLess(t *testing.T) {
 	applied, err := e.ApplyDamage("c1", DamagePoison, 10)
 	require.NoError(t, err)
 	assert.Equal(t, 9, applied)
-	assert.Equal(t, -5, e.Combatants[0].HP)
+	assert.Equal(t, 0, e.Combatants[0].HP)
 	assert.True(t, e.Combatants[0].Defeated)
 }
 
