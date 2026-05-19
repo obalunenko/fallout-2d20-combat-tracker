@@ -84,8 +84,18 @@ func (s *Service) CreateCampaign(id, name, startDate string, players []domain.Ne
 		if players[i].Character.Level < 1 {
 			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
 		}
-		if players[i].Character.HP < 1 {
+		if players[i].Character.HP < 0 {
 			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.MaxHP <= 0 {
+			if players[i].Character.HP > 0 {
+				players[i].Character.MaxHP = players[i].Character.HP
+			} else {
+				players[i].Character.MaxHP = 1
+			}
+		}
+		if players[i].Character.HP > players[i].Character.MaxHP {
+			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", players[i].PlayerName)
 		}
 		if players[i].Character.Initiative < 0 {
 			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
@@ -96,6 +106,7 @@ func (s *Service) CreateCampaign(id, name, startDate string, players []domain.Ne
 		if strings.TrimSpace(players[i].Character.ID) == "" {
 			players[i].Character.ID = uuid.NewString()
 		}
+		domain.NormalizeCombatantHP(&players[i].Character)
 		players[i].Character.Side = domain.SideParty
 		players[i].Character.XP = 0
 	}
@@ -150,8 +161,18 @@ func (s *Service) UpdateCampaign(campaignID, name, startDate string, players []d
 		if players[i].Character.Level < 1 {
 			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
 		}
-		if players[i].Character.HP < 1 {
+		if players[i].Character.HP < 0 {
 			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.MaxHP <= 0 {
+			if players[i].Character.HP > 0 {
+				players[i].Character.MaxHP = players[i].Character.HP
+			} else {
+				players[i].Character.MaxHP = 1
+			}
+		}
+		if players[i].Character.HP > players[i].Character.MaxHP {
+			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", players[i].PlayerName)
 		}
 		if players[i].Character.Initiative < 0 {
 			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
@@ -162,6 +183,7 @@ func (s *Service) UpdateCampaign(campaignID, name, startDate string, players []d
 		if strings.TrimSpace(players[i].Character.ID) == "" {
 			players[i].Character.ID = uuid.NewString()
 		}
+		domain.NormalizeCombatantHP(&players[i].Character)
 		players[i].Character.Side = domain.SideParty
 		players[i].Character.XP = 0
 	}
@@ -230,6 +252,7 @@ func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant
 		if strings.TrimSpace(combatants[i].ID) == "" {
 			combatants[i].ID = uuid.NewString()
 		}
+		domain.NormalizeCombatantHP(&combatants[i])
 	}
 	enc := domain.NewEncounter(id, name, combatants)
 	enc.CampaignID = activeCampaign.ID
@@ -256,6 +279,7 @@ func (s *Service) UpdateEncounter(encounterID, name string, combatants []domain.
 		if strings.TrimSpace(combatants[i].ID) == "" {
 			combatants[i].ID = uuid.NewString()
 		}
+		domain.NormalizeCombatantHP(&combatants[i])
 	}
 	enc, err := s.repo.UpdateEncounter(encounterID, name, combatants)
 	if err != nil {

@@ -33,13 +33,13 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 		Combatants: []domain.Combatant{
 			{
 				ID: "p1", Name: "Roland", Side: domain.SideParty,
-				Level: 7, XP: 0, Initiative: 11, HP: 22, Defense: 2,
+				Level: 7, XP: 0, Initiative: 11, HP: 22, MaxHP: 22, Defense: 2,
 				ResistPhysical: 3, ResistEnergy: 2, ResistRadiation: 1, ResistPoison: 0,
 				ImmunePoison: true, Active: false, Defeated: false,
 			},
 			{
 				ID: "n1", Name: "Radscorpion", Side: domain.SideNPC,
-				Level: 5, XP: 80, Initiative: 9, HP: 18, Defense: 1,
+				Level: 5, XP: 80, Initiative: 9, HP: 18, MaxHP: 18, Defense: 1,
 				ResistPhysical: 2, ResistEnergy: 1, ResistRadiation: 4, ResistPoison: 3,
 				ImmunePhysical: true, Active: true, Defeated: false,
 			},
@@ -130,6 +130,44 @@ func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, summaries, 1)
 	assert.Equal(t, "enc-2", summaries[0].ID)
+}
+
+func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:        "enc-diff-1",
+		Name:      "Difficulty Persist",
+		Round:     1,
+		TurnIndex: 0,
+		Combatants: []domain.Combatant{
+			{ID: "p1", Name: "P1", Side: domain.SideParty, Level: 2, Initiative: 10, HP: 8, Active: true},
+			{ID: "p2", Name: "P2", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 8},
+			{ID: "n1", Name: "N1", Side: domain.SideNPC, Level: 2, XP: 60, Initiative: 8, HP: 6},
+			{ID: "n2", Name: "N2", Side: domain.SideNPC, Level: 2, XP: 60, Initiative: 7, HP: 6},
+		},
+	}))
+
+	summaries, err := store.List()
+	require.NoError(t, err)
+	require.NotEmpty(t, summaries)
+
+	var summary *domain.EncounterSummary
+	for i := range summaries {
+		if summaries[i].ID == "enc-diff-1" {
+			summary = &summaries[i]
+			break
+		}
+	}
+	require.NotNil(t, summary)
+	assert.Equal(t, "Hard", summary.Difficulty)
+	assert.Equal(t, 2.0, summary.DifficultyScore)
+	assert.Equal(t, 2, summary.PartyCount)
+	assert.Equal(t, 2.0, summary.PartyAvgLevel)
+	assert.Equal(t, 60, summary.PartyXPBudget)
+	assert.Equal(t, 2, summary.EnemyCount)
+	assert.Equal(t, 2.0, summary.EnemyAvgLevel)
+	assert.Equal(t, 120, summary.EnemyTotalXP)
 }
 
 func TestEncounterStoreNotFoundOperations(t *testing.T) {

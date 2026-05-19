@@ -143,7 +143,7 @@ func TestApplyDamageMarksDefeatedWhenHPZeroOrLess(t *testing.T) {
 	applied, err := e.ApplyDamage("c1", DamagePoison, 10)
 	require.NoError(t, err)
 	assert.Equal(t, 9, applied)
-	assert.Equal(t, -5, e.Combatants[0].HP)
+	assert.Equal(t, 0, e.Combatants[0].HP)
 	assert.True(t, e.Combatants[0].Defeated)
 }
 
@@ -169,6 +169,7 @@ func TestHealIncreasesHP(t *testing.T) {
 
 	e := NewEncounter("enc-1", "test", []Combatant{{
 		ID: "c1", Name: "Alpha", Initiative: 10, HP: 5,
+		MaxHP: 10,
 	}})
 
 	healed, err := e.Heal("c1", 3)
@@ -182,13 +183,13 @@ func TestHealCanReviveCombatant(t *testing.T) {
 	t.Parallel()
 
 	e := NewEncounter("enc-1", "test", []Combatant{{
-		ID: "c1", Name: "Alpha", Initiative: 10, HP: -2, Defeated: true,
+		ID: "c1", Name: "Alpha", Initiative: 10, HP: -2, MaxHP: 6, Defeated: true,
 	}})
 
 	healed, err := e.Heal("c1", 3)
 	require.NoError(t, err)
 	assert.Equal(t, 3, healed)
-	assert.Equal(t, 1, e.Combatants[0].HP)
+	assert.Equal(t, 3, e.Combatants[0].HP)
 	assert.False(t, e.Combatants[0].Defeated)
 }
 
@@ -205,4 +206,38 @@ func TestHealValidation(t *testing.T) {
 	require.Error(t, err)
 	_, err = e.Heal("missing", 1)
 	require.Error(t, err)
+}
+
+func TestEvaluateEncounterDifficultyUnknownWhenSidesMissing(t *testing.T) {
+	t.Parallel()
+
+	onlyParty := EvaluateEncounterDifficulty([]Combatant{
+		{Name: "Hero", Side: SideParty, Level: 2},
+	})
+	assert.Equal(t, EncounterDifficultyUnknown, onlyParty.Label)
+
+	onlyNPC := EvaluateEncounterDifficulty([]Combatant{
+		{Name: "Raider", Side: SideNPC, Level: 2, XP: 30},
+	})
+	assert.Equal(t, EncounterDifficultyUnknown, onlyNPC.Label)
+}
+
+func TestEvaluateEncounterDifficultyUsesPartyAndEnemyStats(t *testing.T) {
+	t.Parallel()
+
+	metrics := EvaluateEncounterDifficulty([]Combatant{
+		{Name: "P1", Side: SideParty, Level: 2},
+		{Name: "P2", Side: SideParty, Level: 2},
+		{Name: "Raider A", Side: SideNPC, Level: 2, XP: 60},
+		{Name: "Raider B", Side: SideNPC, Level: 2, XP: 60},
+	})
+
+	assert.Equal(t, EncounterDifficultyHard, metrics.Label)
+	assert.Equal(t, 2, metrics.PartyCount)
+	assert.Equal(t, 2.0, metrics.PartyAvgLevel)
+	assert.Equal(t, 60, metrics.PartyXPBudget)
+	assert.Equal(t, 2, metrics.EnemyCount)
+	assert.Equal(t, 2.0, metrics.EnemyAvgLevel)
+	assert.Equal(t, 120, metrics.EnemyTotalXP)
+	assert.Equal(t, 2.0, metrics.Score)
 }

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"math"
 	"sort"
 )
 
@@ -29,6 +30,7 @@ type Combatant struct {
 	XP              int
 	Initiative      int
 	HP              int
+	MaxHP           int
 	Defense         int
 	ResistPhysical  int
 	ResistEnergy    int
@@ -58,12 +60,20 @@ type Encounter struct {
 }
 
 type EncounterSummary struct {
-	ID         string
-	CampaignID string
-	Name       string
-	Round      int
-	Combatants int
-	UpdatedAt  string
+	ID              string
+	CampaignID      string
+	Name            string
+	Round           int
+	Combatants      int
+	UpdatedAt       string
+	Difficulty      string
+	DifficultyScore float64
+	PartyCount      int
+	PartyAvgLevel   float64
+	PartyXPBudget   int
+	EnemyCount      int
+	EnemyAvgLevel   float64
+	EnemyTotalXP    int
 }
 
 type EncounterLog struct {
@@ -75,6 +85,9 @@ type EncounterLog struct {
 func NewEncounter(id, name string, combatants []Combatant) *Encounter {
 	cp := make([]Combatant, len(combatants))
 	copy(cp, combatants)
+	for i := range cp {
+		cp[i].normalizeHPState()
+	}
 
 	sort.SliceStable(cp, func(i, j int) bool {
 		if cp[i].Initiative == cp[j].Initiative {
@@ -195,6 +208,7 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, amoun
 
 	target.HP -= effective
 	if target.HP <= 0 {
+		target.HP = 0
 		target.Defeated = true
 	}
 	return effective, nil
@@ -220,11 +234,19 @@ func (e *Encounter) Heal(combatantID string, amount int) (int, error) {
 	}
 
 	target := &e.Combatants[combatantIdx]
-	target.HP += amount
+	target.normalizeHPState()
+	healed := amount
+	if target.HP+healed > target.MaxHP {
+		healed = target.MaxHP - target.HP
+	}
+	if healed < 0 {
+		healed = 0
+	}
+	target.HP += healed
 	if target.HP > 0 {
 		target.Defeated = false
 	}
-	return amount, nil
+	return healed, nil
 }
 
 func (e *Encounter) normalizeActive() {
@@ -246,4 +268,115 @@ func (c *Combatant) resistanceByType(damageType DamageType) (int, bool, error) {
 	default:
 		return 0, false, fmt.Errorf("unknown damage type: %q", damageType)
 	}
+}
+
+func (c *Combatant) normalizeHPState() {
+	if c.MaxHP <= 0 {
+		if c.HP > 0 {
+			c.MaxHP = c.HP
+		} else if c.Defeated {
+			c.MaxHP = 1
+			c.HP = 0
+		} else {
+			c.MaxHP = 1
+			c.HP = 1
+		}
+	}
+	if c.HP < 0 {
+		c.HP = 0
+	}
+	if c.HP > c.MaxHP {
+		c.HP = c.MaxHP
+	}
+	if c.HP == 0 {
+		c.Defeated = true
+	}
+}
+
+func NormalizeCombatantHP(c *Combatant) {
+	if c == nil {
+		return
+	}
+	c.normalizeHPState()
+}
+
+type EncounterDifficulty string
+
+const (
+	EncounterDifficultyUnknown EncounterDifficulty = "Unknown"
+	EncounterDifficultyTrivial EncounterDifficulty = "Trivial"
+	EncounterDifficultyEasy    EncounterDifficulty = "Easy"
+	EncounterDifficultyNormal  EncounterDifficulty = "Normal"
+	EncounterDifficultyHard    EncounterDifficulty = "Hard"
+	EncounterDifficultyDeadly  EncounterDifficulty = "Deadly"
+)
+
+type EncounterDifficultyMetrics struct {
+	Label         EncounterDifficulty
+	Score         float64
+	PartyCount    int
+	PartyAvgLevel float64
+	PartyXPBudget int
+	EnemyCount    int
+	EnemyAvgLevel float64
+	EnemyTotalXP  int
+}
+
+func EvaluateEncounterDifficulty(combatants []Combatant) EncounterDifficultyMetrics {
+	metrics := EncounterDifficultyMetrics{
+		Label: EncounterDifficultyUnknown,
+	}
+	if len(combatants) == 0 {
+		return metrics
+	}
+
+	partyLevelSum := 0
+	enemyLevelSum := 0
+	for i := range combatants {
+		c := combatants[i]
+		if c.Side == SideParty {
+			metrics.PartyCount++
+			partyLevelSum += c.Level
+			continue
+		}
+		metrics.EnemyCount++
+		enemyLevelSum += c.Level
+		metrics.EnemyTotalXP += c.XP
+	}
+
+	if metrics.PartyCount > 0 {
+		metrics.PartyAvgLevel = float64(partyLevelSum) / float64(metrics.PartyCount)
+	}
+	if metrics.EnemyCount > 0 {
+		metrics.EnemyAvgLevel = float64(enemyLevelSum) / float64(metrics.EnemyCount)
+	}
+
+	if metrics.PartyCount == 0 || metrics.EnemyCount == 0 {
+		return metrics
+	}
+
+	// Fallout 2d20 encounter budget baseline:
+	// party budget = (average party level + 1) * number of players * 10
+	// Difficulty compares total NPC XP against that budget.
+	partyBudget := (metrics.PartyAvgLevel + 1) * float64(metrics.PartyCount) * 10
+	if partyBudget <= 0 {
+		return metrics
+	}
+	metrics.PartyXPBudget = int(math.Round(partyBudget))
+	score := float64(metrics.EnemyTotalXP) / partyBudget
+	metrics.Score = math.Round(score*100) / 100
+
+	switch {
+	case score < 0.5:
+		metrics.Label = EncounterDifficultyTrivial
+	case score < 1.0:
+		metrics.Label = EncounterDifficultyEasy
+	case score < 1.5:
+		metrics.Label = EncounterDifficultyNormal
+	case score <= 2.25:
+		metrics.Label = EncounterDifficultyHard
+	default:
+		metrics.Label = EncounterDifficultyDeadly
+	}
+	return metrics
 }

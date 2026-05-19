@@ -66,7 +66,7 @@ VALUES (
 
 -- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, defense,
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense,
   damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
   damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
   active, created_at, updated_at
@@ -79,6 +79,7 @@ VALUES (
   sqlc.arg(level),
   sqlc.arg(initiative),
   sqlc.arg(hp),
+  sqlc.arg(max_hp),
   sqlc.arg(defense),
   sqlc.arg(damage_resistance_physical),
   sqlc.arg(damage_resistance_energy),
@@ -101,6 +102,7 @@ SELECT
   pc.level,
   pc.initiative,
   pc.hp,
+  pc.max_hp,
   pc.defense,
   pc.damage_resistance_physical,
   pc.damage_resistance_energy,
@@ -116,21 +118,27 @@ WHERE pc.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC;
 
 -- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+       difficulty_label, difficulty_score,
+       party_count, party_avg_level, party_xp_budget,
+       enemy_count, enemy_avg_level, enemy_total_xp
 FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
 ORDER BY updated_at DESC, id DESC
 LIMIT 1;
 
 -- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+       difficulty_label, difficulty_score,
+       party_count, party_avg_level, party_xp_budget,
+       enemy_count, enemy_avg_level, enemy_total_xp
 FROM encounters
 WHERE deleted_at IS NULL
   AND campaign_id = sqlc.arg(campaign_id)
   AND id = sqlc.arg(encounter_id);
 
 -- name: ListCombatantsByEncounterID :many
-SELECT id, name, side, level, xp, initiative, hp, defense,
+SELECT id, name, side, level, xp, initiative, hp, max_hp, defense,
        damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
        damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
        active, defeated
@@ -139,7 +147,13 @@ WHERE encounter_id = sqlc.arg(encounter_id)
 ORDER BY position ASC;
 
 -- name: UpsertEncounter :exec
-INSERT INTO encounters (id, campaign_id, name, round, turn_index, party_ap, gm_threat, updated_at, deleted_at)
+INSERT INTO encounters (
+  id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+  difficulty_label, difficulty_score,
+  party_count, party_avg_level, party_xp_budget,
+  enemy_count, enemy_avg_level, enemy_total_xp,
+  updated_at, deleted_at
+)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(campaign_id),
@@ -148,6 +162,14 @@ VALUES (
   sqlc.arg(turn_index),
   sqlc.arg(party_ap),
   sqlc.arg(gm_threat),
+  sqlc.arg(difficulty_label),
+  sqlc.arg(difficulty_score),
+  sqlc.arg(party_count),
+  sqlc.arg(party_avg_level),
+  sqlc.arg(party_xp_budget),
+  sqlc.arg(enemy_count),
+  sqlc.arg(enemy_avg_level),
+  sqlc.arg(enemy_total_xp),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
@@ -158,6 +180,14 @@ ON CONFLICT(id) DO UPDATE SET
 	turn_index = excluded.turn_index,
 	party_ap = excluded.party_ap,
 	gm_threat = excluded.gm_threat,
+	difficulty_label = excluded.difficulty_label,
+	difficulty_score = excluded.difficulty_score,
+	party_count = excluded.party_count,
+	party_avg_level = excluded.party_avg_level,
+	party_xp_budget = excluded.party_xp_budget,
+	enemy_count = excluded.enemy_count,
+	enemy_avg_level = excluded.enemy_avg_level,
+	enemy_total_xp = excluded.enemy_total_xp,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
@@ -167,7 +197,7 @@ WHERE encounter_id = sqlc.arg(encounter_id);
 
 -- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, name, side, level, xp, initiative, hp, defense,
+	id, encounter_id, name, side, level, xp, initiative, hp, max_hp, defense,
 	damage_resistance, damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
 	damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
 	active, defeated, position
@@ -181,6 +211,7 @@ VALUES (
   sqlc.arg(xp),
   sqlc.arg(initiative),
   sqlc.arg(hp),
+  sqlc.arg(max_hp),
   sqlc.arg(defense),
   sqlc.arg(damage_resistance),
   sqlc.arg(damage_resistance_physical),
@@ -197,11 +228,30 @@ VALUES (
 );
 
 -- name: ListEncounterSummariesByCampaignID :many
-SELECT e.id, e.campaign_id, e.name, e.round, COUNT(c.id) AS combatants, e.updated_at
+SELECT
+  e.id,
+  e.campaign_id,
+  e.name,
+  e.round,
+  COUNT(c.id) AS combatants,
+  e.difficulty_label,
+  e.difficulty_score,
+  e.party_count,
+  e.party_avg_level,
+  e.party_xp_budget,
+  e.enemy_count,
+  e.enemy_avg_level,
+  e.enemy_total_xp,
+  e.updated_at
 FROM encounters e
 LEFT JOIN combatants c ON c.encounter_id = e.id
 WHERE e.deleted_at IS NULL AND e.campaign_id = sqlc.arg(campaign_id)
-GROUP BY e.id, e.campaign_id, e.name, e.round, e.updated_at
+GROUP BY
+  e.id, e.campaign_id, e.name, e.round,
+  e.difficulty_label, e.difficulty_score,
+  e.party_count, e.party_avg_level, e.party_xp_budget,
+  e.enemy_count, e.enemy_avg_level, e.enemy_total_xp,
+  e.updated_at
 ORDER BY e.updated_at DESC, e.id DESC;
 
 -- name: ActivateEncounterByCampaign :execrows
@@ -247,6 +297,7 @@ WITH latest_party AS (
     c.xp,
     c.initiative,
     c.hp,
+    c.max_hp,
     c.defense,
     c.damage_resistance_physical,
     c.damage_resistance_energy,
@@ -272,6 +323,7 @@ SELECT
   xp,
   initiative,
   hp,
+  max_hp,
   defense,
   damage_resistance_physical,
   damage_resistance_energy,

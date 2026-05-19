@@ -31,6 +31,7 @@ type Combatant struct {
 	Defeated                        int64
 	Position                        int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistance                int64
 	DamageResistancePhysical        int64
@@ -46,15 +47,23 @@ type Combatant struct {
 }
 
 type Encounter struct {
-	ID         string
-	CampaignID interface{}
-	Name       string
-	Round      int64
-	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
-	UpdatedAt  time.Time
-	DeletedAt  interface{}
+	ID              string
+	CampaignID      interface{}
+	Name            string
+	Round           int64
+	TurnIndex       int64
+	PartyAp         int64
+	GmThreat        int64
+	DifficultyLabel string
+	DifficultyScore float64
+	PartyCount      int64
+	PartyAvgLevel   float64
+	PartyXpBudget   int64
+	EnemyCount      int64
+	EnemyAvgLevel   float64
+	EnemyTotalXp    int64
+	UpdatedAt       time.Time
+	DeletedAt       interface{}
 }
 
 type EncounterLog struct {
@@ -81,6 +90,7 @@ type PlayerCharacter struct {
 	Level                           int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistancePhysical        int64
 	DamageResistanceEnergy          int64

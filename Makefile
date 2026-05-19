@@ -34,8 +34,16 @@ help:
 	@echo "  make goose-create NAME=add_table    - Create SQL migration"
 	@echo "  make clean  - Remove build artifacts"
 
-run:
-	go run $(CMD_PATH)
+run: build
+	@set +e; \
+	trap 'echo "run interrupted by signal (treated as normal stop)"; exit 0' INT TERM; \
+	$(BIN_DIR)/$(APP_NAME); \
+	status=$$?; \
+	if [ $$status -eq 130 ] || [ $$status -eq 143 ]; then \
+		echo "run interrupted by signal (treated as normal stop)"; \
+		exit 0; \
+	fi; \
+	exit $$status
 
 test:
 	go test ./...

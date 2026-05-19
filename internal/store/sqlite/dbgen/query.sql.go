@@ -119,7 +119,10 @@ func (q *Queries) GetCampaignByID(ctx context.Context, campaignID string) (GetCa
 }
 
 const getEncounterByIDByCampaignID = `-- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+       difficulty_label, difficulty_score,
+       party_count, party_avg_level, party_xp_budget,
+       enemy_count, enemy_avg_level, enemy_total_xp
 FROM encounters
 WHERE deleted_at IS NULL
   AND campaign_id = ?1
@@ -132,13 +135,21 @@ type GetEncounterByIDByCampaignIDParams struct {
 }
 
 type GetEncounterByIDByCampaignIDRow struct {
-	ID         string
-	CampaignID interface{}
-	Name       string
-	Round      int64
-	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
+	ID              string
+	CampaignID      interface{}
+	Name            string
+	Round           int64
+	TurnIndex       int64
+	PartyAp         int64
+	GmThreat        int64
+	DifficultyLabel string
+	DifficultyScore float64
+	PartyCount      int64
+	PartyAvgLevel   float64
+	PartyXpBudget   int64
+	EnemyCount      int64
+	EnemyAvgLevel   float64
+	EnemyTotalXp    int64
 }
 
 func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncounterByIDByCampaignIDParams) (GetEncounterByIDByCampaignIDRow, error) {
@@ -152,12 +163,23 @@ func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncou
 		&i.TurnIndex,
 		&i.PartyAp,
 		&i.GmThreat,
+		&i.DifficultyLabel,
+		&i.DifficultyScore,
+		&i.PartyCount,
+		&i.PartyAvgLevel,
+		&i.PartyXpBudget,
+		&i.EnemyCount,
+		&i.EnemyAvgLevel,
+		&i.EnemyTotalXp,
 	)
 	return i, err
 }
 
 const getLatestEncounterByCampaignID = `-- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+       difficulty_label, difficulty_score,
+       party_count, party_avg_level, party_xp_budget,
+       enemy_count, enemy_avg_level, enemy_total_xp
 FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = ?1
 ORDER BY updated_at DESC, id DESC
@@ -165,13 +187,21 @@ LIMIT 1
 `
 
 type GetLatestEncounterByCampaignIDRow struct {
-	ID         string
-	CampaignID interface{}
-	Name       string
-	Round      int64
-	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
+	ID              string
+	CampaignID      interface{}
+	Name            string
+	Round           int64
+	TurnIndex       int64
+	PartyAp         int64
+	GmThreat        int64
+	DifficultyLabel string
+	DifficultyScore float64
+	PartyCount      int64
+	PartyAvgLevel   float64
+	PartyXpBudget   int64
+	EnemyCount      int64
+	EnemyAvgLevel   float64
+	EnemyTotalXp    int64
 }
 
 func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID interface{}) (GetLatestEncounterByCampaignIDRow, error) {
@@ -185,6 +215,14 @@ func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID
 		&i.TurnIndex,
 		&i.PartyAp,
 		&i.GmThreat,
+		&i.DifficultyLabel,
+		&i.DifficultyScore,
+		&i.PartyCount,
+		&i.PartyAvgLevel,
+		&i.PartyXpBudget,
+		&i.EnemyCount,
+		&i.EnemyAvgLevel,
+		&i.EnemyTotalXp,
 	)
 	return i, err
 }
@@ -213,7 +251,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, name, side, level, xp, initiative, hp, defense,
+	id, encounter_id, name, side, level, xp, initiative, hp, max_hp, defense,
 	damage_resistance, damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
 	damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
 	active, defeated, position
@@ -239,7 +277,8 @@ VALUES (
   ?18,
   ?19,
   ?20,
-  ?21
+  ?21,
+  ?22
 )
 `
 
@@ -252,6 +291,7 @@ type InsertCombatantParams struct {
 	Xp                              int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistance                int64
 	DamageResistancePhysical        int64
@@ -277,6 +317,7 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.Xp,
 		arg.Initiative,
 		arg.Hp,
+		arg.MaxHp,
 		arg.Defense,
 		arg.DamageResistance,
 		arg.DamageResistancePhysical,
@@ -346,7 +387,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, defense,
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense,
   damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
   damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
   active, created_at, updated_at
@@ -369,6 +410,7 @@ VALUES (
   ?15,
   ?16,
   ?17,
+  ?18,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -382,6 +424,7 @@ type InsertPlayerCharacterParams struct {
 	Level                           int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistancePhysical        int64
 	DamageResistanceEnergy          int64
@@ -403,6 +446,7 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 		arg.Level,
 		arg.Initiative,
 		arg.Hp,
+		arg.MaxHp,
 		arg.Defense,
 		arg.DamageResistancePhysical,
 		arg.DamageResistanceEnergy,
@@ -425,6 +469,7 @@ SELECT
   pc.level,
   pc.initiative,
   pc.hp,
+  pc.max_hp,
   pc.defense,
   pc.damage_resistance_physical,
   pc.damage_resistance_energy,
@@ -447,6 +492,7 @@ type ListActivePartyCharactersByCampaignIDRow struct {
 	Level                           int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistancePhysical        int64
 	DamageResistanceEnergy          int64
@@ -474,6 +520,7 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 			&i.Level,
 			&i.Initiative,
 			&i.Hp,
+			&i.MaxHp,
 			&i.Defense,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
@@ -539,7 +586,7 @@ func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error)
 }
 
 const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
-SELECT id, name, side, level, xp, initiative, hp, defense,
+SELECT id, name, side, level, xp, initiative, hp, max_hp, defense,
        damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
        damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
        active, defeated
@@ -556,6 +603,7 @@ type ListCombatantsByEncounterIDRow struct {
 	Xp                              int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistancePhysical        int64
 	DamageResistanceEnergy          int64
@@ -586,6 +634,7 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 			&i.Xp,
 			&i.Initiative,
 			&i.Hp,
+			&i.MaxHp,
 			&i.Defense,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
@@ -655,6 +704,7 @@ WITH latest_party AS (
     c.xp,
     c.initiative,
     c.hp,
+    c.max_hp,
     c.defense,
     c.damage_resistance_physical,
     c.damage_resistance_energy,
@@ -680,6 +730,7 @@ SELECT
   xp,
   initiative,
   hp,
+  max_hp,
   defense,
   damage_resistance_physical,
   damage_resistance_energy,
@@ -700,6 +751,7 @@ type ListEncounterPartyTemplatesByCampaignIDRow struct {
 	Xp                              int64
 	Initiative                      int64
 	Hp                              int64
+	MaxHp                           int64
 	Defense                         int64
 	DamageResistancePhysical        int64
 	DamageResistanceEnergy          int64
@@ -726,6 +778,7 @@ func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, c
 			&i.Xp,
 			&i.Initiative,
 			&i.Hp,
+			&i.MaxHp,
 			&i.Defense,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
@@ -750,21 +803,48 @@ func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, c
 }
 
 const listEncounterSummariesByCampaignID = `-- name: ListEncounterSummariesByCampaignID :many
-SELECT e.id, e.campaign_id, e.name, e.round, COUNT(c.id) AS combatants, e.updated_at
+SELECT
+  e.id,
+  e.campaign_id,
+  e.name,
+  e.round,
+  COUNT(c.id) AS combatants,
+  e.difficulty_label,
+  e.difficulty_score,
+  e.party_count,
+  e.party_avg_level,
+  e.party_xp_budget,
+  e.enemy_count,
+  e.enemy_avg_level,
+  e.enemy_total_xp,
+  e.updated_at
 FROM encounters e
 LEFT JOIN combatants c ON c.encounter_id = e.id
 WHERE e.deleted_at IS NULL AND e.campaign_id = ?1
-GROUP BY e.id, e.campaign_id, e.name, e.round, e.updated_at
+GROUP BY
+  e.id, e.campaign_id, e.name, e.round,
+  e.difficulty_label, e.difficulty_score,
+  e.party_count, e.party_avg_level, e.party_xp_budget,
+  e.enemy_count, e.enemy_avg_level, e.enemy_total_xp,
+  e.updated_at
 ORDER BY e.updated_at DESC, e.id DESC
 `
 
 type ListEncounterSummariesByCampaignIDRow struct {
-	ID         string
-	CampaignID interface{}
-	Name       string
-	Round      int64
-	Combatants int64
-	UpdatedAt  time.Time
+	ID              string
+	CampaignID      interface{}
+	Name            string
+	Round           int64
+	Combatants      int64
+	DifficultyLabel string
+	DifficultyScore float64
+	PartyCount      int64
+	PartyAvgLevel   float64
+	PartyXpBudget   int64
+	EnemyCount      int64
+	EnemyAvgLevel   float64
+	EnemyTotalXp    int64
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campaignID interface{}) ([]ListEncounterSummariesByCampaignIDRow, error) {
@@ -782,6 +862,14 @@ func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campai
 			&i.Name,
 			&i.Round,
 			&i.Combatants,
+			&i.DifficultyLabel,
+			&i.DifficultyScore,
+			&i.PartyCount,
+			&i.PartyAvgLevel,
+			&i.PartyXpBudget,
+			&i.EnemyCount,
+			&i.EnemyAvgLevel,
+			&i.EnemyTotalXp,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -870,7 +958,13 @@ func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByID
 }
 
 const upsertEncounter = `-- name: UpsertEncounter :exec
-INSERT INTO encounters (id, campaign_id, name, round, turn_index, party_ap, gm_threat, updated_at, deleted_at)
+INSERT INTO encounters (
+  id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+  difficulty_label, difficulty_score,
+  party_count, party_avg_level, party_xp_budget,
+  enemy_count, enemy_avg_level, enemy_total_xp,
+  updated_at, deleted_at
+)
 VALUES (
   ?1,
   ?2,
@@ -879,6 +973,14 @@ VALUES (
   ?5,
   ?6,
   ?7,
+  ?8,
+  ?9,
+  ?10,
+  ?11,
+  ?12,
+  ?13,
+  ?14,
+  ?15,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
@@ -889,18 +991,34 @@ ON CONFLICT(id) DO UPDATE SET
 	turn_index = excluded.turn_index,
 	party_ap = excluded.party_ap,
 	gm_threat = excluded.gm_threat,
+	difficulty_label = excluded.difficulty_label,
+	difficulty_score = excluded.difficulty_score,
+	party_count = excluded.party_count,
+	party_avg_level = excluded.party_avg_level,
+	party_xp_budget = excluded.party_xp_budget,
+	enemy_count = excluded.enemy_count,
+	enemy_avg_level = excluded.enemy_avg_level,
+	enemy_total_xp = excluded.enemy_total_xp,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
 
 type UpsertEncounterParams struct {
-	ID         string
-	CampaignID interface{}
-	Name       string
-	Round      int64
-	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
+	ID              string
+	CampaignID      interface{}
+	Name            string
+	Round           int64
+	TurnIndex       int64
+	PartyAp         int64
+	GmThreat        int64
+	DifficultyLabel string
+	DifficultyScore float64
+	PartyCount      int64
+	PartyAvgLevel   float64
+	PartyXpBudget   int64
+	EnemyCount      int64
+	EnemyAvgLevel   float64
+	EnemyTotalXp    int64
 }
 
 func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams) error {
@@ -912,6 +1030,14 @@ func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams
 		arg.TurnIndex,
 		arg.PartyAp,
 		arg.GmThreat,
+		arg.DifficultyLabel,
+		arg.DifficultyScore,
+		arg.PartyCount,
+		arg.PartyAvgLevel,
+		arg.PartyXpBudget,
+		arg.EnemyCount,
+		arg.EnemyAvgLevel,
+		arg.EnemyTotalXp,
 	)
 	return err
 }
