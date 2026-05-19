@@ -1,0 +1,7 @@
+-- +goose Up
+ALTER TABLE combatants ADD COLUMN level INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE combatants ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;
+
+-- +goose Down
+ALTER TABLE combatants DROP COLUMN xp;
+ALTER TABLE combatants DROP COLUMN level;
