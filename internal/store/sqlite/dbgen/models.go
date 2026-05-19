@@ -44,7 +44,7 @@ type Encounter struct {
 }
 
 type EncounterLog struct {
-	ID          int64
+	ID          string
 	EncounterID string
 	Round       int64
 	Message     string

@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_encounters_deleted_updated
 ON encounters(deleted_at, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS encounter_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     encounter_id TEXT NOT NULL,
     round INTEGER NOT NULL,
     message TEXT NOT NULL,

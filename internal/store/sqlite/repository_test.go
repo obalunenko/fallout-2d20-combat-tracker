@@ -185,6 +185,69 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 	assert.Equal(t, 1, logs[1].Round)
 }
 
+func TestEncounterStoreListPartyMembersUsesLatestSnapshot(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:         "enc-1",
+		Name:       "Old",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 1, Initiative: 8, HP: 7, Defense: 2}, {ID: "n1", Name: "Raider", Side: domain.SideNPC, XP: 30, Initiative: 7, HP: 6}},
+	}))
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:        "enc-2",
+		Name:      "New",
+		Round:     1,
+		TurnIndex: 0,
+		Combatants: []domain.Combatant{
+			{ID: "p2", Name: "Piper", Side: domain.SideParty, Level: 3, Initiative: 10, HP: 9, Defense: 3, ResistEnergy: 1},
+			{ID: "p3", Name: "Roland", Side: domain.SideParty, Level: 2, Initiative: 11, HP: 8, Defense: 4, ResistPhysical: 2, ImmunePoison: true},
+			{ID: "n2", Name: "Molerat", Side: domain.SideNPC, XP: 25, Initiative: 6, HP: 5},
+		},
+	}))
+
+	party, err := store.ListPartyMembers()
+	require.NoError(t, err)
+	require.Len(t, party, 2)
+
+	assert.Equal(t, "Piper", party[0].Name)
+	assert.Equal(t, "Roland", party[1].Name)
+	assert.Equal(t, 2, party[1].Level)
+	assert.Equal(t, 11, party[1].Initiative)
+	assert.Equal(t, 8, party[1].HP)
+	assert.Equal(t, 4, party[1].Defense)
+	assert.Equal(t, 2, party[1].ResistPhysical)
+	assert.True(t, party[1].ImmunePoison)
+}
+
+func TestEncounterStoreListPartyMembersIgnoresSoftDeletedEncounter(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:         "enc-1",
+		Name:       "Alpha",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 7, Defense: 2}},
+	}))
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:         "enc-2",
+		Name:       "Bravo",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "p2", Name: "Roland", Side: domain.SideParty, Level: 4, Initiative: 12, HP: 10, Defense: 5}},
+	}))
+	require.NoError(t, store.SoftDelete("enc-2"))
+
+	party, err := store.ListPartyMembers()
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	assert.Equal(t, "Roland", party[0].Name)
+	assert.Equal(t, 2, party[0].Level)
+	assert.Equal(t, 9, party[0].Initiative)
+}
+
 func newTestStore(t *testing.T) *EncounterStore {
 	t.Helper()
 	return newTestStoreWithContext(t, context.Background())

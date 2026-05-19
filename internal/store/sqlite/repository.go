@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -169,6 +170,36 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	return summaries, nil
 }
 
+func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
+	ctx := s.ctx
+	rows, err := s.q.ListPartyTemplates(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list party templates: %w", err)
+	}
+
+	party := make([]domain.Combatant, 0, len(rows))
+	for _, r := range rows {
+		party = append(party, domain.Combatant{
+			Name:            r.Name,
+			Side:            domain.SideParty,
+			Level:           int(r.Level),
+			XP:              int(r.Xp),
+			Initiative:      int(r.Initiative),
+			HP:              int(r.Hp),
+			Defense:         int(r.Defense),
+			ResistPhysical:  int(r.DamageResistancePhysical),
+			ResistEnergy:    int(r.DamageResistanceEnergy),
+			ResistRadiation: int(r.DamageResistanceRadiation),
+			ResistPoison:    int(r.DamageResistancePoison),
+			ImmunePhysical:  r.DamageResistancePhysicalImmune == 1,
+			ImmuneEnergy:    r.DamageResistanceEnergyImmune == 1,
+			ImmuneRadiation: r.DamageResistanceRadiationImmune == 1,
+			ImmunePoison:    r.DamageResistancePoisonImmune == 1,
+		})
+	}
+	return party, nil
+}
+
 func (s *EncounterStore) Activate(encounterID string) error {
 	ctx := s.ctx
 	affected, err := s.q.ActivateEncounter(ctx, encounterID)
@@ -203,6 +234,7 @@ func (s *EncounterStore) AppendEncounterLog(encounterID string, round int, messa
 
 	ctx := s.ctx
 	if err := s.q.InsertEncounterLog(ctx, dbgen.InsertEncounterLogParams{
+		ID:          uuid.NewString(),
 		EncounterID: encounterID,
 		Round:       int64(round),
 		Message:     message,

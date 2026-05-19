@@ -2,7 +2,9 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -10,6 +12,7 @@ type EncounterRepository interface {
 	Get() (*domain.Encounter, error)
 	Save(encounter *domain.Encounter) error
 	List() ([]domain.EncounterSummary, error)
+	ListPartyMembers() ([]domain.Combatant, error)
 	Activate(encounterID string) error
 	SoftDelete(encounterID string) error
 	AppendEncounterLog(encounterID string, round int, message string) error
@@ -37,6 +40,10 @@ func (s *Service) ListEncounterLogs(encounterID string) ([]domain.EncounterLog, 
 		return nil, fmt.Errorf("encounter id is required")
 	}
 	return s.repo.ListEncounterLogs(encounterID)
+}
+
+func (s *Service) ListPartyMembers() ([]domain.Combatant, error) {
+	return s.repo.ListPartyMembers()
 }
 
 func (s *Service) ActivateEncounter(encounterID string) (*domain.Encounter, error) {
@@ -89,6 +96,14 @@ func (s *Service) DeleteEncounter(encounterID string) error {
 func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
 	if len(combatants) == 0 {
 		return nil, fmt.Errorf("cannot create encounter without combatants")
+	}
+	if strings.TrimSpace(id) == "" {
+		id = uuid.NewString()
+	}
+	for i := range combatants {
+		if strings.TrimSpace(combatants[i].ID) == "" {
+			combatants[i].ID = uuid.NewString()
+		}
 	}
 	enc := domain.NewEncounter(id, name, combatants)
 	if err := s.repo.Save(enc); err != nil {

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -50,6 +51,23 @@ func TestCreateEncounterPersistsAndGetReturnsSorted(t *testing.T) {
 	assert.True(t, enc.Combatants[0].ImmuneEnergy)
 	assert.False(t, enc.Combatants[0].ImmuneRadiation)
 	assert.False(t, enc.Combatants[0].ImmunePoison)
+}
+
+func TestCreateEncounterGeneratesUUIDsWhenIDsAreMissing(t *testing.T) {
+	svc := newSQLiteService(t)
+	created, err := svc.CreateEncounter("", "test", []domain.Combatant{
+		{Name: "Alpha", Initiative: 10, Side: domain.SideParty, HP: 10},
+		{Name: "Beta", Initiative: 8, Side: domain.SideNPC, HP: 8},
+	})
+	require.NoError(t, err)
+
+	_, err = uuid.Parse(created.ID)
+	require.NoError(t, err)
+	require.Len(t, created.Combatants, 2)
+	for _, c := range created.Combatants {
+		_, parseErr := uuid.Parse(c.ID)
+		require.NoError(t, parseErr)
+	}
 }
 
 func TestAdvanceTurnPersistsState(t *testing.T) {
@@ -262,6 +280,28 @@ func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 		}
 	}
 	assert.True(t, hasTurnAdvanced, "expected at least one turn advance log entry")
+}
+
+func TestListPartyMembersReturnsSavedTemplates(t *testing.T) {
+	svc := newSQLiteService(t)
+	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+		{ID: "p1", Name: "Roland", Initiative: 9, Side: domain.SideParty, Level: 1, HP: 7, Defense: 2},
+		{ID: "n1", Name: "Raider", Initiative: 7, Side: domain.SideNPC, Level: 1, XP: 30, HP: 6, Defense: 1},
+	})
+	require.NoError(t, err)
+	_, err = svc.CreateEncounter("enc-2", "Bravo", []domain.Combatant{
+		{ID: "p2", Name: "Piper", Initiative: 8, Side: domain.SideParty, Level: 2, HP: 8, Defense: 3},
+		{ID: "p3", Name: "Roland", Initiative: 11, Side: domain.SideParty, Level: 3, HP: 9, Defense: 4},
+	})
+	require.NoError(t, err)
+
+	party, err := svc.ListPartyMembers()
+	require.NoError(t, err)
+	require.Len(t, party, 2)
+	assert.Equal(t, "Piper", party[0].Name)
+	assert.Equal(t, "Roland", party[1].Name)
+	assert.Equal(t, 3, party[1].Level)
+	assert.Equal(t, 11, party[1].Initiative)
 }
 
 func newSQLiteService(t *testing.T) *Service {

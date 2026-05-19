@@ -157,23 +157,30 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 }
 
 const insertEncounterLog = `-- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (encounter_id, round, message, created_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, created_at)
 VALUES (
   ?1,
   ?2,
   ?3,
+  ?4,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
 
 type InsertEncounterLogParams struct {
+	ID          string
 	EncounterID string
 	Round       int64
 	Message     string
 }
 
 func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLogParams) error {
-	_, err := q.db.ExecContext(ctx, insertEncounterLog, arg.EncounterID, arg.Round, arg.Message)
+	_, err := q.db.ExecContext(ctx, insertEncounterLog,
+		arg.ID,
+		arg.EncounterID,
+		arg.Round,
+		arg.Message,
+	)
 	return err
 }
 
@@ -254,7 +261,7 @@ const listEncounterLogsByEncounterID = `-- name: ListEncounterLogsByEncounterID 
 SELECT round, message, created_at
 FROM encounter_logs
 WHERE encounter_id = ?1
-ORDER BY created_at DESC, id DESC
+ORDER BY created_at DESC, rowid DESC
 `
 
 type ListEncounterLogsByEncounterIDRow struct {
@@ -318,6 +325,106 @@ func (q *Queries) ListEncounterSummaries(ctx context.Context) ([]ListEncounterSu
 			&i.Round,
 			&i.Combatants,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPartyTemplates = `-- name: ListPartyTemplates :many
+WITH latest_party AS (
+  SELECT
+    c.name,
+    c.level,
+    c.xp,
+    c.initiative,
+    c.hp,
+    c.defense,
+    c.damage_resistance_physical,
+    c.damage_resistance_energy,
+    c.damage_resistance_radiation,
+    c.damage_resistance_poison,
+    c.damage_resistance_physical_immune,
+    c.damage_resistance_energy_immune,
+    c.damage_resistance_radiation_immune,
+    c.damage_resistance_poison_immune,
+    ROW_NUMBER() OVER (
+      PARTITION BY LOWER(TRIM(c.name))
+      ORDER BY e.updated_at DESC, e.id DESC, c.position ASC
+    ) AS rn
+  FROM combatants c
+  JOIN encounters e ON e.id = c.encounter_id
+  WHERE c.side = 'party' AND e.deleted_at IS NULL
+)
+SELECT
+  name,
+  level,
+  xp,
+  initiative,
+  hp,
+  defense,
+  damage_resistance_physical,
+  damage_resistance_energy,
+  damage_resistance_radiation,
+  damage_resistance_poison,
+  damage_resistance_physical_immune,
+  damage_resistance_energy_immune,
+  damage_resistance_radiation_immune,
+  damage_resistance_poison_immune
+FROM latest_party
+WHERE rn = 1
+ORDER BY name COLLATE NOCASE ASC
+`
+
+type ListPartyTemplatesRow struct {
+	Name                            string
+	Level                           int64
+	Xp                              int64
+	Initiative                      int64
+	Hp                              int64
+	Defense                         int64
+	DamageResistancePhysical        int64
+	DamageResistanceEnergy          int64
+	DamageResistanceRadiation       int64
+	DamageResistancePoison          int64
+	DamageResistancePhysicalImmune  int64
+	DamageResistanceEnergyImmune    int64
+	DamageResistanceRadiationImmune int64
+	DamageResistancePoisonImmune    int64
+}
+
+func (q *Queries) ListPartyTemplates(ctx context.Context) ([]ListPartyTemplatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPartyTemplates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPartyTemplatesRow
+	for rows.Next() {
+		var i ListPartyTemplatesRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Level,
+			&i.Xp,
+			&i.Initiative,
+			&i.Hp,
+			&i.Defense,
+			&i.DamageResistancePhysical,
+			&i.DamageResistanceEnergy,
+			&i.DamageResistanceRadiation,
+			&i.DamageResistancePoison,
+			&i.DamageResistancePhysicalImmune,
+			&i.DamageResistanceEnergyImmune,
+			&i.DamageResistanceRadiationImmune,
+			&i.DamageResistancePoisonImmune,
 		); err != nil {
 			return nil, err
 		}

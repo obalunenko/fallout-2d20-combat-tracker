@@ -98,8 +98,9 @@ SET deleted_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
 WHERE encounters.id = sqlc.arg(encounter_id) AND deleted_at IS NULL;
 
 -- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (encounter_id, round, message, created_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, created_at)
 VALUES (
+  sqlc.arg(id),
   sqlc.arg(encounter_id),
   sqlc.arg(round),
   sqlc.arg(message),
@@ -110,4 +111,48 @@ VALUES (
 SELECT round, message, created_at
 FROM encounter_logs
 WHERE encounter_id = sqlc.arg(encounter_id)
-ORDER BY created_at DESC, id DESC;
+ORDER BY created_at DESC, rowid DESC;
+
+-- name: ListPartyTemplates :many
+WITH latest_party AS (
+  SELECT
+    c.name,
+    c.level,
+    c.xp,
+    c.initiative,
+    c.hp,
+    c.defense,
+    c.damage_resistance_physical,
+    c.damage_resistance_energy,
+    c.damage_resistance_radiation,
+    c.damage_resistance_poison,
+    c.damage_resistance_physical_immune,
+    c.damage_resistance_energy_immune,
+    c.damage_resistance_radiation_immune,
+    c.damage_resistance_poison_immune,
+    ROW_NUMBER() OVER (
+      PARTITION BY LOWER(TRIM(c.name))
+      ORDER BY e.updated_at DESC, e.id DESC, c.position ASC
+    ) AS rn
+  FROM combatants c
+  JOIN encounters e ON e.id = c.encounter_id
+  WHERE c.side = 'party' AND e.deleted_at IS NULL
+)
+SELECT
+  name,
+  level,
+  xp,
+  initiative,
+  hp,
+  defense,
+  damage_resistance_physical,
+  damage_resistance_energy,
+  damage_resistance_radiation,
+  damage_resistance_poison,
+  damage_resistance_physical_immune,
+  damage_resistance_energy_immune,
+  damage_resistance_radiation_immune,
+  damage_resistance_poison_immune
+FROM latest_party
+WHERE rn = 1
+ORDER BY name COLLATE NOCASE ASC;

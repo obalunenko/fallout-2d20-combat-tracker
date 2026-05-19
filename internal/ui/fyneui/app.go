@@ -19,6 +19,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/google/uuid"
 
 	appsvc "github.com/obalunenko/fallout/internal/app"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -74,13 +75,17 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	}
 
 	combatantLine := func(c domain.Combatant) string {
+		name := c.Name
+		if enc != nil {
+			name = encounterDisplayNameByID(enc, c.ID)
+		}
 		prefix := "   "
 		if c.Active {
 			prefix = ">> "
 		}
 		return fmt.Sprintf(
 			"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d DEF:%d DR P/E/R/P:%s/%s/%s/%s",
-			prefix, c.Name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
+			prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
 			formatDRValue(c.ResistPhysical, c.ImmunePhysical),
 			formatDRValue(c.ResistEnergy, c.ImmuneEnergy),
 			formatDRValue(c.ResistRadiation, c.ImmuneRadiation),
@@ -328,7 +333,8 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 
 		roundLabel.SetText(fmt.Sprintf("Round: %d", enc.Round))
 		if active := enc.ActiveCombatant(); active != nil {
-			activeLabel.SetText(fmt.Sprintf("Active: %s (%s, Init:%d)", active.Name, active.Side, active.Initiative))
+			activeName := encounterDisplayNameByID(enc, active.ID)
+			activeLabel.SetText(fmt.Sprintf("Active: %s (%s, Init:%d)", activeName, active.Side, active.Initiative))
 		} else {
 			activeLabel.SetText("Active: -")
 		}
@@ -353,9 +359,10 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		var rows []*combatantInputRow
 		rowsBox := container.NewVBox()
 		headers := container.NewGridWithColumns(
-			12,
+			13,
 			newTableHeaderLabel("Name"),
 			newTableHeaderLabel("Side"),
+			newTableHeaderLabel("Number"),
 			newTableHeaderLabel("Level"),
 			newTableHeaderLabel("XP"),
 			newTableHeaderLabel("Initiative"),
@@ -369,10 +376,11 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		)
 		table := container.NewVBox(headers, widget.NewSeparator(), rowsBox)
 
-		addRow := func(defaultSide string) {
+		addRow := func(defaultSide string) *combatantInputRow {
 			row := newCombatantInputRow(defaultSide, func(target *combatantInputRow) {
 				if len(rows) == 1 {
 					target.name.SetText("")
+					target.number.SetText("1")
 					target.level.SetText("1")
 					target.xp.SetText("0")
 					target.initiative.SetText("")
@@ -402,22 +410,46 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			rows = append(rows, row)
 			rowsBox.Add(row.root)
 			rowsBox.Refresh()
+			return row
 		}
 
 		addRow("party")
+		validationError := widget.NewLabel("")
+		validationError.TextStyle = fyne.TextStyle{Monospace: true}
+		validationError.Wrapping = fyne.TextWrapWord
 
 		addCombatantBtn := widget.NewButton("+ Add Combatant", func() {
 			addRow("npc")
+		})
+		loadPartyBtn := widget.NewButton("Load Party From DB", func() {
+			validationError.SetText("")
+
+			partyMembers, err := svc.ListPartyMembers()
+			if err != nil {
+				validationError.SetText(err.Error())
+				return
+			}
+			if len(partyMembers) == 0 {
+				validationError.SetText("No saved party members found in database")
+				return
+			}
+
+			next := 0
+			if len(rows) == 1 && combatantInputRowIsEmpty(rows[0]) {
+				fillCombatantInputRow(rows[0], partyMembers[0], domain.SideParty, 1)
+				next = 1
+			}
+			for i := next; i < len(partyMembers); i++ {
+				row := addRow("party")
+				fillCombatantInputRow(row, partyMembers[i], domain.SideParty, 1)
+			}
 		})
 
 		dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
 		scroll := container.NewScroll(table)
 		scroll.Direction = container.ScrollBoth
 		scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
-		combatantsSection := container.NewVBox(addCombatantBtn, scroll)
-		validationError := widget.NewLabel("")
-		validationError.TextStyle = fyne.TextStyle{Monospace: true}
-		validationError.Wrapping = fyne.TextWrapWord
+		combatantsSection := container.NewVBox(container.NewGridWithColumns(2, addCombatantBtn, loadPartyBtn), scroll)
 
 		form := widget.NewForm(
 			widget.NewFormItem("Name", nameEntry),
@@ -444,7 +476,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				return
 			}
 
-			encounterID := fmt.Sprintf("enc-%d", time.Now().UnixNano())
+			encounterID := uuid.NewString()
 			if _, err := svc.CreateEncounter(encounterID, name, combatants); err != nil {
 				validationError.SetText(err.Error())
 				return
@@ -470,6 +502,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		}
 
 		target := enc.Combatants[targetIndex]
+		targetDisplayName := encounterDisplayNameByID(enc, target.ID)
 		typeSelect := widget.NewSelect([]string{"physical", "energy", "radiation", "poison"}, nil)
 		typeSelect.SetSelected("physical")
 
@@ -479,7 +512,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		amountEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
 		damageDialog := dialog.NewForm(
-			fmt.Sprintf("Apply Damage: %s", target.Name),
+			fmt.Sprintf("Apply Damage: %s", targetDisplayName),
 			"Apply",
 			"Cancel",
 			[]*widget.FormItem{
@@ -528,13 +561,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		}
 
 		target := enc.Combatants[targetIndex]
+		targetDisplayName := encounterDisplayNameByID(enc, target.ID)
 		amountEntry := widget.NewEntry()
 		amountEntry.SetPlaceHolder("Heal amount")
 		amountEntry.SetText("1")
 		amountEntry.TextStyle = fyne.TextStyle{Monospace: true}
 
 		healDialog := dialog.NewForm(
-			fmt.Sprintf("Heal: %s", target.Name),
+			fmt.Sprintf("Heal: %s", targetDisplayName),
 			"Heal",
 			"Cancel",
 			[]*widget.FormItem{
@@ -814,6 +848,7 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 		idx = 0
 	}
 	c := enc.Combatants[idx]
+	displayName := encounterDisplayNameByID(enc, c.ID)
 	status := "Ready"
 	if c.Defeated {
 		status = "Defeated"
@@ -821,7 +856,7 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	label.SetText(
 		fmt.Sprintf(
 			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d\nDefense: %d\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s\nStatus: %s",
-			c.Name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
+			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
 			formatDRValue(c.ResistPhysical, c.ImmunePhysical),
 			formatDRValue(c.ResistEnergy, c.ImmuneEnergy),
 			formatDRValue(c.ResistRadiation, c.ImmuneRadiation),
@@ -868,6 +903,57 @@ func formatLogTimestamp(raw string) string {
 	return raw
 }
 
+func encounterDisplayNameByID(enc *domain.Encounter, combatantID string) string {
+	if enc == nil {
+		return ""
+	}
+	displayMap := encounterDisplayNameMap(enc)
+	if name, ok := displayMap[combatantID]; ok {
+		return name
+	}
+	for i := range enc.Combatants {
+		if enc.Combatants[i].ID == combatantID {
+			return enc.Combatants[i].Name
+		}
+	}
+	return ""
+}
+
+func encounterDisplayNameMap(enc *domain.Encounter) map[string]string {
+	names := make(map[string]string, len(enc.Combatants))
+	npcCounts := make(map[string]int)
+	for i := range enc.Combatants {
+		c := enc.Combatants[i]
+		if c.Side == domain.SideNPC {
+			npcCounts[c.Name]++
+		}
+	}
+
+	npcSeen := make(map[string]int)
+	for i := range enc.Combatants {
+		c := enc.Combatants[i]
+		if c.Side == domain.SideNPC && npcCounts[c.Name] > 1 {
+			npcSeen[c.Name]++
+			names[c.ID] = fmt.Sprintf("%s (%s)", c.Name, alphabeticOrdinalLabel(npcSeen[c.Name]-1))
+			continue
+		}
+		names[c.ID] = c.Name
+	}
+	return names
+}
+
+func alphabeticOrdinalLabel(idx int) string {
+	if idx < 0 {
+		return "A"
+	}
+	label := ""
+	for idx >= 0 {
+		label = string(rune('A'+(idx%26))) + label
+		idx = idx/26 - 1
+	}
+	return label
+}
+
 func parseDamageType(v string) (domain.DamageType, error) {
 	switch strings.TrimSpace(strings.ToLower(v)) {
 	case string(domain.DamagePhysical):
@@ -886,6 +972,7 @@ func parseDamageType(v string) (domain.DamageType, error) {
 type combatantInputRow struct {
 	name         *widget.Entry
 	side         *widget.Select
+	number       *widget.Entry
 	level        *widget.Entry
 	xp           *widget.Entry
 	initiative   *widget.Entry
@@ -909,6 +996,10 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 
 	side := widget.NewSelect([]string{"party", "npc"}, nil)
 	side.SetSelected(defaultSide)
+	number := widget.NewEntry()
+	number.SetPlaceHolder("Count")
+	number.TextStyle = fyne.TextStyle{Monospace: true}
+	number.SetText("1")
 	level := widget.NewEntry()
 	level.SetPlaceHolder("Level")
 	level.TextStyle = fyne.TextStyle{Monospace: true}
@@ -954,6 +1045,7 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 	row := &combatantInputRow{
 		name:         name,
 		side:         side,
+		number:       number,
 		level:        level,
 		xp:           xp,
 		initiative:   initiative,
@@ -971,18 +1063,22 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 	removeBtn := widget.NewButton("Remove", func() { onRemove(row) })
 	side.OnChanged = func(value string) {
 		if value == "party" {
+			row.number.SetText("1")
+			row.number.Disable()
 			row.xp.SetText("0")
 			row.xp.Disable()
 			return
 		}
+		row.number.Enable()
 		row.xp.Enable()
 	}
 	side.SetSelected(defaultSide)
 
 	row.root = container.NewGridWithColumns(
-		12,
+		13,
 		name,
 		side,
+		number,
 		level,
 		xp,
 		initiative,
@@ -1015,6 +1111,67 @@ func newTableHeaderLabel(text string) *widget.Label {
 	return l
 }
 
+func combatantInputRowIsEmpty(row *combatantInputRow) bool {
+	if row == nil {
+		return true
+	}
+	return strings.TrimSpace(row.name.Text) == "" &&
+		strings.TrimSpace(row.initiative.Text) == "" &&
+		strings.TrimSpace(row.level.Text) == "1" &&
+		strings.TrimSpace(row.xp.Text) == "0" &&
+		strings.TrimSpace(row.hp.Text) == "1" &&
+		strings.TrimSpace(row.defense.Text) == "0" &&
+		strings.TrimSpace(row.drPhysical.Text) == "0" &&
+		strings.TrimSpace(row.drEnergy.Text) == "0" &&
+		strings.TrimSpace(row.drRadiation.Text) == "0" &&
+		strings.TrimSpace(row.drPoison.Text) == "0" &&
+		!row.immPhysical.Checked &&
+		!row.immEnergy.Checked &&
+		!row.immRadiation.Checked &&
+		!row.immPoison.Checked
+}
+
+func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, side domain.Side, count int) {
+	if row == nil {
+		return
+	}
+	if count < 1 {
+		count = 1
+	}
+
+	selectedSide := string(side)
+	if selectedSide != "npc" {
+		selectedSide = "party"
+	}
+	row.side.SetSelected(selectedSide)
+
+	row.name.SetText(strings.TrimSpace(template.Name))
+	row.number.SetText(strconv.Itoa(count))
+	row.level.SetText(strconv.Itoa(template.Level))
+	row.xp.SetText(strconv.Itoa(template.XP))
+	row.initiative.SetText(strconv.Itoa(template.Initiative))
+	row.hp.SetText(strconv.Itoa(template.HP))
+	row.defense.SetText(strconv.Itoa(template.Defense))
+
+	row.immPhysical.SetChecked(template.ImmunePhysical)
+	row.immEnergy.SetChecked(template.ImmuneEnergy)
+	row.immRadiation.SetChecked(template.ImmuneRadiation)
+	row.immPoison.SetChecked(template.ImmunePoison)
+
+	if !template.ImmunePhysical {
+		row.drPhysical.SetText(strconv.Itoa(template.ResistPhysical))
+	}
+	if !template.ImmuneEnergy {
+		row.drEnergy.SetText(strconv.Itoa(template.ResistEnergy))
+	}
+	if !template.ImmuneRadiation {
+		row.drRadiation.SetText(strconv.Itoa(template.ResistRadiation))
+	}
+	if !template.ImmunePoison {
+		row.drPoison.SetText(strconv.Itoa(template.ResistPoison))
+	}
+}
+
 func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, error) {
 	combatants := make([]domain.Combatant, 0, len(rows))
 	for _, row := range rows {
@@ -1038,6 +1195,14 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		level, err := strconv.Atoi(levelText)
 		if err != nil || level < 1 {
 			return nil, fmt.Errorf("combatant %q: invalid level %q", name, levelText)
+		}
+		countText := strings.TrimSpace(row.number.Text)
+		if countText == "" {
+			countText = "1"
+		}
+		count, err := strconv.Atoi(countText)
+		if err != nil || count < 1 {
+			return nil, fmt.Errorf("combatant %q: invalid number %q", name, countText)
 		}
 		xpText := strings.TrimSpace(row.xp.Text)
 		if xpText == "" {
@@ -1084,26 +1249,29 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		if row.side.Selected == "party" {
 			side = domain.SideParty
 			xp = 0
+			count = 1
 		}
 
-		combatants = append(combatants, domain.Combatant{
-			ID:              fmt.Sprintf("c-%d", len(combatants)+1),
-			Name:            name,
-			Side:            side,
-			Level:           level,
-			XP:              xp,
-			Initiative:      initiative,
-			HP:              hp,
-			Defense:         defense,
-			ResistPhysical:  drPhysical,
-			ResistEnergy:    drEnergy,
-			ResistRadiation: drRadiation,
-			ResistPoison:    drPoison,
-			ImmunePhysical:  immPhysical,
-			ImmuneEnergy:    immEnergy,
-			ImmuneRadiation: immRadiation,
-			ImmunePoison:    immPoison,
-		})
+		for i := 0; i < count; i++ {
+			combatants = append(combatants, domain.Combatant{
+				ID:              uuid.NewString(),
+				Name:            name,
+				Side:            side,
+				Level:           level,
+				XP:              xp,
+				Initiative:      initiative,
+				HP:              hp,
+				Defense:         defense,
+				ResistPhysical:  drPhysical,
+				ResistEnergy:    drEnergy,
+				ResistRadiation: drRadiation,
+				ResistPoison:    drPoison,
+				ImmunePhysical:  immPhysical,
+				ImmuneEnergy:    immEnergy,
+				ImmuneRadiation: immRadiation,
+				ImmunePoison:    immPoison,
+			})
+		}
 	}
 
 	if len(combatants) == 0 {

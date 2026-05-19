@@ -188,10 +188,7 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, amoun
 
 	effective := 0
 	if !immune {
-		effective = amount - resistance
-		if effective < 0 {
-			effective = 0
-		}
+		effective = max(amount-resistance, 0)
 	}
 
 	target.HP -= effective
