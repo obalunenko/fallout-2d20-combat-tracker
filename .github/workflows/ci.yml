@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download main dependencies
+        run: go mod download
+
+      - name: Download goose tool dependencies
+        run: go mod download -modfile=tools/goose/go.tool.mod
+
+      - name: Download sqlc tool dependencies
+        run: go mod download -modfile=tools/sqlc/go.tool.mod
+
+      - name: Download golangci-lint tool dependencies
+        run: go mod download -modfile=tools/golangci-lint/go.tool.mod
+
+      - name: Install Linux GUI build dependencies (Fyne/GLFW)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libgl1-mesa-dev \
+            xorg-dev
+
+      - name: Vet
+        run: make vet
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build
