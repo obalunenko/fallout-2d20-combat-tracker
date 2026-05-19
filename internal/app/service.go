@@ -13,6 +13,10 @@ type EncounterRepository interface {
 	Save(encounter *domain.Encounter) error
 	List() ([]domain.EncounterSummary, error)
 	ListPartyMembers() ([]domain.Combatant, error)
+	CreateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
+	GetActiveCampaign() (*domain.Campaign, error)
+	ListCampaigns() ([]domain.Campaign, error)
+	ActivateCampaign(campaignID string) error
 	Activate(encounterID string) error
 	SoftDelete(encounterID string) error
 	AppendEncounterLog(encounterID string, round int, message string) error
@@ -44,6 +48,65 @@ func (s *Service) ListEncounterLogs(encounterID string) ([]domain.EncounterLog, 
 
 func (s *Service) ListPartyMembers() ([]domain.Combatant, error) {
 	return s.repo.ListPartyMembers()
+}
+
+func (s *Service) CreateCampaign(id, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	if strings.TrimSpace(name) == "" {
+		return nil, fmt.Errorf("campaign name is required")
+	}
+	if strings.TrimSpace(startDate) == "" {
+		return nil, fmt.Errorf("campaign start date is required")
+	}
+	if len(players) == 0 {
+		return nil, fmt.Errorf("add at least one player")
+	}
+	if strings.TrimSpace(id) == "" {
+		id = uuid.NewString()
+	}
+	for i := range players {
+		if strings.TrimSpace(players[i].PlayerName) == "" {
+			return nil, fmt.Errorf("player name is required")
+		}
+		if strings.TrimSpace(players[i].Character.Name) == "" {
+			return nil, fmt.Errorf("character name is required for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Level < 1 {
+			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.HP < 1 {
+			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Initiative < 0 {
+			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Defense < 0 {
+			return nil, fmt.Errorf("invalid defense for player %q", players[i].PlayerName)
+		}
+		if strings.TrimSpace(players[i].Character.ID) == "" {
+			players[i].Character.ID = uuid.NewString()
+		}
+		players[i].Character.Side = domain.SideParty
+		players[i].Character.XP = 0
+	}
+	return s.repo.CreateCampaign(id, name, startDate, players)
+}
+
+func (s *Service) GetActiveCampaign() (*domain.Campaign, error) {
+	return s.repo.GetActiveCampaign()
+}
+
+func (s *Service) ListCampaigns() ([]domain.Campaign, error) {
+	return s.repo.ListCampaigns()
+}
+
+func (s *Service) ActivateCampaign(campaignID string) (*domain.Campaign, error) {
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+	if err := s.repo.ActivateCampaign(campaignID); err != nil {
+		return nil, err
+	}
+	return s.repo.GetActiveCampaign()
 }
 
 func (s *Service) ActivateEncounter(encounterID string) (*domain.Encounter, error) {
@@ -97,6 +160,10 @@ func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant
 	if len(combatants) == 0 {
 		return nil, fmt.Errorf("cannot create encounter without combatants")
 	}
+	activeCampaign, err := s.repo.GetActiveCampaign()
+	if err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(id) == "" {
 		id = uuid.NewString()
 	}
@@ -106,6 +173,7 @@ func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant
 		}
 	}
 	enc := domain.NewEncounter(id, name, combatants)
+	enc.CampaignID = activeCampaign.ID
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}

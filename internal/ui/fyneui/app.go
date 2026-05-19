@@ -37,8 +37,9 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	w.Resize(fyne.NewSize(1100, 700))
 
 	var (
-		enc           *domain.Encounter
-		selectedIndex int
+		enc            *domain.Encounter
+		activeCampaign *domain.Campaign
+		selectedIndex  int
 	)
 
 	roundLabel := widget.NewLabel("")
@@ -155,6 +156,8 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	var refresh func()
 	var showCreateEncounterDialog func()
 	var showEncounterListDialog func()
+	var showCreateCampaignDialog func()
+	var showCampaignListDialog func()
 	var showApplyDamageDialogForIndex func(int)
 	var showHealDialogForIndex func(int)
 	var refreshDataLog func()
@@ -264,11 +267,19 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	tabs.SetTabLocation(container.TabLocationTop)
 	tabsView := container.New(layout.NewPaddedLayout(), tabs)
 
+	campaignStatusLabel := widget.NewLabel("Campaign: -")
+	campaignStatusLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	newEncounterBtn := widget.NewButton("NEW ENCOUNTER", func() {
 		showCreateEncounterDialog()
 	})
 	openEncounterBtn := widget.NewButton("OPEN ENCOUNTER", func() {
 		showEncounterListDialog()
+	})
+	newCampaignBtn := widget.NewButton("NEW CAMPAIGN", func() {
+		showCreateCampaignDialog()
+	})
+	openCampaignBtn := widget.NewButton("OPEN CAMPAIGN", func() {
+		showCampaignListDialog()
 	})
 
 	setupHint := widget.NewLabel("No active encounter.\nCreate one from scratch to begin tracking combat.")
@@ -282,7 +293,19 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		container.NewCenter(container.NewVBox(setupHint, widget.NewSeparator(), setupButton)),
 	)
 
-	mainView := container.NewStack(tabsView, noEncounterView)
+	campaignHint := widget.NewLabel("No active campaign.\nCreate or choose a campaign before running encounters.")
+	campaignHint.Alignment = fyne.TextAlignCenter
+	campaignHint.TextStyle = fyne.TextStyle{Monospace: true}
+	campaignActions := container.NewGridWithColumns(2,
+		widget.NewButton("CREATE CAMPAIGN", func() { showCreateCampaignDialog() }),
+		widget.NewButton("OPEN CAMPAIGNS", func() { showCampaignListDialog() }),
+	)
+	noCampaignView := pipPanel(
+		"CAMPAIGN CONTROL",
+		container.NewCenter(container.NewVBox(campaignHint, widget.NewSeparator(), campaignActions)),
+	)
+
+	mainView := container.NewStack(tabsView, noEncounterView, noCampaignView)
 
 	refreshDataLog = func() {
 		if enc == nil {
@@ -311,6 +334,31 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 
 	refresh = func() {
 		var err error
+		activeCampaign, err = svc.GetActiveCampaign()
+		if err != nil {
+			if errors.Is(err, domain.ErrCampaignNotInitialized) {
+				activeCampaign = nil
+				enc = nil
+				campaignStatusLabel.SetText("Campaign: -")
+				roundLabel.SetText("Round: -")
+				activeLabel.SetText("Active: -")
+				refreshSelected(selectedLabel, nil, 0)
+				refreshResources()
+				list.Refresh()
+				rebuildEncounterOrder()
+				refreshDataLog()
+				tabsView.Hide()
+				noEncounterView.Hide()
+				noCampaignView.Show()
+				mainView.Refresh()
+				return
+			}
+			handleErr(err)
+			return
+		}
+		campaignStatusLabel.SetText(fmt.Sprintf("Campaign: %s (%s)", activeCampaign.Name, activeCampaign.StartDate))
+		setupHint.SetText(fmt.Sprintf("Campaign: %s\nNo active encounter.\nCreate one from scratch to begin tracking combat.", activeCampaign.Name))
+
 		enc, err = svc.GetEncounter()
 		if err != nil {
 			if errors.Is(err, domain.ErrEncounterNotInitialized) {
@@ -323,6 +371,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				rebuildEncounterOrder()
 				refreshDataLog()
 				tabsView.Hide()
+				noCampaignView.Hide()
 				noEncounterView.Show()
 				mainView.Refresh()
 				return
@@ -347,9 +396,224 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		list.Refresh()
 		rebuildEncounterOrder()
 		refreshDataLog()
+		noCampaignView.Hide()
 		noEncounterView.Hide()
 		tabsView.Show()
 		mainView.Refresh()
+	}
+
+	showCreateCampaignDialog = func() {
+		nameEntry := widget.NewEntry()
+		nameEntry.SetPlaceHolder("e.g. Commonwealth Survival")
+		startDateEntry := widget.NewEntry()
+		startDateEntry.SetPlaceHolder("YYYY-MM-DD")
+		startDateEntry.SetText(time.Now().Format("2006-01-02"))
+
+		var rows []*campaignPlayerInputRow
+		rowsBox := container.NewVBox()
+		headers := container.NewGridWithColumns(
+			12,
+			newTableHeaderLabel("Player"),
+			newTableHeaderLabel("Character"),
+			newTableHeaderLabel("Level"),
+			newTableHeaderLabel("Init"),
+			newTableHeaderLabel("HP"),
+			newTableHeaderLabel("Defense"),
+			newTableHeaderLabel("DR Phys"),
+			newTableHeaderLabel("DR Energy"),
+			newTableHeaderLabel("DR Rad"),
+			newTableHeaderLabel("DR Poison"),
+			newTableHeaderLabel("Active"),
+			newTableHeaderLabel("Action"),
+		)
+		table := container.NewVBox(headers, widget.NewSeparator(), rowsBox)
+		addRow := func() *campaignPlayerInputRow {
+			row := newCampaignPlayerInputRow(func(target *campaignPlayerInputRow) {
+				if len(rows) == 1 {
+					target.playerName.SetText("")
+					target.characterName.SetText("")
+					target.level.SetText("1")
+					target.initiative.SetText("1")
+					target.hp.SetText("1")
+					target.defense.SetText("0")
+					target.drPhysical.SetText("0")
+					target.drEnergy.SetText("0")
+					target.drRadiation.SetText("0")
+					target.drPoison.SetText("0")
+					target.immPhysical.SetChecked(false)
+					target.immEnergy.SetChecked(false)
+					target.immRadiation.SetChecked(false)
+					target.immPoison.SetChecked(false)
+					return
+				}
+				filtered := make([]*campaignPlayerInputRow, 0, len(rows)-1)
+				for _, r := range rows {
+					if r != target {
+						filtered = append(filtered, r)
+					}
+				}
+				rows = filtered
+				rowsBox.Remove(target.root)
+				rowsBox.Refresh()
+			})
+			rows = append(rows, row)
+			rowsBox.Add(row.root)
+			rowsBox.Refresh()
+			return row
+		}
+		addRow()
+
+		validationError := widget.NewLabel("")
+		validationError.TextStyle = fyne.TextStyle{Monospace: true}
+		validationError.Wrapping = fyne.TextWrapWord
+		addPlayerBtn := widget.NewButton("+ Add Player", func() { addRow() })
+		scroll := container.NewScroll(table)
+		dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
+		scroll.Direction = container.ScrollBoth
+		scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
+		playerSection := container.NewVBox(addPlayerBtn, scroll)
+
+		form := widget.NewForm(
+			widget.NewFormItem("Campaign Name", nameEntry),
+			widget.NewFormItem("Start Date", startDateEntry),
+			widget.NewFormItem("Players", playerSection),
+		)
+		formContent := container.NewVBox(form, widget.NewSeparator(), validationError)
+
+		var createDialog *dialog.CustomDialog
+		cancelBtn := widget.NewButton("Cancel", func() { createDialog.Hide() })
+		createBtn := widget.NewButton("Create", func() {
+			validationError.SetText("")
+			campaignName := strings.TrimSpace(nameEntry.Text)
+			startDate := strings.TrimSpace(startDateEntry.Text)
+			if campaignName == "" {
+				validationError.SetText("Campaign name is required")
+				return
+			}
+			if _, err := time.Parse("2006-01-02", startDate); err != nil {
+				validationError.SetText("Start date must be in YYYY-MM-DD format")
+				return
+			}
+
+			players, err := collectCampaignPlayersFromRows(rows)
+			if err != nil {
+				validationError.SetText(err.Error())
+				return
+			}
+
+			if _, err := svc.CreateCampaign(uuid.NewString(), campaignName, startDate, players); err != nil {
+				validationError.SetText(err.Error())
+				return
+			}
+
+			refresh()
+			createDialog.Hide()
+		})
+
+		createDialog = dialog.NewCustomWithoutButtons("Create Campaign", formContent, w)
+		createDialog.SetButtons([]fyne.CanvasObject{cancelBtn, createBtn})
+		createDialog.Resize(dialogSize)
+		createDialog.Show()
+	}
+
+	showCampaignListDialog = func() {
+		campaigns, err := svc.ListCampaigns()
+		if err != nil {
+			handleErr(err)
+			return
+		}
+		if len(campaigns) == 0 {
+			dialog.ShowInformation("Campaigns", "No campaigns yet. Create one first.", w)
+			return
+		}
+
+		selectedID := campaigns[0].ID
+		selectedInfo := widget.NewLabel("")
+		selectedInfo.TextStyle = fyne.TextStyle{Monospace: true}
+		selectedInfo.Wrapping = fyne.TextWrapWord
+		selectedIdx := 0
+
+		renderSelected := func(idx int) {
+			if idx < 0 || idx >= len(campaigns) {
+				selectedID = ""
+				selectedInfo.SetText("No campaign selected")
+				return
+			}
+			selectedIdx = idx
+			selectedID = campaigns[idx].ID
+			current := ""
+			if activeCampaign != nil && activeCampaign.ID == campaigns[idx].ID {
+				current = " (active)"
+			}
+			selectedInfo.SetText(fmt.Sprintf(
+				"Name: %s%s\nID: %s\nStart Date: %s\nUpdated: %s",
+				campaigns[idx].Name, current, campaigns[idx].ID, campaigns[idx].StartDate, formatEncounterUpdatedAt(campaigns[idx].UpdatedAt),
+			))
+		}
+
+		list := widget.NewList(
+			func() int { return len(campaigns) },
+			func() fyne.CanvasObject {
+				label := widget.NewLabel("campaign")
+				label.TextStyle = fyne.TextStyle{Monospace: true}
+				return label
+			},
+			func(i widget.ListItemID, o fyne.CanvasObject) {
+				c := campaigns[i]
+				activeMark := ""
+				if activeCampaign != nil && activeCampaign.ID == c.ID {
+					activeMark = " [active]"
+				}
+				o.(*widget.Label).SetText(fmt.Sprintf("%s%s | Start:%s | Updated:%s", c.Name, activeMark, c.StartDate, formatEncounterUpdatedAt(c.UpdatedAt)))
+			},
+		)
+		list.OnSelected = func(id widget.ListItemID) { renderSelected(id) }
+
+		dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
+		scroll := container.NewScroll(list)
+		scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.45))
+
+		var campaignDialog *dialog.CustomDialog
+		activateBtn := widget.NewButton("Activate", func() {
+			if selectedID == "" {
+				return
+			}
+			if _, err := svc.ActivateCampaign(selectedID); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			refresh()
+			campaignDialog.Hide()
+		})
+		createBtn := widget.NewButton("Create New", func() {
+			campaignDialog.Hide()
+			showCreateCampaignDialog()
+		})
+		infoBtn := widget.NewButton("Use Selected", func() {
+			if selectedIdx >= 0 && selectedIdx < len(campaigns) {
+				if _, err := svc.ActivateCampaign(campaigns[selectedIdx].ID); err != nil {
+					dialog.ShowError(err, w)
+					return
+				}
+				refresh()
+				campaignDialog.Hide()
+			}
+		})
+
+		renderSelected(0)
+		list.Select(0)
+
+		content := container.NewVBox(
+			scroll,
+			widget.NewSeparator(),
+			selectedInfo,
+			widget.NewSeparator(),
+			container.NewGridWithColumns(3, activateBtn, infoBtn, createBtn),
+		)
+
+		campaignDialog = dialog.NewCustom("Campaigns", "Close", content, w)
+		campaignDialog.Resize(dialogSize)
+		campaignDialog.Show()
 	}
 
 	showCreateEncounterDialog = func() {
@@ -788,10 +1052,13 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	header := widget.NewLabel("PIP-BOY // FALLOUT 2D20 COMBAT TRACKER")
 	header.Alignment = fyne.TextAlignCenter
 	header.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
-	headerBar := container.NewBorder(nil, nil, openEncounterBtn, newEncounterBtn, header)
+	leftControls := container.NewHBox(openCampaignBtn, openEncounterBtn)
+	rightControls := container.NewHBox(newCampaignBtn, newEncounterBtn)
+	headerBar := container.NewBorder(nil, nil, leftControls, rightControls, header)
+	topBar := container.NewVBox(headerBar, campaignStatusLabel)
 
 	content := container.NewBorder(
-		container.NewVBox(headerBar, widget.NewSeparator()),
+		container.NewVBox(topBar, widget.NewSeparator()),
 		nil,
 		nil,
 		nil,
@@ -989,6 +1256,24 @@ type combatantInputRow struct {
 	root         *fyne.Container
 }
 
+type campaignPlayerInputRow struct {
+	playerName    *widget.Entry
+	characterName *widget.Entry
+	level         *widget.Entry
+	initiative    *widget.Entry
+	hp            *widget.Entry
+	defense       *widget.Entry
+	drPhysical    *widget.Entry
+	drEnergy      *widget.Entry
+	drRadiation   *widget.Entry
+	drPoison      *widget.Entry
+	immPhysical   *widget.Check
+	immEnergy     *widget.Check
+	immRadiation  *widget.Check
+	immPoison     *widget.Check
+	root          *fyne.Container
+}
+
 func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow)) *combatantInputRow {
 	name := widget.NewEntry()
 	name.SetPlaceHolder("Name")
@@ -1088,6 +1373,90 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 		drEnergyCell,
 		drRadiationCell,
 		drPoisonCell,
+		removeBtn,
+	)
+	return row
+}
+
+func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaignPlayerInputRow {
+	playerName := widget.NewEntry()
+	playerName.SetPlaceHolder("Player")
+	playerName.TextStyle = fyne.TextStyle{Monospace: true}
+
+	characterName := widget.NewEntry()
+	characterName.SetPlaceHolder("Character")
+	characterName.TextStyle = fyne.TextStyle{Monospace: true}
+
+	level := widget.NewEntry()
+	level.SetPlaceHolder("Level")
+	level.TextStyle = fyne.TextStyle{Monospace: true}
+	level.SetText("1")
+	initiative := widget.NewEntry()
+	initiative.SetPlaceHolder("Init")
+	initiative.TextStyle = fyne.TextStyle{Monospace: true}
+	initiative.SetText("1")
+	hp := widget.NewEntry()
+	hp.SetPlaceHolder("HP")
+	hp.TextStyle = fyne.TextStyle{Monospace: true}
+	hp.SetText("1")
+	defense := widget.NewEntry()
+	defense.SetPlaceHolder("Defense")
+	defense.TextStyle = fyne.TextStyle{Monospace: true}
+	defense.SetText("0")
+	drPhysical := widget.NewEntry()
+	drPhysical.SetPlaceHolder("DR Phys")
+	drPhysical.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysical.SetText("0")
+	drEnergy := widget.NewEntry()
+	drEnergy.SetPlaceHolder("DR Energy")
+	drEnergy.TextStyle = fyne.TextStyle{Monospace: true}
+	drEnergy.SetText("0")
+	drRadiation := widget.NewEntry()
+	drRadiation.SetPlaceHolder("DR Rad")
+	drRadiation.TextStyle = fyne.TextStyle{Monospace: true}
+	drRadiation.SetText("0")
+	drPoison := widget.NewEntry()
+	drPoison.SetPlaceHolder("DR Poison")
+	drPoison.TextStyle = fyne.TextStyle{Monospace: true}
+	drPoison.SetText("0")
+
+	drPhysicalCell, immPhysical := newResistanceInputCell(drPhysical)
+	drEnergyCell, immEnergy := newResistanceInputCell(drEnergy)
+	drRadiationCell, immRadiation := newResistanceInputCell(drRadiation)
+	drPoisonCell, immPoison := newResistanceInputCell(drPoison)
+
+	row := &campaignPlayerInputRow{
+		playerName:    playerName,
+		characterName: characterName,
+		level:         level,
+		initiative:    initiative,
+		hp:            hp,
+		defense:       defense,
+		drPhysical:    drPhysical,
+		drEnergy:      drEnergy,
+		drRadiation:   drRadiation,
+		drPoison:      drPoison,
+		immPhysical:   immPhysical,
+		immEnergy:     immEnergy,
+		immRadiation:  immRadiation,
+		immPoison:     immPoison,
+	}
+	removeBtn := widget.NewButton("Remove", func() { onRemove(row) })
+	activeLabel := widget.NewLabel("yes")
+	activeLabel.TextStyle = fyne.TextStyle{Monospace: true}
+	row.root = container.NewGridWithColumns(
+		12,
+		playerName,
+		characterName,
+		level,
+		initiative,
+		hp,
+		defense,
+		drPhysicalCell,
+		drEnergyCell,
+		drRadiationCell,
+		drPoisonCell,
+		activeLabel,
 		removeBtn,
 	)
 	return row
@@ -1279,6 +1648,103 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 	}
 
 	return combatants, nil
+}
+
+func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.NewCampaignPlayer, error) {
+	players := make([]domain.NewCampaignPlayer, 0, len(rows))
+	for _, row := range rows {
+		playerName := strings.TrimSpace(row.playerName.Text)
+		characterName := strings.TrimSpace(row.characterName.Text)
+		if playerName == "" && characterName == "" {
+			continue
+		}
+		if playerName == "" {
+			return nil, fmt.Errorf("player name is required")
+		}
+		if characterName == "" {
+			return nil, fmt.Errorf("character name is required for player %q", playerName)
+		}
+
+		level, err := parsePositiveIntOrError(strings.TrimSpace(row.level.Text), "level", playerName)
+		if err != nil {
+			return nil, err
+		}
+		initiative, err := parseNonNegativeIntOrError(strings.TrimSpace(row.initiative.Text), "initiative", playerName)
+		if err != nil {
+			return nil, err
+		}
+		hp, err := parsePositiveIntOrError(strings.TrimSpace(row.hp.Text), "HP", playerName)
+		if err != nil {
+			return nil, err
+		}
+		defense, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defense.Text), "defense", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysical, immPhysical, err := parseResistanceCell(characterName, "physical", row.drPhysical.Text, row.immPhysical.Checked)
+		if err != nil {
+			return nil, err
+		}
+		drEnergy, immEnergy, err := parseResistanceCell(characterName, "energy", row.drEnergy.Text, row.immEnergy.Checked)
+		if err != nil {
+			return nil, err
+		}
+		drRadiation, immRadiation, err := parseResistanceCell(characterName, "radiation", row.drRadiation.Text, row.immRadiation.Checked)
+		if err != nil {
+			return nil, err
+		}
+		drPoison, immPoison, err := parseResistanceCell(characterName, "poison", row.drPoison.Text, row.immPoison.Checked)
+		if err != nil {
+			return nil, err
+		}
+
+		players = append(players, domain.NewCampaignPlayer{
+			PlayerName: playerName,
+			Character: domain.Combatant{
+				ID:              uuid.NewString(),
+				Name:            characterName,
+				Side:            domain.SideParty,
+				Level:           level,
+				Initiative:      initiative,
+				HP:              hp,
+				Defense:         defense,
+				ResistPhysical:  drPhysical,
+				ResistEnergy:    drEnergy,
+				ResistRadiation: drRadiation,
+				ResistPoison:    drPoison,
+				ImmunePhysical:  immPhysical,
+				ImmuneEnergy:    immEnergy,
+				ImmuneRadiation: immRadiation,
+				ImmunePoison:    immPoison,
+			},
+		})
+	}
+	if len(players) == 0 {
+		return nil, fmt.Errorf("add at least one player")
+	}
+	return players, nil
+}
+
+func parsePositiveIntOrError(raw, fieldName, label string) (int, error) {
+	if raw == "" {
+		return 0, fmt.Errorf("%s for %q is required", fieldName, label)
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 {
+		return 0, fmt.Errorf("invalid %s %q for %q", fieldName, raw, label)
+	}
+	return value, nil
+}
+
+func parseNonNegativeIntOrError(raw, fieldName, label string) (int, error) {
+	if raw == "" {
+		return 0, fmt.Errorf("%s for %q is required", fieldName, label)
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 {
+		return 0, fmt.Errorf("invalid %s %q for %q", fieldName, raw, label)
+	}
+	return value, nil
 }
 
 func parseResistanceCell(combatantName, resistType, raw string, immuneChecked bool) (int, bool, error) {

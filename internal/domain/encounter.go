@@ -49,6 +49,7 @@ type Resources struct {
 
 type Encounter struct {
 	ID         string
+	CampaignID string
 	Name       string
 	Round      int
 	TurnIndex  int
@@ -58,6 +59,7 @@ type Encounter struct {
 
 type EncounterSummary struct {
 	ID         string
+	CampaignID string
 	Name       string
 	Round      int
 	Combatants int

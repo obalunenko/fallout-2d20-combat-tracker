@@ -10,22 +10,27 @@ import (
 	"time"
 )
 
-const activateEncounter = `-- name: ActivateEncounter :execrows
+const activateEncounterByCampaign = `-- name: ActivateEncounterByCampaign :execrows
 UPDATE encounters
 SET updated_at = CASE
-  WHEN STRFTIME('%Y-%m-%d %H:%M:%f', 'now') <= COALESCE((SELECT MAX(updated_at) FROM encounters WHERE deleted_at IS NULL), '')
+  WHEN STRFTIME('%Y-%m-%d %H:%M:%f', 'now') <= COALESCE((SELECT MAX(e2.updated_at) FROM encounters e2 WHERE e2.deleted_at IS NULL AND e2.campaign_id = ?1), '')
     THEN STRFTIME(
       '%Y-%m-%d %H:%M:%f',
-      COALESCE((SELECT MAX(updated_at) FROM encounters WHERE deleted_at IS NULL), STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+      COALESCE((SELECT MAX(e3.updated_at) FROM encounters e3 WHERE e3.deleted_at IS NULL AND e3.campaign_id = ?1), STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
       '+0.001 seconds'
     )
   ELSE STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 END
-WHERE encounters.id = ?1 AND deleted_at IS NULL
+WHERE encounters.id = ?2 AND encounters.deleted_at IS NULL AND encounters.campaign_id = ?1
 `
 
-func (q *Queries) ActivateEncounter(ctx context.Context, encounterID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, activateEncounter, encounterID)
+type ActivateEncounterByCampaignParams struct {
+	CampaignID  interface{}
+	EncounterID string
+}
+
+func (q *Queries) ActivateEncounterByCampaign(ctx context.Context, arg ActivateEncounterByCampaignParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, activateEncounterByCampaign, arg.CampaignID, arg.EncounterID)
 	if err != nil {
 		return 0, err
 	}
@@ -42,28 +47,66 @@ func (q *Queries) DeleteCombatantsByEncounterID(ctx context.Context, encounterID
 	return err
 }
 
-const getLatestEncounter = `-- name: GetLatestEncounter :one
-SELECT id, name, round, turn_index, party_ap, gm_threat
+const ensureAppStateRow = `-- name: EnsureAppStateRow :exec
+INSERT OR IGNORE INTO app_state (id, active_campaign_id)
+VALUES (1, NULL)
+`
+
+func (q *Queries) EnsureAppStateRow(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, ensureAppStateRow)
+	return err
+}
+
+const getActiveCampaign = `-- name: GetActiveCampaign :one
+SELECT c.id, c.name, c.start_date, c.updated_at
+FROM campaigns c
+JOIN app_state s ON s.id = 1
+WHERE c.id = s.active_campaign_id
+`
+
+type GetActiveCampaignRow struct {
+	ID        string
+	Name      string
+	StartDate string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetActiveCampaign(ctx context.Context) (GetActiveCampaignRow, error) {
+	row := q.db.QueryRowContext(ctx, getActiveCampaign)
+	var i GetActiveCampaignRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.StartDate,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLatestEncounterByCampaignID = `-- name: GetLatestEncounterByCampaignID :one
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
 FROM encounters
-WHERE deleted_at IS NULL
+WHERE deleted_at IS NULL AND campaign_id = ?1
 ORDER BY updated_at DESC, id DESC
 LIMIT 1
 `
 
-type GetLatestEncounterRow struct {
-	ID        string
-	Name      string
-	Round     int64
-	TurnIndex int64
-	PartyAp   int64
-	GmThreat  int64
+type GetLatestEncounterByCampaignIDRow struct {
+	ID         string
+	CampaignID interface{}
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
 }
 
-func (q *Queries) GetLatestEncounter(ctx context.Context) (GetLatestEncounterRow, error) {
-	row := q.db.QueryRowContext(ctx, getLatestEncounter)
-	var i GetLatestEncounterRow
+func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID interface{}) (GetLatestEncounterByCampaignIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getLatestEncounterByCampaignID, campaignID)
+	var i GetLatestEncounterByCampaignIDRow
 	err := row.Scan(
 		&i.ID,
+		&i.CampaignID,
 		&i.Name,
 		&i.Round,
 		&i.TurnIndex,
@@ -71,6 +114,28 @@ func (q *Queries) GetLatestEncounter(ctx context.Context) (GetLatestEncounterRow
 		&i.GmThreat,
 	)
 	return i, err
+}
+
+const insertCampaign = `-- name: InsertCampaign :exec
+INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
+VALUES (
+  ?1,
+  ?2,
+  ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+`
+
+type InsertCampaignParams struct {
+	ID        string
+	Name      string
+	StartDate string
+}
+
+func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) error {
+	_, err := q.db.ExecContext(ctx, insertCampaign, arg.ID, arg.Name, arg.StartDate)
+	return err
 }
 
 const insertCombatant = `-- name: InsertCombatant :exec
@@ -184,6 +249,222 @@ func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLog
 	return err
 }
 
+const insertPlayer = `-- name: InsertPlayer :exec
+INSERT INTO players (id, campaign_id, name, created_at, updated_at)
+VALUES (
+  ?1,
+  ?2,
+  ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+`
+
+type InsertPlayerParams struct {
+	ID         string
+	CampaignID string
+	Name       string
+}
+
+func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) error {
+	_, err := q.db.ExecContext(ctx, insertPlayer, arg.ID, arg.CampaignID, arg.Name)
+	return err
+}
+
+const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
+INSERT INTO player_characters (
+  id, player_id, campaign_id, name, level, initiative, hp, defense,
+  damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+  damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
+  active, created_at, updated_at
+)
+VALUES (
+  ?1,
+  ?2,
+  ?3,
+  ?4,
+  ?5,
+  ?6,
+  ?7,
+  ?8,
+  ?9,
+  ?10,
+  ?11,
+  ?12,
+  ?13,
+  ?14,
+  ?15,
+  ?16,
+  ?17,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+`
+
+type InsertPlayerCharacterParams struct {
+	ID                              string
+	PlayerID                        string
+	CampaignID                      string
+	Name                            string
+	Level                           int64
+	Initiative                      int64
+	Hp                              int64
+	Defense                         int64
+	DamageResistancePhysical        int64
+	DamageResistanceEnergy          int64
+	DamageResistanceRadiation       int64
+	DamageResistancePoison          int64
+	DamageResistancePhysicalImmune  int64
+	DamageResistanceEnergyImmune    int64
+	DamageResistanceRadiationImmune int64
+	DamageResistancePoisonImmune    int64
+	Active                          int64
+}
+
+func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCharacterParams) error {
+	_, err := q.db.ExecContext(ctx, insertPlayerCharacter,
+		arg.ID,
+		arg.PlayerID,
+		arg.CampaignID,
+		arg.Name,
+		arg.Level,
+		arg.Initiative,
+		arg.Hp,
+		arg.Defense,
+		arg.DamageResistancePhysical,
+		arg.DamageResistanceEnergy,
+		arg.DamageResistanceRadiation,
+		arg.DamageResistancePoison,
+		arg.DamageResistancePhysicalImmune,
+		arg.DamageResistanceEnergyImmune,
+		arg.DamageResistanceRadiationImmune,
+		arg.DamageResistancePoisonImmune,
+		arg.Active,
+	)
+	return err
+}
+
+const listActivePartyCharactersByCampaignID = `-- name: ListActivePartyCharactersByCampaignID :many
+SELECT
+  pc.id,
+  p.name AS player_name,
+  pc.name AS character_name,
+  pc.level,
+  pc.initiative,
+  pc.hp,
+  pc.defense,
+  pc.damage_resistance_physical,
+  pc.damage_resistance_energy,
+  pc.damage_resistance_radiation,
+  pc.damage_resistance_poison,
+  pc.damage_resistance_physical_immune,
+  pc.damage_resistance_energy_immune,
+  pc.damage_resistance_radiation_immune,
+  pc.damage_resistance_poison_immune
+FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
+WHERE pc.campaign_id = ?1 AND pc.active = 1
+ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC
+`
+
+type ListActivePartyCharactersByCampaignIDRow struct {
+	ID                              string
+	PlayerName                      string
+	CharacterName                   string
+	Level                           int64
+	Initiative                      int64
+	Hp                              int64
+	Defense                         int64
+	DamageResistancePhysical        int64
+	DamageResistanceEnergy          int64
+	DamageResistanceRadiation       int64
+	DamageResistancePoison          int64
+	DamageResistancePhysicalImmune  int64
+	DamageResistanceEnergyImmune    int64
+	DamageResistanceRadiationImmune int64
+	DamageResistancePoisonImmune    int64
+}
+
+func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, campaignID string) ([]ListActivePartyCharactersByCampaignIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActivePartyCharactersByCampaignID, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActivePartyCharactersByCampaignIDRow
+	for rows.Next() {
+		var i ListActivePartyCharactersByCampaignIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PlayerName,
+			&i.CharacterName,
+			&i.Level,
+			&i.Initiative,
+			&i.Hp,
+			&i.Defense,
+			&i.DamageResistancePhysical,
+			&i.DamageResistanceEnergy,
+			&i.DamageResistanceRadiation,
+			&i.DamageResistancePoison,
+			&i.DamageResistancePhysicalImmune,
+			&i.DamageResistanceEnergyImmune,
+			&i.DamageResistanceRadiationImmune,
+			&i.DamageResistancePoisonImmune,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCampaigns = `-- name: ListCampaigns :many
+SELECT id, name, start_date, updated_at
+FROM campaigns
+ORDER BY updated_at DESC, id DESC
+`
+
+type ListCampaignsRow struct {
+	ID        string
+	Name      string
+	StartDate string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCampaigns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignsRow
+	for rows.Next() {
+		var i ListCampaignsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.StartDate,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
 SELECT id, name, side, level, xp, initiative, hp, defense,
        damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
@@ -293,53 +574,7 @@ func (q *Queries) ListEncounterLogsByEncounterID(ctx context.Context, encounterI
 	return items, nil
 }
 
-const listEncounterSummaries = `-- name: ListEncounterSummaries :many
-SELECT e.id, e.name, e.round, COUNT(c.id) AS combatants, e.updated_at
-FROM encounters e
-LEFT JOIN combatants c ON c.encounter_id = e.id
-WHERE e.deleted_at IS NULL
-GROUP BY e.id, e.name, e.round, e.updated_at
-ORDER BY e.updated_at DESC, e.id DESC
-`
-
-type ListEncounterSummariesRow struct {
-	ID         string
-	Name       string
-	Round      int64
-	Combatants int64
-	UpdatedAt  time.Time
-}
-
-func (q *Queries) ListEncounterSummaries(ctx context.Context) ([]ListEncounterSummariesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listEncounterSummaries)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListEncounterSummariesRow
-	for rows.Next() {
-		var i ListEncounterSummariesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Round,
-			&i.Combatants,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPartyTemplates = `-- name: ListPartyTemplates :many
+const listEncounterPartyTemplatesByCampaignID = `-- name: ListEncounterPartyTemplatesByCampaignID :many
 WITH latest_party AS (
   SELECT
     c.name,
@@ -362,7 +597,9 @@ WITH latest_party AS (
     ) AS rn
   FROM combatants c
   JOIN encounters e ON e.id = c.encounter_id
-  WHERE c.side = 'party' AND e.deleted_at IS NULL
+  WHERE c.side = 'party'
+    AND e.deleted_at IS NULL
+    AND e.campaign_id = ?1
 )
 SELECT
   name,
@@ -384,7 +621,7 @@ WHERE rn = 1
 ORDER BY name COLLATE NOCASE ASC
 `
 
-type ListPartyTemplatesRow struct {
+type ListEncounterPartyTemplatesByCampaignIDRow struct {
 	Name                            string
 	Level                           int64
 	Xp                              int64
@@ -401,15 +638,15 @@ type ListPartyTemplatesRow struct {
 	DamageResistancePoisonImmune    int64
 }
 
-func (q *Queries) ListPartyTemplates(ctx context.Context) ([]ListPartyTemplatesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPartyTemplates)
+func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, campaignID interface{}) ([]ListEncounterPartyTemplatesByCampaignIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEncounterPartyTemplatesByCampaignID, campaignID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListPartyTemplatesRow
+	var items []ListEncounterPartyTemplatesByCampaignIDRow
 	for rows.Next() {
-		var i ListPartyTemplatesRow
+		var i ListEncounterPartyTemplatesByCampaignIDRow
 		if err := rows.Scan(
 			&i.Name,
 			&i.Level,
@@ -439,23 +676,106 @@ func (q *Queries) ListPartyTemplates(ctx context.Context) ([]ListPartyTemplatesR
 	return items, nil
 }
 
-const softDeleteEncounter = `-- name: SoftDeleteEncounter :execrows
-UPDATE encounters
-SET deleted_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-WHERE encounters.id = ?1 AND deleted_at IS NULL
+const listEncounterSummariesByCampaignID = `-- name: ListEncounterSummariesByCampaignID :many
+SELECT e.id, e.campaign_id, e.name, e.round, COUNT(c.id) AS combatants, e.updated_at
+FROM encounters e
+LEFT JOIN combatants c ON c.encounter_id = e.id
+WHERE e.deleted_at IS NULL AND e.campaign_id = ?1
+GROUP BY e.id, e.campaign_id, e.name, e.round, e.updated_at
+ORDER BY e.updated_at DESC, e.id DESC
 `
 
-func (q *Queries) SoftDeleteEncounter(ctx context.Context, encounterID string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, softDeleteEncounter, encounterID)
+type ListEncounterSummariesByCampaignIDRow struct {
+	ID         string
+	CampaignID interface{}
+	Name       string
+	Round      int64
+	Combatants int64
+	UpdatedAt  time.Time
+}
+
+func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campaignID interface{}) ([]ListEncounterSummariesByCampaignIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEncounterSummariesByCampaignID, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEncounterSummariesByCampaignIDRow
+	for rows.Next() {
+		var i ListEncounterSummariesByCampaignIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.Name,
+			&i.Round,
+			&i.Combatants,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setActiveCampaign = `-- name: SetActiveCampaign :execrows
+UPDATE app_state
+SET active_campaign_id = ?1
+WHERE id = 1
+  AND EXISTS (
+    SELECT 1
+    FROM campaigns c
+    WHERE c.id = ?1
+  )
+`
+
+func (q *Queries) SetActiveCampaign(ctx context.Context, campaignID interface{}) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setActiveCampaign, campaignID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
+const softDeleteEncounterByCampaign = `-- name: SoftDeleteEncounterByCampaign :execrows
+UPDATE encounters
+SET deleted_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE encounters.id = ?1 AND encounters.deleted_at IS NULL AND encounters.campaign_id = ?2
+`
+
+type SoftDeleteEncounterByCampaignParams struct {
+	EncounterID string
+	CampaignID  interface{}
+}
+
+func (q *Queries) SoftDeleteEncounterByCampaign(ctx context.Context, arg SoftDeleteEncounterByCampaignParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, softDeleteEncounterByCampaign, arg.EncounterID, arg.CampaignID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const touchCampaign = `-- name: TouchCampaign :exec
+UPDATE campaigns
+SET updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = ?1
+`
+
+func (q *Queries) TouchCampaign(ctx context.Context, campaignID string) error {
+	_, err := q.db.ExecContext(ctx, touchCampaign, campaignID)
+	return err
+}
+
 const upsertEncounter = `-- name: UpsertEncounter :exec
-INSERT INTO encounters (id, name, round, turn_index, party_ap, gm_threat, updated_at, deleted_at)
+INSERT INTO encounters (id, campaign_id, name, round, turn_index, party_ap, gm_threat, updated_at, deleted_at)
 VALUES (
   ?1,
   ?2,
@@ -463,10 +783,12 @@ VALUES (
   ?4,
   ?5,
   ?6,
+  ?7,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
 ON CONFLICT(id) DO UPDATE SET
+	campaign_id = excluded.campaign_id,
 	name = excluded.name,
 	round = excluded.round,
 	turn_index = excluded.turn_index,
@@ -477,17 +799,19 @@ ON CONFLICT(id) DO UPDATE SET
 `
 
 type UpsertEncounterParams struct {
-	ID        string
-	Name      string
-	Round     int64
-	TurnIndex int64
-	PartyAp   int64
-	GmThreat  int64
+	ID         string
+	CampaignID interface{}
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
 }
 
 func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams) error {
 	_, err := q.db.ExecContext(ctx, upsertEncounter,
 		arg.ID,
+		arg.CampaignID,
 		arg.Name,
 		arg.Round,
 		arg.TurnIndex,

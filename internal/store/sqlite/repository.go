@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -33,8 +34,12 @@ func NewEncounterStoreWithContext(db *sql.DB, ctx context.Context) *EncounterSto
 
 func (s *EncounterStore) Get() (*domain.Encounter, error) {
 	ctx := s.ctx
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	encRow, err := s.q.GetLatestEncounter(ctx)
+	encRow, err := s.q.GetLatestEncounterByCampaignID(ctx, campaignID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, domain.ErrEncounterNotInitialized
@@ -73,6 +78,7 @@ func (s *EncounterStore) Get() (*domain.Encounter, error) {
 
 	return &domain.Encounter{
 		ID:         encRow.ID,
+		CampaignID: interfaceToString(encRow.CampaignID),
 		Name:       encRow.Name,
 		Round:      int(encRow.Round),
 		TurnIndex:  int(encRow.TurnIndex),
@@ -90,6 +96,14 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 	}
 
 	ctx := s.ctx
+	if strings.TrimSpace(enc.CampaignID) == "" {
+		campaignID, err := s.activeCampaignID(ctx)
+		if err != nil {
+			return err
+		}
+		enc.CampaignID = campaignID
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -102,12 +116,13 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 
 	qtx := s.q.WithTx(tx)
 	if err = qtx.UpsertEncounter(ctx, dbgen.UpsertEncounterParams{
-		ID:        enc.ID,
-		Name:      enc.Name,
-		Round:     int64(enc.Round),
-		TurnIndex: int64(enc.TurnIndex),
-		PartyAp:   int64(enc.Resources.PartyAP),
-		GmThreat:  int64(enc.Resources.GMThreat),
+		ID:         enc.ID,
+		CampaignID: enc.CampaignID,
+		Name:       enc.Name,
+		Round:      int64(enc.Round),
+		TurnIndex:  int64(enc.TurnIndex),
+		PartyAp:    int64(enc.Resources.PartyAP),
+		GmThreat:   int64(enc.Resources.GMThreat),
 	}); err != nil {
 		return fmt.Errorf("upsert encounter: %w", err)
 	}
@@ -144,6 +159,10 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 		}
 	}
 
+	if err = qtx.TouchCampaign(ctx, enc.CampaignID); err != nil {
+		return fmt.Errorf("touch campaign: %w", err)
+	}
+
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
 	}
@@ -152,7 +171,11 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 
 func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	ctx := s.ctx
-	rows, err := s.q.ListEncounterSummaries(ctx)
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.q.ListEncounterSummariesByCampaignID(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("list encounters: %w", err)
 	}
@@ -161,6 +184,7 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	for _, r := range rows {
 		summaries = append(summaries, domain.EncounterSummary{
 			ID:         r.ID,
+			CampaignID: interfaceToString(r.CampaignID),
 			Name:       r.Name,
 			Round:      int(r.Round),
 			Combatants: int(r.Combatants),
@@ -172,7 +196,41 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 
 func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 	ctx := s.ctx
-	rows, err := s.q.ListPartyTemplates(ctx)
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	activeCharacters, err := s.q.ListActivePartyCharactersByCampaignID(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("list campaign characters: %w", err)
+	}
+	if len(activeCharacters) > 0 {
+		party := make([]domain.Combatant, 0, len(activeCharacters))
+		for _, r := range activeCharacters {
+			party = append(party, domain.Combatant{
+				ID:              r.ID,
+				Name:            r.CharacterName,
+				Side:            domain.SideParty,
+				Level:           int(r.Level),
+				XP:              0,
+				Initiative:      int(r.Initiative),
+				HP:              int(r.Hp),
+				Defense:         int(r.Defense),
+				ResistPhysical:  int(r.DamageResistancePhysical),
+				ResistEnergy:    int(r.DamageResistanceEnergy),
+				ResistRadiation: int(r.DamageResistanceRadiation),
+				ResistPoison:    int(r.DamageResistancePoison),
+				ImmunePhysical:  r.DamageResistancePhysicalImmune == 1,
+				ImmuneEnergy:    r.DamageResistanceEnergyImmune == 1,
+				ImmuneRadiation: r.DamageResistanceRadiationImmune == 1,
+				ImmunePoison:    r.DamageResistancePoisonImmune == 1,
+			})
+		}
+		return party, nil
+	}
+
+	rows, err := s.q.ListEncounterPartyTemplatesByCampaignID(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("list party templates: %w", err)
 	}
@@ -200,9 +258,157 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 	return party, nil
 }
 
+func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	ctx := s.ctx
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	qtx := s.q.WithTx(tx)
+	if err = qtx.EnsureAppStateRow(ctx); err != nil {
+		return nil, fmt.Errorf("ensure app state: %w", err)
+	}
+	if err = qtx.InsertCampaign(ctx, dbgen.InsertCampaignParams{
+		ID:        campaignID,
+		Name:      name,
+		StartDate: startDate,
+	}); err != nil {
+		return nil, fmt.Errorf("insert campaign: %w", err)
+	}
+
+	for _, p := range players {
+		playerID := uuid.NewString()
+		if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
+			ID:         playerID,
+			CampaignID: campaignID,
+			Name:       strings.TrimSpace(p.PlayerName),
+		}); err != nil {
+			return nil, fmt.Errorf("insert player: %w", err)
+		}
+
+		charID := strings.TrimSpace(p.Character.ID)
+		if charID == "" {
+			charID = uuid.NewString()
+		}
+		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
+			ID:                              charID,
+			PlayerID:                        playerID,
+			CampaignID:                      campaignID,
+			Name:                            strings.TrimSpace(p.Character.Name),
+			Level:                           int64(p.Character.Level),
+			Initiative:                      int64(p.Character.Initiative),
+			Hp:                              int64(p.Character.HP),
+			Defense:                         int64(p.Character.Defense),
+			DamageResistancePhysical:        int64(p.Character.ResistPhysical),
+			DamageResistanceEnergy:          int64(p.Character.ResistEnergy),
+			DamageResistanceRadiation:       int64(p.Character.ResistRadiation),
+			DamageResistancePoison:          int64(p.Character.ResistPoison),
+			DamageResistancePhysicalImmune:  boolToInt64(p.Character.ImmunePhysical),
+			DamageResistanceEnergyImmune:    boolToInt64(p.Character.ImmuneEnergy),
+			DamageResistanceRadiationImmune: boolToInt64(p.Character.ImmuneRadiation),
+			DamageResistancePoisonImmune:    boolToInt64(p.Character.ImmunePoison),
+			Active:                          1,
+		}); err != nil {
+			return nil, fmt.Errorf("insert player character: %w", err)
+		}
+	}
+
+	if _, activeErr := qtx.GetActiveCampaign(ctx); activeErr == sql.ErrNoRows {
+		affected, setErr := qtx.SetActiveCampaign(ctx, campaignID)
+		if setErr != nil {
+			return nil, fmt.Errorf("set active campaign: %w", setErr)
+		}
+		if affected == 0 {
+			return nil, domain.ErrCampaignNotFound
+		}
+	} else if activeErr != nil {
+		return nil, fmt.Errorf("check active campaign: %w", activeErr)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return &domain.Campaign{
+		ID:        campaignID,
+		Name:      name,
+		StartDate: startDate,
+	}, nil
+}
+
+func (s *EncounterStore) GetActiveCampaign() (*domain.Campaign, error) {
+	ctx := s.ctx
+	if err := s.q.EnsureAppStateRow(ctx); err != nil {
+		return nil, fmt.Errorf("ensure app state: %w", err)
+	}
+	row, err := s.q.GetActiveCampaign(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrCampaignNotInitialized
+		}
+		return nil, fmt.Errorf("get active campaign: %w", err)
+	}
+	return &domain.Campaign{
+		ID:        row.ID,
+		Name:      row.Name,
+		StartDate: row.StartDate,
+		UpdatedAt: row.UpdatedAt.Format("2006-01-02 15:04:05.000"),
+	}, nil
+}
+
+func (s *EncounterStore) ListCampaigns() ([]domain.Campaign, error) {
+	ctx := s.ctx
+	rows, err := s.q.ListCampaigns(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list campaigns: %w", err)
+	}
+	result := make([]domain.Campaign, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, domain.Campaign{
+			ID:        row.ID,
+			Name:      row.Name,
+			StartDate: row.StartDate,
+			UpdatedAt: row.UpdatedAt.Format("2006-01-02 15:04:05.000"),
+		})
+	}
+	return result, nil
+}
+
+func (s *EncounterStore) ActivateCampaign(campaignID string) error {
+	ctx := s.ctx
+	if err := s.q.EnsureAppStateRow(ctx); err != nil {
+		return fmt.Errorf("ensure app state: %w", err)
+	}
+	affected, err := s.q.SetActiveCampaign(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("activate campaign: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrCampaignNotFound
+	}
+	return nil
+}
+
 func (s *EncounterStore) Activate(encounterID string) error {
 	ctx := s.ctx
-	affected, err := s.q.ActivateEncounter(ctx, encounterID)
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return err
+	}
+	affected, err := s.q.ActivateEncounterByCampaign(ctx, dbgen.ActivateEncounterByCampaignParams{
+		EncounterID: encounterID,
+		CampaignID:  campaignID,
+	})
 	if err != nil {
 		return fmt.Errorf("activate encounter: %w", err)
 	}
@@ -214,7 +420,14 @@ func (s *EncounterStore) Activate(encounterID string) error {
 
 func (s *EncounterStore) SoftDelete(encounterID string) error {
 	ctx := s.ctx
-	affected, err := s.q.SoftDeleteEncounter(ctx, encounterID)
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return err
+	}
+	affected, err := s.q.SoftDeleteEncounterByCampaign(ctx, dbgen.SoftDeleteEncounterByCampaignParams{
+		EncounterID: encounterID,
+		CampaignID:  campaignID,
+	})
 	if err != nil {
 		return fmt.Errorf("soft delete encounter: %w", err)
 	}
@@ -266,9 +479,34 @@ func (s *EncounterStore) ListEncounterLogs(encounterID string) ([]domain.Encount
 	return logs, nil
 }
 
+func (s *EncounterStore) activeCampaignID(ctx context.Context) (string, error) {
+	if err := s.q.EnsureAppStateRow(ctx); err != nil {
+		return "", fmt.Errorf("ensure app state: %w", err)
+	}
+	row, err := s.q.GetActiveCampaign(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", domain.ErrCampaignNotInitialized
+		}
+		return "", fmt.Errorf("get active campaign: %w", err)
+	}
+	return row.ID, nil
+}
+
 func boolToInt64(v bool) int64 {
 	if v {
 		return 1
 	}
 	return 0
+}
+
+func interfaceToString(v any) string {
+	switch typed := v.(type) {
+	case string:
+		return typed
+	case []byte:
+		return string(typed)
+	default:
+		return ""
+	}
 }

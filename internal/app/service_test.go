@@ -282,7 +282,7 @@ func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 	assert.True(t, hasTurnAdvanced, "expected at least one turn advance log entry")
 }
 
-func TestListPartyMembersReturnsSavedTemplates(t *testing.T) {
+func TestListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
 		{ID: "p1", Name: "Roland", Initiative: 9, Side: domain.SideParty, Level: 1, HP: 7, Defense: 2},
@@ -297,11 +297,10 @@ func TestListPartyMembersReturnsSavedTemplates(t *testing.T) {
 
 	party, err := svc.ListPartyMembers()
 	require.NoError(t, err)
-	require.Len(t, party, 2)
-	assert.Equal(t, "Piper", party[0].Name)
-	assert.Equal(t, "Roland", party[1].Name)
-	assert.Equal(t, 3, party[1].Level)
-	assert.Equal(t, 11, party[1].Initiative)
+	require.Len(t, party, 1)
+	assert.Equal(t, "Vault Dweller", party[0].Name)
+	assert.Equal(t, 1, party[0].Level)
+	assert.Equal(t, 9, party[0].Initiative)
 }
 
 func newSQLiteService(t *testing.T) *Service {
@@ -314,5 +313,21 @@ func newSQLiteService(t *testing.T) *Service {
 		assert.NoError(t, db.Close())
 	})
 
-	return NewService(sqlite.NewEncounterStore(db))
+	svc := NewService(sqlite.NewEncounterStore(db))
+	_, err = svc.CreateCampaign("test-campaign", "Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				ID:         "char-1",
+				Name:       "Vault Dweller",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 9,
+				HP:         7,
+				Defense:    1,
+			},
+		},
+	})
+	require.NoError(t, err)
+	return svc
 }

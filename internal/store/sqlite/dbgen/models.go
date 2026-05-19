@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+type AppState struct {
+	ID               int64
+	ActiveCampaignID interface{}
+}
+
+type Campaign struct {
+	ID        string
+	Name      string
+	StartDate string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Combatant struct {
 	ID                              string
 	EncounterID                     string
@@ -33,14 +46,15 @@ type Combatant struct {
 }
 
 type Encounter struct {
-	ID        string
-	Name      string
-	Round     int64
-	TurnIndex int64
-	PartyAp   int64
-	GmThreat  int64
-	UpdatedAt time.Time
-	DeletedAt interface{}
+	ID         string
+	CampaignID interface{}
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
 }
 
 type EncounterLog struct {
@@ -49,4 +63,34 @@ type EncounterLog struct {
 	Round       int64
 	Message     string
 	CreatedAt   time.Time
+}
+
+type Player struct {
+	ID         string
+	CampaignID string
+	Name       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type PlayerCharacter struct {
+	ID                              string
+	PlayerID                        string
+	CampaignID                      string
+	Name                            string
+	Level                           int64
+	Initiative                      int64
+	Hp                              int64
+	Defense                         int64
+	DamageResistancePhysical        int64
+	DamageResistanceEnergy          int64
+	DamageResistanceRadiation       int64
+	DamageResistancePoison          int64
+	DamageResistancePhysicalImmune  int64
+	DamageResistanceEnergyImmune    int64
+	DamageResistanceRadiationImmune int64
+	DamageResistancePoisonImmune    int64
+	Active                          int64
+	CreatedAt                       time.Time
+	UpdatedAt                       time.Time
 }

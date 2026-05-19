@@ -185,7 +185,7 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 	assert.Equal(t, 1, logs[1].Round)
 }
 
-func TestEncounterStoreListPartyMembersUsesLatestSnapshot(t *testing.T) {
+func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.Save(&domain.Encounter{
@@ -209,20 +209,16 @@ func TestEncounterStoreListPartyMembersUsesLatestSnapshot(t *testing.T) {
 
 	party, err := store.ListPartyMembers()
 	require.NoError(t, err)
-	require.Len(t, party, 2)
-
-	assert.Equal(t, "Piper", party[0].Name)
-	assert.Equal(t, "Roland", party[1].Name)
-	assert.Equal(t, 2, party[1].Level)
-	assert.Equal(t, 11, party[1].Initiative)
-	assert.Equal(t, 8, party[1].HP)
-	assert.Equal(t, 4, party[1].Defense)
-	assert.Equal(t, 2, party[1].ResistPhysical)
-	assert.True(t, party[1].ImmunePoison)
+	require.Len(t, party, 1)
+	assert.Equal(t, "Scout", party[0].Name)
+	assert.Equal(t, 1, party[0].Level)
+	assert.Equal(t, 7, party[0].Initiative)
 }
 
-func TestEncounterStoreListPartyMembersIgnoresSoftDeletedEncounter(t *testing.T) {
+func TestEncounterStoreListPartyMembersFallbacksToEncounterTemplatesWhenNoActiveCharacters(t *testing.T) {
 	store := newTestStore(t)
+	_, err := store.db.Exec(`UPDATE player_characters SET active = 0 WHERE campaign_id = ?`, "repo-test-campaign")
+	require.NoError(t, err)
 
 	require.NoError(t, store.Save(&domain.Encounter{
 		ID:         "enc-1",
@@ -264,5 +260,21 @@ func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore 
 		assert.NoError(t, db.Close())
 	})
 
-	return NewEncounterStoreWithContext(db, ctx)
+	store := NewEncounterStoreWithContext(db, ctx)
+	_, err = store.CreateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				ID:         "repo-char-1",
+				Name:       "Scout",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				Defense:    1,
+			},
+		},
+	})
+	require.NoError(t, err)
+	return store
 }
