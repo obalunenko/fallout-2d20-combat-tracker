@@ -62,6 +62,7 @@ func (s *EncounterStore) Get() (*domain.Encounter, error) {
 			XP:              int(c.Xp),
 			Initiative:      int(c.Initiative),
 			HP:              int(c.Hp),
+			MaxHP:           int(c.MaxHp),
 			Defense:         int(c.Defense),
 			ResistPhysical:  int(c.DamageResistancePhysical),
 			ResistEnergy:    int(c.DamageResistanceEnergy),
@@ -115,14 +116,23 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 	}()
 
 	qtx := s.q.WithTx(tx)
+	metrics := domain.EvaluateEncounterDifficulty(enc.Combatants)
 	if err = qtx.UpsertEncounter(ctx, dbgen.UpsertEncounterParams{
-		ID:         enc.ID,
-		CampaignID: enc.CampaignID,
-		Name:       enc.Name,
-		Round:      int64(enc.Round),
-		TurnIndex:  int64(enc.TurnIndex),
-		PartyAp:    int64(enc.Resources.PartyAP),
-		GmThreat:   int64(enc.Resources.GMThreat),
+		ID:              enc.ID,
+		CampaignID:      enc.CampaignID,
+		Name:            enc.Name,
+		Round:           int64(enc.Round),
+		TurnIndex:       int64(enc.TurnIndex),
+		PartyAp:         int64(enc.Resources.PartyAP),
+		GmThreat:        int64(enc.Resources.GMThreat),
+		DifficultyLabel: string(metrics.Label),
+		DifficultyScore: metrics.Score,
+		PartyCount:      int64(metrics.PartyCount),
+		PartyAvgLevel:   metrics.PartyAvgLevel,
+		PartyXpBudget:   int64(metrics.PartyXPBudget),
+		EnemyCount:      int64(metrics.EnemyCount),
+		EnemyAvgLevel:   metrics.EnemyAvgLevel,
+		EnemyTotalXp:    int64(metrics.EnemyTotalXP),
 	}); err != nil {
 		return fmt.Errorf("upsert encounter: %w", err)
 	}
@@ -132,6 +142,7 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 	}
 
 	for i, c := range enc.Combatants {
+		domain.NormalizeCombatantHP(&c)
 		if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
 			ID:                              c.ID,
 			EncounterID:                     enc.ID,
@@ -141,6 +152,7 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 			Xp:                              int64(c.XP),
 			Initiative:                      int64(c.Initiative),
 			Hp:                              int64(c.HP),
+			MaxHp:                           int64(c.MaxHP),
 			Defense:                         int64(c.Defense),
 			DamageResistance:                int64(c.ResistPhysical),
 			DamageResistancePhysical:        int64(c.ResistPhysical),
@@ -183,12 +195,20 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	summaries := make([]domain.EncounterSummary, 0, len(rows))
 	for _, r := range rows {
 		summaries = append(summaries, domain.EncounterSummary{
-			ID:         r.ID,
-			CampaignID: interfaceToString(r.CampaignID),
-			Name:       r.Name,
-			Round:      int(r.Round),
-			Combatants: int(r.Combatants),
-			UpdatedAt:  r.UpdatedAt.Format("2006-01-02 15:04:05.000"),
+			ID:              r.ID,
+			CampaignID:      interfaceToString(r.CampaignID),
+			Name:            r.Name,
+			Round:           int(r.Round),
+			Combatants:      int(r.Combatants),
+			Difficulty:      r.DifficultyLabel,
+			DifficultyScore: r.DifficultyScore,
+			PartyCount:      int(r.PartyCount),
+			PartyAvgLevel:   r.PartyAvgLevel,
+			PartyXPBudget:   int(r.PartyXpBudget),
+			EnemyCount:      int(r.EnemyCount),
+			EnemyAvgLevel:   r.EnemyAvgLevel,
+			EnemyTotalXP:    int(r.EnemyTotalXp),
+			UpdatedAt:       r.UpdatedAt.Format("2006-01-02 15:04:05.000"),
 		})
 	}
 	return summaries, nil
@@ -227,6 +247,7 @@ func (s *EncounterStore) GetEncounterByID(encounterID string) (*domain.Encounter
 			XP:              int(c.Xp),
 			Initiative:      int(c.Initiative),
 			HP:              int(c.Hp),
+			MaxHP:           int(c.MaxHp),
 			Defense:         int(c.Defense),
 			ResistPhysical:  int(c.DamageResistancePhysical),
 			ResistEnergy:    int(c.DamageResistanceEnergy),
@@ -297,6 +318,7 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 				XP:              0,
 				Initiative:      int(r.Initiative),
 				HP:              int(r.Hp),
+				MaxHP:           int(r.MaxHp),
 				Defense:         int(r.Defense),
 				ResistPhysical:  int(r.DamageResistancePhysical),
 				ResistEnergy:    int(r.DamageResistanceEnergy),
@@ -325,6 +347,7 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 			XP:              int(r.Xp),
 			Initiative:      int(r.Initiative),
 			HP:              int(r.Hp),
+			MaxHP:           int(r.MaxHp),
 			Defense:         int(r.Defense),
 			ResistPhysical:  int(r.DamageResistancePhysical),
 			ResistEnergy:    int(r.DamageResistanceEnergy),
@@ -358,6 +381,7 @@ func (s *EncounterStore) ListCampaignPlayers(campaignID string) ([]domain.NewCam
 				Level:           int(r.Level),
 				Initiative:      int(r.Initiative),
 				HP:              int(r.Hp),
+				MaxHP:           int(r.MaxHp),
 				Defense:         int(r.Defense),
 				ResistPhysical:  int(r.DamageResistancePhysical),
 				ResistEnergy:    int(r.DamageResistanceEnergy),
@@ -423,6 +447,7 @@ func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, play
 			Level:                           int64(p.Character.Level),
 			Initiative:                      int64(p.Character.Initiative),
 			Hp:                              int64(p.Character.HP),
+			MaxHp:                           int64(p.Character.MaxHP),
 			Defense:                         int64(p.Character.Defense),
 			DamageResistancePhysical:        int64(p.Character.ResistPhysical),
 			DamageResistanceEnergy:          int64(p.Character.ResistEnergy),
@@ -511,6 +536,7 @@ func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, play
 			Level:                           int64(p.Character.Level),
 			Initiative:                      int64(p.Character.Initiative),
 			Hp:                              int64(p.Character.HP),
+			MaxHp:                           int64(p.Character.MaxHP),
 			Defense:                         int64(p.Character.Defense),
 			DamageResistancePhysical:        int64(p.Character.ResistPhysical),
 			DamageResistanceEnergy:          int64(p.Character.ResistEnergy),

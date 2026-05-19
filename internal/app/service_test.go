@@ -134,6 +134,31 @@ func TestListAndActivateEncounter(t *testing.T) {
 	assert.Equal(t, "enc-1", active.ID)
 }
 
+func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
+	svc := newSQLiteService(t)
+	_, err := svc.CreateEncounter("enc-1", "Difficulty Check", []domain.Combatant{
+		{ID: "p1", Name: "Vault Dweller", Side: domain.SideParty, Level: 2, Initiative: 10, HP: 8, Defense: 1},
+		{ID: "p2", Name: "Companion", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 7, Defense: 1},
+		{ID: "n1", Name: "Raider", Side: domain.SideNPC, Level: 2, XP: 60, Initiative: 8, HP: 6, Defense: 0},
+		{ID: "n2", Name: "Raider", Side: domain.SideNPC, Level: 2, XP: 60, Initiative: 7, HP: 6, Defense: 0},
+	})
+	require.NoError(t, err)
+
+	summaries, err := svc.ListEncounters()
+	require.NoError(t, err)
+	require.Len(t, summaries, 1)
+
+	assert.Equal(t, "Difficulty Check", summaries[0].Name)
+	assert.Equal(t, "Hard", summaries[0].Difficulty)
+	assert.Equal(t, 2, summaries[0].PartyCount)
+	assert.Equal(t, 2.0, summaries[0].PartyAvgLevel)
+	assert.Equal(t, 60, summaries[0].PartyXPBudget)
+	assert.Equal(t, 2, summaries[0].EnemyCount)
+	assert.Equal(t, 2.0, summaries[0].EnemyAvgLevel)
+	assert.Equal(t, 120, summaries[0].EnemyTotalXP)
+	assert.Equal(t, 2.0, summaries[0].DifficultyScore)
+}
+
 func TestActivateEncounterNotFound(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
@@ -234,7 +259,7 @@ func TestApplyDamageRespectsImmunity(t *testing.T) {
 func TestHealPersistsAndCanRevive(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
-		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 2},
+		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 2, MaxHP: 8},
 	})
 	require.NoError(t, err)
 

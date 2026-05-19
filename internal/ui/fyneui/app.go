@@ -45,13 +45,11 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	var showHealDialogForIndex func(int)
 
 	roundLabel := widget.NewLabel("")
-	activeLabel := widget.NewLabel("")
 	selectedLabel := widget.NewLabel("")
 	partyAPLabel := widget.NewLabel("")
 	threatLabel := widget.NewLabel("")
 
 	roundLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
-	activeLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	selectedLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	partyAPLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	threatLabel.TextStyle = fyne.TextStyle{Monospace: true}
@@ -72,17 +70,24 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			name = encounterDisplayNameByID(enc, c.ID)
 		}
 		prefix := "   "
-		if c.Active {
+		isDefeated := c.Defeated || c.HP <= 0
+		if c.Active && !isDefeated {
 			prefix = ">> "
+		} else if isDefeated {
+			prefix = "xx "
 		}
-		return fmt.Sprintf(
-			"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d DEF:%d DR P/E/R/P:%s/%s/%s/%s",
-			prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
+		line := fmt.Sprintf(
+			"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d/%d DEF:%d DR P/E/R/P:%s/%s/%s/%s",
+			prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense,
 			formatDRValue(c.ResistPhysical, c.ImmunePhysical),
 			formatDRValue(c.ResistEnergy, c.ImmuneEnergy),
 			formatDRValue(c.ResistRadiation, c.ImmuneRadiation),
 			formatDRValue(c.ResistPoison, c.ImmunePoison),
 		)
+		if isDefeated {
+			return line + " [DEFEATED]"
+		}
+		return line
 	}
 
 	list := widget.NewList(
@@ -101,7 +106,16 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if enc == nil || i >= len(enc.Combatants) {
 				return
 			}
-			o.(*widget.Label).SetText(combatantLine(enc.Combatants[i]))
+			label := o.(*widget.Label)
+			c := enc.Combatants[i]
+			label.SetText(combatantLine(c))
+			if c.Defeated || c.HP <= 0 {
+				label.Importance = widget.LowImportance
+				label.TextStyle = fyne.TextStyle{Monospace: true, Italic: true}
+				return
+			}
+			label.Importance = widget.MediumImportance
+			label.TextStyle = fyne.TextStyle{Monospace: true}
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) {
@@ -123,7 +137,11 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		for i, c := range enc.Combatants {
 			idx := i
 			line := widget.NewLabel(combatantLine(c))
-			line.TextStyle = fyne.TextStyle{Monospace: true, Bold: c.Active}
+			isDefeated := c.Defeated || c.HP <= 0
+			line.TextStyle = fyne.TextStyle{Monospace: true, Bold: c.Active && !isDefeated, Italic: isDefeated}
+			if isDefeated {
+				line.Importance = widget.LowImportance
+			}
 
 			damageBtn := widget.NewButton("DMG", func() {
 				showApplyDamageDialogForIndex(idx)
@@ -209,37 +227,24 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	healBtn := widget.NewButton("HEAL", func() {
 		showHealDialogForIndex(selectedIndex)
 	})
-	applyDamageActiveBtn := widget.NewButton("APPLY DAMAGE", func() {
-		targetIndex := selectedIndex
-		if enc != nil && len(enc.Combatants) > 0 {
-			targetIndex = enc.TurnIndex
-		}
-		showApplyDamageDialogForIndex(targetIndex)
-	})
-	healActiveBtn := widget.NewButton("HEAL", func() {
-		targetIndex := selectedIndex
-		if enc != nil && len(enc.Combatants) > 0 {
-			targetIndex = enc.TurnIndex
-		}
-		showHealDialogForIndex(targetIndex)
-	})
 
 	turnPanel := pipPanel(
 		"TURN CONTROL",
 		container.NewVBox(
 			roundLabel,
-			activeLabel,
-			container.NewGridWithColumns(3, nextTurnBtn, applyDamageActiveBtn, healActiveBtn),
+			nextTurnBtn,
 		),
 	)
 	resourcesPanel := pipPanel(
 		"RESOURCES",
-		container.NewVBox(
+		container.NewGridWithColumns(
+			6,
 			partyAPLabel,
-			container.NewGridWithColumns(2, partyAddBtn, partySpendBtn),
-			widget.NewSeparator(),
+			partyAddBtn,
+			partySpendBtn,
 			threatLabel,
-			container.NewGridWithColumns(2, threatAddBtn, threatSpendBtn),
+			threatAddBtn,
+			threatSpendBtn,
 		),
 	)
 	encounterOrderPanel := pipPanel("ENCOUNTER ORDER", encounterOrderBox)
@@ -342,7 +347,6 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				enc = nil
 				campaignStatusLabel.SetText("Campaign: -")
 				roundLabel.SetText("Round: -")
-				activeLabel.SetText("Active: -")
 				refreshSelected(selectedLabel, nil, 0)
 				refreshResources()
 				list.Refresh()
@@ -365,7 +369,6 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if errors.Is(err, domain.ErrEncounterNotInitialized) {
 				enc = nil
 				roundLabel.SetText("Round: -")
-				activeLabel.SetText("Active: -")
 				refreshSelected(selectedLabel, nil, 0)
 				refreshResources()
 				list.Refresh()
@@ -382,12 +385,6 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		}
 
 		roundLabel.SetText(fmt.Sprintf("Round: %d", enc.Round))
-		if active := enc.ActiveCombatant(); active != nil {
-			activeName := encounterDisplayNameByID(enc, active.ID)
-			activeLabel.SetText(fmt.Sprintf("Active: %s (%s, Init:%d)", activeName, active.Side, active.Initiative))
-		} else {
-			activeLabel.SetText("Active: -")
-		}
 
 		if selectedIndex >= len(enc.Combatants) {
 			selectedIndex = 0
@@ -425,12 +422,13 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		var rows []*campaignPlayerInputRow
 		rowsBox := container.NewVBox()
 		headers := container.NewGridWithColumns(
-			12,
+			13,
 			newTableHeaderLabel("Player"),
 			newTableHeaderLabel("Character"),
 			newTableHeaderLabel("Level"),
 			newTableHeaderLabel("Init"),
-			newTableHeaderLabel("HP"),
+			newTableHeaderLabel("HP Cur"),
+			newTableHeaderLabel("HP Max"),
 			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("DR Phys"),
 			newTableHeaderLabel("DR Energy"),
@@ -448,6 +446,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					target.level.SetText("1")
 					target.initiative.SetText("1")
 					target.hp.SetText("1")
+					target.hpMax.SetText("1")
 					target.defense.SetText("0")
 					target.drPhysical.SetText("0")
 					target.drEnergy.SetText("0")
@@ -484,6 +483,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				row.level.SetText(strconv.Itoa(p.Character.Level))
 				row.initiative.SetText(strconv.Itoa(p.Character.Initiative))
 				row.hp.SetText(strconv.Itoa(p.Character.HP))
+				maxHP := p.Character.MaxHP
+				if maxHP <= 0 {
+					maxHP = p.Character.HP
+				}
+				if maxHP <= 0 {
+					maxHP = 1
+				}
+				row.hpMax.SetText(strconv.Itoa(maxHP))
 				row.defense.SetText(strconv.Itoa(p.Character.Defense))
 				row.immPhysical.SetChecked(p.Character.ImmunePhysical)
 				row.immEnergy.SetChecked(p.Character.ImmuneEnergy)
@@ -705,15 +712,25 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 
 		var rows []*combatantInputRow
 		rowsBox := container.NewVBox()
+		difficultyPreview := widget.NewLabel("Difficulty: Unknown")
+		difficultyPreview.TextStyle = fyne.TextStyle{Monospace: true}
+		difficultyPreview.Wrapping = fyne.TextWrapWord
+
+		refreshDifficultyPreview := func() {
+			preview := collectCombatantsPreviewFromRows(rows)
+			metrics := domain.EvaluateEncounterDifficulty(preview)
+			difficultyPreview.SetText(formatDifficultyPreview(metrics))
+		}
 		headers := container.NewGridWithColumns(
-			13,
+			14,
 			newTableHeaderLabel("Name"),
 			newTableHeaderLabel("Side"),
 			newTableHeaderLabel("Number"),
 			newTableHeaderLabel("Level"),
 			newTableHeaderLabel("XP"),
 			newTableHeaderLabel("Initiative"),
-			newTableHeaderLabel("HP"),
+			newTableHeaderLabel("HP Cur"),
+			newTableHeaderLabel("HP Max"),
 			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("DR Phys"),
 			newTableHeaderLabel("DR Energy"),
@@ -732,6 +749,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					target.xp.SetText("0")
 					target.initiative.SetText("")
 					target.hp.SetText("1")
+					target.hpMax.SetText("1")
 					target.defense.SetText("0")
 					target.drPhysical.SetText("0")
 					target.drEnergy.SetText("0")
@@ -742,6 +760,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					target.immRadiation.SetChecked(false)
 					target.immPoison.SetChecked(false)
 					target.side.SetSelected(defaultSide)
+					refreshDifficultyPreview()
 					return
 				}
 				filtered := make([]*combatantInputRow, 0, len(rows)-1)
@@ -753,10 +772,12 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				rows = filtered
 				rowsBox.Remove(target.root)
 				rowsBox.Refresh()
-			})
+				refreshDifficultyPreview()
+			}, refreshDifficultyPreview)
 			rows = append(rows, row)
 			rowsBox.Add(row.root)
 			rowsBox.Refresh()
+			refreshDifficultyPreview()
 			return row
 		}
 
@@ -772,6 +793,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				fillCombatantInputRow(row, c, c.Side, 1)
 			}
 		}
+		refreshDifficultyPreview()
 
 		validationError := widget.NewLabel("")
 		validationError.TextStyle = fyne.TextStyle{Monospace: true}
@@ -802,13 +824,18 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				row := addRow("party")
 				fillCombatantInputRow(row, partyMembers[i], domain.SideParty, 1)
 			}
+			refreshDifficultyPreview()
 		})
 
 		dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
 		scroll := container.NewScroll(table)
 		scroll.Direction = container.ScrollBoth
 		scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
-		combatantsSection := container.NewVBox(container.NewGridWithColumns(2, addCombatantBtn, loadPartyBtn), scroll)
+		combatantsSection := container.NewVBox(
+			container.NewGridWithColumns(2, addCombatantBtn, loadPartyBtn),
+			difficultyPreview,
+			scroll,
+		)
 
 		form := widget.NewForm(
 			widget.NewFormItem("Name", nameEntry),
@@ -1006,8 +1033,8 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			selectedID = s.ID
 			selectedInfo.SetText(
 				fmt.Sprintf(
-					"Name: %s\nID: %s\nRound: %d\nCombatants: %d\nUpdated: %s",
-					s.Name, s.ID, s.Round, s.Combatants, formatEncounterUpdatedAt(s.UpdatedAt),
+					"Name: %s\nID: %s\nRound: %d\nCombatants: %d\nDifficulty: %s\nUpdated: %s",
+					s.Name, s.ID, s.Round, s.Combatants, formatEncounterDifficultySummary(s), formatEncounterUpdatedAt(s.UpdatedAt),
 				),
 			)
 		}
@@ -1037,8 +1064,8 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				s := summaries[i]
 				o.(*widget.Label).SetText(
 					fmt.Sprintf(
-						"%s | Round:%d | Combatants:%d | Updated:%s",
-						s.Name, s.Round, s.Combatants, formatEncounterUpdatedAt(s.UpdatedAt),
+						"%s | %s | Round:%d | Combatants:%d | Updated:%s",
+						s.Name, formatEncounterDifficultySummary(s), s.Round, s.Combatants, formatEncounterUpdatedAt(s.UpdatedAt),
 					),
 				)
 			},
@@ -1256,8 +1283,8 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	}
 	label.SetText(
 		fmt.Sprintf(
-			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d\nDefense: %d\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s\nStatus: %s",
-			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.Defense,
+			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s\nStatus: %s",
+			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense,
 			formatDRValue(c.ResistPhysical, c.ImmunePhysical),
 			formatDRValue(c.ResistEnergy, c.ImmuneEnergy),
 			formatDRValue(c.ResistRadiation, c.ImmuneRadiation),
@@ -1302,6 +1329,25 @@ func formatLogTimestamp(raw string) string {
 		}
 	}
 	return raw
+}
+
+func formatEncounterDifficultySummary(s domain.EncounterSummary) string {
+	if strings.TrimSpace(s.Difficulty) == "" {
+		return "Unknown"
+	}
+	if s.PartyCount == 0 || s.EnemyCount == 0 {
+		return s.Difficulty
+	}
+	return fmt.Sprintf(
+		"%s (P:%d avgLvl:%.1f budget:%d | NPC:%d avgLvl:%.1f XP:%d)",
+		s.Difficulty,
+		s.PartyCount,
+		s.PartyAvgLevel,
+		s.PartyXPBudget,
+		s.EnemyCount,
+		s.EnemyAvgLevel,
+		s.EnemyTotalXP,
+	)
 }
 
 func encounterDisplayNameByID(enc *domain.Encounter, combatantID string) string {
@@ -1378,6 +1424,7 @@ type combatantInputRow struct {
 	xp           *widget.Entry
 	initiative   *widget.Entry
 	hp           *widget.Entry
+	hpMax        *widget.Entry
 	defense      *widget.Entry
 	drPhysical   *widget.Entry
 	drEnergy     *widget.Entry
@@ -1396,6 +1443,7 @@ type campaignPlayerInputRow struct {
 	level         *widget.Entry
 	initiative    *widget.Entry
 	hp            *widget.Entry
+	hpMax         *widget.Entry
 	defense       *widget.Entry
 	drPhysical    *widget.Entry
 	drEnergy      *widget.Entry
@@ -1408,10 +1456,17 @@ type campaignPlayerInputRow struct {
 	root          *fyne.Container
 }
 
-func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow)) *combatantInputRow {
+func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow), onChanged func()) *combatantInputRow {
+	notifyChange := func() {
+		if onChanged != nil {
+			onChanged()
+		}
+	}
+
 	name := widget.NewEntry()
 	name.SetPlaceHolder("Name")
 	name.TextStyle = fyne.TextStyle{Monospace: true}
+	name.OnChanged = func(string) { notifyChange() }
 
 	side := widget.NewSelect([]string{"party", "npc"}, nil)
 	side.SetSelected(defaultSide)
@@ -1419,47 +1474,62 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 	number.SetPlaceHolder("Count")
 	number.TextStyle = fyne.TextStyle{Monospace: true}
 	number.SetText("1")
+	number.OnChanged = func(string) { notifyChange() }
 	level := widget.NewEntry()
 	level.SetPlaceHolder("Level")
 	level.TextStyle = fyne.TextStyle{Monospace: true}
 	level.SetText("1")
+	level.OnChanged = func(string) { notifyChange() }
 	xp := widget.NewEntry()
 	xp.SetPlaceHolder("XP")
 	xp.TextStyle = fyne.TextStyle{Monospace: true}
 	xp.SetText("0")
+	xp.OnChanged = func(string) { notifyChange() }
 
 	initiative := widget.NewEntry()
 	initiative.SetPlaceHolder("Init")
 	initiative.TextStyle = fyne.TextStyle{Monospace: true}
+	initiative.OnChanged = func(string) { notifyChange() }
 	hp := widget.NewEntry()
 	hp.SetPlaceHolder("HP")
 	hp.TextStyle = fyne.TextStyle{Monospace: true}
 	hp.SetText("1")
+	hp.OnChanged = func(string) { notifyChange() }
+	hpMax := widget.NewEntry()
+	hpMax.SetPlaceHolder("Max HP")
+	hpMax.TextStyle = fyne.TextStyle{Monospace: true}
+	hpMax.SetText("1")
+	hpMax.OnChanged = func(string) { notifyChange() }
 	defense := widget.NewEntry()
 	defense.SetPlaceHolder("Defense")
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
 	defense.SetText("0")
+	defense.OnChanged = func(string) { notifyChange() }
 	drPhysical := widget.NewEntry()
 	drPhysical.SetPlaceHolder("DR Phys")
 	drPhysical.TextStyle = fyne.TextStyle{Monospace: true}
 	drPhysical.SetText("0")
+	drPhysical.OnChanged = func(string) { notifyChange() }
 	drEnergy := widget.NewEntry()
 	drEnergy.SetPlaceHolder("DR Energy")
 	drEnergy.TextStyle = fyne.TextStyle{Monospace: true}
 	drEnergy.SetText("0")
+	drEnergy.OnChanged = func(string) { notifyChange() }
 	drRadiation := widget.NewEntry()
 	drRadiation.SetPlaceHolder("DR Rad")
 	drRadiation.TextStyle = fyne.TextStyle{Monospace: true}
 	drRadiation.SetText("0")
+	drRadiation.OnChanged = func(string) { notifyChange() }
 	drPoison := widget.NewEntry()
 	drPoison.SetPlaceHolder("DR Poison")
 	drPoison.TextStyle = fyne.TextStyle{Monospace: true}
 	drPoison.SetText("0")
+	drPoison.OnChanged = func(string) { notifyChange() }
 
-	drPhysicalCell, immPhysical := newResistanceInputCell(drPhysical)
-	drEnergyCell, immEnergy := newResistanceInputCell(drEnergy)
-	drRadiationCell, immRadiation := newResistanceInputCell(drRadiation)
-	drPoisonCell, immPoison := newResistanceInputCell(drPoison)
+	drPhysicalCell, immPhysical := newResistanceInputCell(drPhysical, notifyChange)
+	drEnergyCell, immEnergy := newResistanceInputCell(drEnergy, notifyChange)
+	drRadiationCell, immRadiation := newResistanceInputCell(drRadiation, notifyChange)
+	drPoisonCell, immPoison := newResistanceInputCell(drPoison, notifyChange)
 
 	row := &combatantInputRow{
 		name:         name,
@@ -1469,6 +1539,7 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 		xp:           xp,
 		initiative:   initiative,
 		hp:           hp,
+		hpMax:        hpMax,
 		defense:      defense,
 		drPhysical:   drPhysical,
 		drEnergy:     drEnergy,
@@ -1486,15 +1557,17 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 			row.number.Disable()
 			row.xp.SetText("0")
 			row.xp.Disable()
+			notifyChange()
 			return
 		}
 		row.number.Enable()
 		row.xp.Enable()
+		notifyChange()
 	}
 	side.SetSelected(defaultSide)
 
 	row.root = container.NewGridWithColumns(
-		13,
+		14,
 		name,
 		side,
 		number,
@@ -1502,6 +1575,7 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow))
 		xp,
 		initiative,
 		hp,
+		hpMax,
 		defense,
 		drPhysicalCell,
 		drEnergyCell,
@@ -1533,6 +1607,10 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	hp.SetPlaceHolder("HP")
 	hp.TextStyle = fyne.TextStyle{Monospace: true}
 	hp.SetText("1")
+	hpMax := widget.NewEntry()
+	hpMax.SetPlaceHolder("Max HP")
+	hpMax.TextStyle = fyne.TextStyle{Monospace: true}
+	hpMax.SetText("1")
 	defense := widget.NewEntry()
 	defense.SetPlaceHolder("Defense")
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
@@ -1554,10 +1632,10 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	drPoison.TextStyle = fyne.TextStyle{Monospace: true}
 	drPoison.SetText("0")
 
-	drPhysicalCell, immPhysical := newResistanceInputCell(drPhysical)
-	drEnergyCell, immEnergy := newResistanceInputCell(drEnergy)
-	drRadiationCell, immRadiation := newResistanceInputCell(drRadiation)
-	drPoisonCell, immPoison := newResistanceInputCell(drPoison)
+	drPhysicalCell, immPhysical := newResistanceInputCell(drPhysical, nil)
+	drEnergyCell, immEnergy := newResistanceInputCell(drEnergy, nil)
+	drRadiationCell, immRadiation := newResistanceInputCell(drRadiation, nil)
+	drPoisonCell, immPoison := newResistanceInputCell(drPoison, nil)
 
 	row := &campaignPlayerInputRow{
 		playerName:    playerName,
@@ -1565,6 +1643,7 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		level:         level,
 		initiative:    initiative,
 		hp:            hp,
+		hpMax:         hpMax,
 		defense:       defense,
 		drPhysical:    drPhysical,
 		drEnergy:      drEnergy,
@@ -1579,12 +1658,13 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	activeLabel := widget.NewLabel("yes")
 	activeLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	row.root = container.NewGridWithColumns(
-		12,
+		13,
 		playerName,
 		characterName,
 		level,
 		initiative,
 		hp,
+		hpMax,
 		defense,
 		drPhysicalCell,
 		drEnergyCell,
@@ -1596,14 +1676,20 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	return row
 }
 
-func newResistanceInputCell(entry *widget.Entry) (fyne.CanvasObject, *widget.Check) {
+func newResistanceInputCell(entry *widget.Entry, onChanged func()) (fyne.CanvasObject, *widget.Check) {
 	immune := widget.NewCheck("immune", func(checked bool) {
 		if checked {
 			entry.SetText("0")
 			entry.Disable()
+			if onChanged != nil {
+				onChanged()
+			}
 			return
 		}
 		entry.Enable()
+		if onChanged != nil {
+			onChanged()
+		}
 	})
 	return container.NewBorder(nil, nil, nil, immune, entry), immune
 }
@@ -1623,6 +1709,7 @@ func combatantInputRowIsEmpty(row *combatantInputRow) bool {
 		strings.TrimSpace(row.level.Text) == "1" &&
 		strings.TrimSpace(row.xp.Text) == "0" &&
 		strings.TrimSpace(row.hp.Text) == "1" &&
+		strings.TrimSpace(row.hpMax.Text) == "1" &&
 		strings.TrimSpace(row.defense.Text) == "0" &&
 		strings.TrimSpace(row.drPhysical.Text) == "0" &&
 		strings.TrimSpace(row.drEnergy.Text) == "0" &&
@@ -1654,6 +1741,14 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	row.xp.SetText(strconv.Itoa(template.XP))
 	row.initiative.SetText(strconv.Itoa(template.Initiative))
 	row.hp.SetText(strconv.Itoa(template.HP))
+	maxHP := template.MaxHP
+	if maxHP <= 0 {
+		maxHP = template.HP
+	}
+	if maxHP <= 0 {
+		maxHP = 1
+	}
+	row.hpMax.SetText(strconv.Itoa(maxHP))
 	row.defense.SetText(strconv.Itoa(template.Defense))
 
 	row.immPhysical.SetChecked(template.ImmunePhysical)
@@ -1720,8 +1815,19 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 			return nil, fmt.Errorf("combatant %q: HP is required", name)
 		}
 		hp, err := strconv.Atoi(hpText)
-		if err != nil || hp <= 0 {
+		if err != nil || hp < 0 {
 			return nil, fmt.Errorf("combatant %q: invalid HP %q", name, hpText)
+		}
+		hpMaxText := strings.TrimSpace(row.hpMax.Text)
+		if hpMaxText == "" {
+			return nil, fmt.Errorf("combatant %q: max HP is required", name)
+		}
+		hpMax, err := strconv.Atoi(hpMaxText)
+		if err != nil || hpMax < 1 {
+			return nil, fmt.Errorf("combatant %q: invalid max HP %q", name, hpMaxText)
+		}
+		if hp > hpMax {
+			return nil, fmt.Errorf("combatant %q: current HP cannot exceed max HP", name)
 		}
 		defenseText := strings.TrimSpace(row.defense.Text)
 		if defenseText == "" {
@@ -1764,6 +1870,7 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 				XP:              xp,
 				Initiative:      initiative,
 				HP:              hp,
+				MaxHP:           hpMax,
 				Defense:         defense,
 				ResistPhysical:  drPhysical,
 				ResistEnergy:    drEnergy,
@@ -1782,6 +1889,67 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 	}
 
 	return combatants, nil
+}
+
+func collectCombatantsPreviewFromRows(rows []*combatantInputRow) []domain.Combatant {
+	preview := make([]domain.Combatant, 0, len(rows))
+	for _, row := range rows {
+		name := strings.TrimSpace(row.name.Text)
+		if name == "" {
+			continue
+		}
+
+		side := domain.SideNPC
+		if row.side.Selected == "party" {
+			side = domain.SideParty
+		}
+
+		level := 1
+		if parsed, err := strconv.Atoi(strings.TrimSpace(row.level.Text)); err == nil && parsed > 0 {
+			level = parsed
+		}
+
+		count := 1
+		if side == domain.SideNPC {
+			if parsed, err := strconv.Atoi(strings.TrimSpace(row.number.Text)); err == nil && parsed > 0 {
+				count = parsed
+			}
+		}
+
+		xp := 0
+		if side == domain.SideNPC {
+			if parsed, err := strconv.Atoi(strings.TrimSpace(row.xp.Text)); err == nil && parsed >= 0 {
+				xp = parsed
+			}
+		}
+
+		for i := 0; i < count; i++ {
+			preview = append(preview, domain.Combatant{
+				Name:  name,
+				Side:  side,
+				Level: level,
+				XP:    xp,
+			})
+		}
+	}
+	return preview
+}
+
+func formatDifficultyPreview(metrics domain.EncounterDifficultyMetrics) string {
+	if metrics.PartyCount == 0 || metrics.EnemyCount == 0 {
+		return "Difficulty: Unknown (add at least one party member and one NPC)"
+	}
+	return fmt.Sprintf(
+		"Difficulty: %s (xp ratio: %.2f | party: %d avg lvl %.1f budget %d | npc: %d avg lvl %.1f total xp: %d)",
+		metrics.Label,
+		metrics.Score,
+		metrics.PartyCount,
+		metrics.PartyAvgLevel,
+		metrics.PartyXPBudget,
+		metrics.EnemyCount,
+		metrics.EnemyAvgLevel,
+		metrics.EnemyTotalXP,
+	)
 }
 
 func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.NewCampaignPlayer, error) {
@@ -1807,9 +1975,16 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		if err != nil {
 			return nil, err
 		}
-		hp, err := parsePositiveIntOrError(strings.TrimSpace(row.hp.Text), "HP", playerName)
+		hp, err := parseNonNegativeIntOrError(strings.TrimSpace(row.hp.Text), "HP", playerName)
 		if err != nil {
 			return nil, err
+		}
+		hpMax, err := parsePositiveIntOrError(strings.TrimSpace(row.hpMax.Text), "max HP", playerName)
+		if err != nil {
+			return nil, err
+		}
+		if hp > hpMax {
+			return nil, fmt.Errorf("current HP cannot exceed max HP for %q", playerName)
 		}
 		defense, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defense.Text), "defense", playerName)
 		if err != nil {
@@ -1841,6 +2016,7 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 				Level:           level,
 				Initiative:      initiative,
 				HP:              hp,
+				MaxHP:           hpMax,
 				Defense:         defense,
 				ResistPhysical:  drPhysical,
 				ResistEnergy:    drEnergy,
