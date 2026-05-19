@@ -47,6 +47,16 @@ func (q *Queries) DeleteCombatantsByEncounterID(ctx context.Context, encounterID
 	return err
 }
 
+const deletePlayersByCampaignID = `-- name: DeletePlayersByCampaignID :exec
+DELETE FROM players
+WHERE campaign_id = ?1
+`
+
+func (q *Queries) DeletePlayersByCampaignID(ctx context.Context, campaignID string) error {
+	_, err := q.db.ExecContext(ctx, deletePlayersByCampaignID, campaignID)
+	return err
+}
+
 const ensureAppStateRow = `-- name: EnsureAppStateRow :exec
 INSERT OR IGNORE INTO app_state (id, active_campaign_id)
 VALUES (1, NULL)
@@ -79,6 +89,69 @@ func (q *Queries) GetActiveCampaign(ctx context.Context) (GetActiveCampaignRow, 
 		&i.Name,
 		&i.StartDate,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCampaignByID = `-- name: GetCampaignByID :one
+SELECT id, name, start_date, updated_at
+FROM campaigns
+WHERE id = ?1
+`
+
+type GetCampaignByIDRow struct {
+	ID        string
+	Name      string
+	StartDate string
+	UpdatedAt time.Time
+}
+
+func (q *Queries) GetCampaignByID(ctx context.Context, campaignID string) (GetCampaignByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getCampaignByID, campaignID)
+	var i GetCampaignByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.StartDate,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getEncounterByIDByCampaignID = `-- name: GetEncounterByIDByCampaignID :one
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+FROM encounters
+WHERE deleted_at IS NULL
+  AND campaign_id = ?1
+  AND id = ?2
+`
+
+type GetEncounterByIDByCampaignIDParams struct {
+	CampaignID  interface{}
+	EncounterID string
+}
+
+type GetEncounterByIDByCampaignIDRow struct {
+	ID         string
+	CampaignID interface{}
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
+}
+
+func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncounterByIDByCampaignIDParams) (GetEncounterByIDByCampaignIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getEncounterByIDByCampaignID, arg.CampaignID, arg.EncounterID)
+	var i GetEncounterByIDByCampaignIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.Round,
+		&i.TurnIndex,
+		&i.PartyAp,
+		&i.GmThreat,
 	)
 	return i, err
 }
@@ -772,6 +845,28 @@ WHERE id = ?1
 func (q *Queries) TouchCampaign(ctx context.Context, campaignID string) error {
 	_, err := q.db.ExecContext(ctx, touchCampaign, campaignID)
 	return err
+}
+
+const updateCampaignByID = `-- name: UpdateCampaignByID :execrows
+UPDATE campaigns
+SET name = ?1,
+    start_date = ?2,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = ?3
+`
+
+type UpdateCampaignByIDParams struct {
+	Name       string
+	StartDate  string
+	CampaignID string
+}
+
+func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByIDParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCampaignByID, arg.Name, arg.StartDate, arg.CampaignID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const upsertEncounter = `-- name: UpsertEncounter :exec

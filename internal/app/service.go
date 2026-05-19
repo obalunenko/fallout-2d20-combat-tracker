@@ -12,10 +12,14 @@ type EncounterRepository interface {
 	Get() (*domain.Encounter, error)
 	Save(encounter *domain.Encounter) error
 	List() ([]domain.EncounterSummary, error)
+	GetEncounterByID(encounterID string) (*domain.Encounter, error)
+	UpdateEncounter(encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error)
 	ListPartyMembers() ([]domain.Combatant, error)
 	CreateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
+	UpdateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	GetActiveCampaign() (*domain.Campaign, error)
 	ListCampaigns() ([]domain.Campaign, error)
+	ListCampaignPlayers(campaignID string) ([]domain.NewCampaignPlayer, error)
 	ActivateCampaign(campaignID string) error
 	Activate(encounterID string) error
 	SoftDelete(encounterID string) error
@@ -48,6 +52,13 @@ func (s *Service) ListEncounterLogs(encounterID string) ([]domain.EncounterLog, 
 
 func (s *Service) ListPartyMembers() ([]domain.Combatant, error) {
 	return s.repo.ListPartyMembers()
+}
+
+func (s *Service) GetEncounterByID(encounterID string) (*domain.Encounter, error) {
+	if strings.TrimSpace(encounterID) == "" {
+		return nil, fmt.Errorf("encounter id is required")
+	}
+	return s.repo.GetEncounterByID(encounterID)
 }
 
 func (s *Service) CreateCampaign(id, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
@@ -99,6 +110,13 @@ func (s *Service) ListCampaigns() ([]domain.Campaign, error) {
 	return s.repo.ListCampaigns()
 }
 
+func (s *Service) ListCampaignPlayers(campaignID string) ([]domain.NewCampaignPlayer, error) {
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+	return s.repo.ListCampaignPlayers(campaignID)
+}
+
 func (s *Service) ActivateCampaign(campaignID string) (*domain.Campaign, error) {
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
@@ -107,6 +125,47 @@ func (s *Service) ActivateCampaign(campaignID string) (*domain.Campaign, error) 
 		return nil, err
 	}
 	return s.repo.GetActiveCampaign()
+}
+
+func (s *Service) UpdateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+	if strings.TrimSpace(name) == "" {
+		return nil, fmt.Errorf("campaign name is required")
+	}
+	if strings.TrimSpace(startDate) == "" {
+		return nil, fmt.Errorf("campaign start date is required")
+	}
+	if len(players) == 0 {
+		return nil, fmt.Errorf("add at least one player")
+	}
+	for i := range players {
+		if strings.TrimSpace(players[i].PlayerName) == "" {
+			return nil, fmt.Errorf("player name is required")
+		}
+		if strings.TrimSpace(players[i].Character.Name) == "" {
+			return nil, fmt.Errorf("character name is required for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Level < 1 {
+			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.HP < 1 {
+			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Initiative < 0 {
+			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
+		}
+		if players[i].Character.Defense < 0 {
+			return nil, fmt.Errorf("invalid defense for player %q", players[i].PlayerName)
+		}
+		if strings.TrimSpace(players[i].Character.ID) == "" {
+			players[i].Character.ID = uuid.NewString()
+		}
+		players[i].Character.Side = domain.SideParty
+		players[i].Character.XP = 0
+	}
+	return s.repo.UpdateCampaign(campaignID, name, startDate, players)
 }
 
 func (s *Service) ActivateEncounter(encounterID string) (*domain.Encounter, error) {
@@ -178,6 +237,31 @@ func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant
 		return nil, err
 	}
 	if err := s.appendOperationLog(enc, fmt.Sprintf("Encounter created (%s)", name)); err != nil {
+		return nil, err
+	}
+	return enc, nil
+}
+
+func (s *Service) UpdateEncounter(encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+	if strings.TrimSpace(encounterID) == "" {
+		return nil, fmt.Errorf("encounter id is required")
+	}
+	if strings.TrimSpace(name) == "" {
+		return nil, fmt.Errorf("encounter name is required")
+	}
+	if len(combatants) == 0 {
+		return nil, fmt.Errorf("cannot update encounter without combatants")
+	}
+	for i := range combatants {
+		if strings.TrimSpace(combatants[i].ID) == "" {
+			combatants[i].ID = uuid.NewString()
+		}
+	}
+	enc, err := s.repo.UpdateEncounter(encounterID, name, combatants)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.appendOperationLog(enc, fmt.Sprintf("Encounter updated (%s)", name)); err != nil {
 		return nil, err
 	}
 	return enc, nil

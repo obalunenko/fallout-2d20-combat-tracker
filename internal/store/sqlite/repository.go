@@ -194,6 +194,87 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	return summaries, nil
 }
 
+func (s *EncounterStore) GetEncounterByID(encounterID string) (*domain.Encounter, error) {
+	if strings.TrimSpace(encounterID) == "" {
+		return nil, fmt.Errorf("encounter id is required")
+	}
+	ctx := s.ctx
+	campaignID, err := s.activeCampaignID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.q.GetEncounterByIDByCampaignID(ctx, dbgen.GetEncounterByIDByCampaignIDParams{
+		CampaignID:  campaignID,
+		EncounterID: encounterID,
+	})
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrEncounterNotFound
+		}
+		return nil, fmt.Errorf("read encounter by id: %w", err)
+	}
+	combatantRows, err := s.q.ListCombatantsByEncounterID(ctx, row.ID)
+	if err != nil {
+		return nil, fmt.Errorf("read combatants: %w", err)
+	}
+	combatants := make([]domain.Combatant, 0, len(combatantRows))
+	for _, c := range combatantRows {
+		combatants = append(combatants, domain.Combatant{
+			ID:              c.ID,
+			Name:            c.Name,
+			Side:            domain.Side(c.Side),
+			Level:           int(c.Level),
+			XP:              int(c.Xp),
+			Initiative:      int(c.Initiative),
+			HP:              int(c.Hp),
+			Defense:         int(c.Defense),
+			ResistPhysical:  int(c.DamageResistancePhysical),
+			ResistEnergy:    int(c.DamageResistanceEnergy),
+			ResistRadiation: int(c.DamageResistanceRadiation),
+			ResistPoison:    int(c.DamageResistancePoison),
+			ImmunePhysical:  c.DamageResistancePhysicalImmune == 1,
+			ImmuneEnergy:    c.DamageResistanceEnergyImmune == 1,
+			ImmuneRadiation: c.DamageResistanceRadiationImmune == 1,
+			ImmunePoison:    c.DamageResistancePoisonImmune == 1,
+			Active:          c.Active == 1,
+			Defeated:        c.Defeated == 1,
+		})
+	}
+	return &domain.Encounter{
+		ID:         row.ID,
+		CampaignID: interfaceToString(row.CampaignID),
+		Name:       row.Name,
+		Round:      int(row.Round),
+		TurnIndex:  int(row.TurnIndex),
+		Combatants: combatants,
+		Resources: domain.Resources{
+			PartyAP:  int(row.PartyAp),
+			GMThreat: int(row.GmThreat),
+		},
+	}, nil
+}
+
+func (s *EncounterStore) UpdateEncounter(encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+	if strings.TrimSpace(encounterID) == "" {
+		return nil, fmt.Errorf("encounter id is required")
+	}
+	existing, err := s.GetEncounterByID(encounterID)
+	if err != nil {
+		return nil, err
+	}
+	updated := domain.NewEncounter(encounterID, name, combatants)
+	updated.CampaignID = existing.CampaignID
+	updated.Round = existing.Round
+	if updated.Round < 1 {
+		updated.Round = 1
+	}
+	updated.Resources = existing.Resources
+	if err := s.Save(updated); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
 func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 	ctx := s.ctx
 	campaignID, err := s.activeCampaignID(ctx)
@@ -256,6 +337,40 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 		})
 	}
 	return party, nil
+}
+
+func (s *EncounterStore) ListCampaignPlayers(campaignID string) ([]domain.NewCampaignPlayer, error) {
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+	rows, err := s.q.ListActivePartyCharactersByCampaignID(s.ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("list campaign players: %w", err)
+	}
+	players := make([]domain.NewCampaignPlayer, 0, len(rows))
+	for _, r := range rows {
+		players = append(players, domain.NewCampaignPlayer{
+			PlayerName: r.PlayerName,
+			Character: domain.Combatant{
+				ID:              r.ID,
+				Name:            r.CharacterName,
+				Side:            domain.SideParty,
+				Level:           int(r.Level),
+				Initiative:      int(r.Initiative),
+				HP:              int(r.Hp),
+				Defense:         int(r.Defense),
+				ResistPhysical:  int(r.DamageResistancePhysical),
+				ResistEnergy:    int(r.DamageResistanceEnergy),
+				ResistRadiation: int(r.DamageResistanceRadiation),
+				ResistPoison:    int(r.DamageResistancePoison),
+				ImmunePhysical:  r.DamageResistancePhysicalImmune == 1,
+				ImmuneEnergy:    r.DamageResistanceEnergyImmune == 1,
+				ImmuneRadiation: r.DamageResistanceRadiationImmune == 1,
+				ImmunePoison:    r.DamageResistancePoisonImmune == 1,
+			},
+		})
+	}
+	return players, nil
 }
 
 func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
@@ -339,6 +454,80 @@ func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, play
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
+	return &domain.Campaign{
+		ID:        campaignID,
+		Name:      name,
+		StartDate: startDate,
+	}, nil
+}
+
+func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	if strings.TrimSpace(campaignID) == "" {
+		return nil, fmt.Errorf("campaign id is required")
+	}
+	ctx := s.ctx
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	qtx := s.q.WithTx(tx)
+	affected, err := qtx.UpdateCampaignByID(ctx, dbgen.UpdateCampaignByIDParams{
+		Name:       name,
+		StartDate:  startDate,
+		CampaignID: campaignID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update campaign: %w", err)
+	}
+	if affected == 0 {
+		return nil, domain.ErrCampaignNotFound
+	}
+	if err = qtx.DeletePlayersByCampaignID(ctx, campaignID); err != nil {
+		return nil, fmt.Errorf("delete campaign players: %w", err)
+	}
+	for _, p := range players {
+		playerID := uuid.NewString()
+		if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
+			ID:         playerID,
+			CampaignID: campaignID,
+			Name:       strings.TrimSpace(p.PlayerName),
+		}); err != nil {
+			return nil, fmt.Errorf("insert player: %w", err)
+		}
+		charID := strings.TrimSpace(p.Character.ID)
+		if charID == "" {
+			charID = uuid.NewString()
+		}
+		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
+			ID:                              charID,
+			PlayerID:                        playerID,
+			CampaignID:                      campaignID,
+			Name:                            strings.TrimSpace(p.Character.Name),
+			Level:                           int64(p.Character.Level),
+			Initiative:                      int64(p.Character.Initiative),
+			Hp:                              int64(p.Character.HP),
+			Defense:                         int64(p.Character.Defense),
+			DamageResistancePhysical:        int64(p.Character.ResistPhysical),
+			DamageResistanceEnergy:          int64(p.Character.ResistEnergy),
+			DamageResistanceRadiation:       int64(p.Character.ResistRadiation),
+			DamageResistancePoison:          int64(p.Character.ResistPoison),
+			DamageResistancePhysicalImmune:  boolToInt64(p.Character.ImmunePhysical),
+			DamageResistanceEnergyImmune:    boolToInt64(p.Character.ImmuneEnergy),
+			DamageResistanceRadiationImmune: boolToInt64(p.Character.ImmuneRadiation),
+			DamageResistancePoisonImmune:    boolToInt64(p.Character.ImmunePoison),
+			Active:                          1,
+		}); err != nil {
+			return nil, fmt.Errorf("insert player character: %w", err)
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit tx: %w", err)
+	}
 	return &domain.Campaign{
 		ID:        campaignID,
 		Name:      name,

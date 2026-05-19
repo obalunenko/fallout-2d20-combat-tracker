@@ -402,12 +402,24 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		mainView.Refresh()
 	}
 
-	showCreateCampaignDialog = func() {
+	showCampaignEditorDialog := func(
+		title string,
+		submitLabel string,
+		initialName string,
+		initialStartDate string,
+		initialPlayers []domain.NewCampaignPlayer,
+		onSubmit func(name, startDate string, players []domain.NewCampaignPlayer) error,
+	) {
 		nameEntry := widget.NewEntry()
 		nameEntry.SetPlaceHolder("e.g. Commonwealth Survival")
+		nameEntry.SetText(strings.TrimSpace(initialName))
 		startDateEntry := widget.NewEntry()
 		startDateEntry.SetPlaceHolder("YYYY-MM-DD")
-		startDateEntry.SetText(time.Now().Format("2006-01-02"))
+		if strings.TrimSpace(initialStartDate) == "" {
+			startDateEntry.SetText(time.Now().Format("2006-01-02"))
+		} else {
+			startDateEntry.SetText(strings.TrimSpace(initialStartDate))
+		}
 
 		var rows []*campaignPlayerInputRow
 		rowsBox := container.NewVBox()
@@ -461,7 +473,35 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			rowsBox.Refresh()
 			return row
 		}
-		addRow()
+		if len(initialPlayers) == 0 {
+			addRow()
+		} else {
+			for _, p := range initialPlayers {
+				row := addRow()
+				row.playerName.SetText(p.PlayerName)
+				row.characterName.SetText(p.Character.Name)
+				row.level.SetText(strconv.Itoa(p.Character.Level))
+				row.initiative.SetText(strconv.Itoa(p.Character.Initiative))
+				row.hp.SetText(strconv.Itoa(p.Character.HP))
+				row.defense.SetText(strconv.Itoa(p.Character.Defense))
+				row.immPhysical.SetChecked(p.Character.ImmunePhysical)
+				row.immEnergy.SetChecked(p.Character.ImmuneEnergy)
+				row.immRadiation.SetChecked(p.Character.ImmuneRadiation)
+				row.immPoison.SetChecked(p.Character.ImmunePoison)
+				if !p.Character.ImmunePhysical {
+					row.drPhysical.SetText(strconv.Itoa(p.Character.ResistPhysical))
+				}
+				if !p.Character.ImmuneEnergy {
+					row.drEnergy.SetText(strconv.Itoa(p.Character.ResistEnergy))
+				}
+				if !p.Character.ImmuneRadiation {
+					row.drRadiation.SetText(strconv.Itoa(p.Character.ResistRadiation))
+				}
+				if !p.Character.ImmunePoison {
+					row.drPoison.SetText(strconv.Itoa(p.Character.ResistPoison))
+				}
+			}
+		}
 
 		validationError := widget.NewLabel("")
 		validationError.TextStyle = fyne.TextStyle{Monospace: true}
@@ -480,9 +520,9 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		)
 		formContent := container.NewVBox(form, widget.NewSeparator(), validationError)
 
-		var createDialog *dialog.CustomDialog
-		cancelBtn := widget.NewButton("Cancel", func() { createDialog.Hide() })
-		createBtn := widget.NewButton("Create", func() {
+		var editorDialog *dialog.CustomDialog
+		cancelBtn := widget.NewButton("Cancel", func() { editorDialog.Hide() })
+		submitBtn := widget.NewButton(submitLabel, func() {
 			validationError.SetText("")
 			campaignName := strings.TrimSpace(nameEntry.Text)
 			startDate := strings.TrimSpace(startDateEntry.Text)
@@ -500,20 +540,32 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				validationError.SetText(err.Error())
 				return
 			}
-
-			if _, err := svc.CreateCampaign(uuid.NewString(), campaignName, startDate, players); err != nil {
+			if err := onSubmit(campaignName, startDate, players); err != nil {
 				validationError.SetText(err.Error())
 				return
 			}
-
 			refresh()
-			createDialog.Hide()
+			editorDialog.Hide()
 		})
 
-		createDialog = dialog.NewCustomWithoutButtons("Create Campaign", formContent, w)
-		createDialog.SetButtons([]fyne.CanvasObject{cancelBtn, createBtn})
-		createDialog.Resize(dialogSize)
-		createDialog.Show()
+		editorDialog = dialog.NewCustomWithoutButtons(title, formContent, w)
+		editorDialog.SetButtons([]fyne.CanvasObject{cancelBtn, submitBtn})
+		editorDialog.Resize(dialogSize)
+		editorDialog.Show()
+	}
+
+	showCreateCampaignDialog = func() {
+		showCampaignEditorDialog(
+			"Create Campaign",
+			"Create",
+			"",
+			time.Now().Format("2006-01-02"),
+			nil,
+			func(name, startDate string, players []domain.NewCampaignPlayer) error {
+				_, err := svc.CreateCampaign(uuid.NewString(), name, startDate, players)
+				return err
+			},
+		)
 	}
 
 	showCampaignListDialog = func() {
@@ -589,6 +641,29 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			campaignDialog.Hide()
 			showCreateCampaignDialog()
 		})
+		editBtn := widget.NewButton("Edit", func() {
+			if selectedID == "" || selectedIdx < 0 || selectedIdx >= len(campaigns) {
+				return
+			}
+			players, err := svc.ListCampaignPlayers(selectedID)
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			current := campaigns[selectedIdx]
+			campaignDialog.Hide()
+			showCampaignEditorDialog(
+				"Edit Campaign",
+				"Save",
+				current.Name,
+				current.StartDate,
+				players,
+				func(name, startDate string, editedPlayers []domain.NewCampaignPlayer) error {
+					_, updateErr := svc.UpdateCampaign(current.ID, name, startDate, editedPlayers)
+					return updateErr
+				},
+			)
+		})
 		infoBtn := widget.NewButton("Use Selected", func() {
 			if selectedIdx >= 0 && selectedIdx < len(campaigns) {
 				if _, err := svc.ActivateCampaign(campaigns[selectedIdx].ID); err != nil {
@@ -608,7 +683,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			widget.NewSeparator(),
 			selectedInfo,
 			widget.NewSeparator(),
-			container.NewGridWithColumns(3, activateBtn, infoBtn, createBtn),
+			container.NewGridWithColumns(4, activateBtn, infoBtn, editBtn, createBtn),
 		)
 
 		campaignDialog = dialog.NewCustom("Campaigns", "Close", content, w)
@@ -616,9 +691,16 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		campaignDialog.Show()
 	}
 
-	showCreateEncounterDialog = func() {
+	showEncounterEditorDialog := func(
+		title string,
+		submitLabel string,
+		initialName string,
+		initialCombatants []domain.Combatant,
+		onSubmit func(name string, combatants []domain.Combatant) error,
+	) {
 		nameEntry := widget.NewEntry()
 		nameEntry.SetPlaceHolder("e.g. Red Rocket Defense")
+		nameEntry.SetText(strings.TrimSpace(initialName))
 
 		var rows []*combatantInputRow
 		rowsBox := container.NewVBox()
@@ -677,7 +759,19 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			return row
 		}
 
-		addRow("party")
+		if len(initialCombatants) == 0 {
+			addRow("party")
+		} else {
+			for _, c := range initialCombatants {
+				side := string(c.Side)
+				if side != "npc" {
+					side = "party"
+				}
+				row := addRow(side)
+				fillCombatantInputRow(row, c, c.Side, 1)
+			}
+		}
+
 		validationError := widget.NewLabel("")
 		validationError.TextStyle = fyne.TextStyle{Monospace: true}
 		validationError.Wrapping = fyne.TextWrapWord
@@ -721,11 +815,11 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		)
 		formContent := container.NewVBox(form, widget.NewSeparator(), validationError)
 
-		var createDialog *dialog.CustomDialog
+		var editorDialog *dialog.CustomDialog
 		cancelBtn := widget.NewButton("Cancel", func() {
-			createDialog.Hide()
+			editorDialog.Hide()
 		})
-		createBtn := widget.NewButton("Create", func() {
+		submitBtn := widget.NewButton(submitLabel, func() {
 			validationError.SetText("")
 
 			name := strings.TrimSpace(nameEntry.Text)
@@ -740,20 +834,33 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				return
 			}
 
-			encounterID := uuid.NewString()
-			if _, err := svc.CreateEncounter(encounterID, name, combatants); err != nil {
+			if err := onSubmit(name, combatants); err != nil {
 				validationError.SetText(err.Error())
 				return
 			}
 
 			refresh()
-			createDialog.Hide()
+			editorDialog.Hide()
 		})
 
-		createDialog = dialog.NewCustomWithoutButtons("Create Encounter", formContent, w)
-		createDialog.SetButtons([]fyne.CanvasObject{cancelBtn, createBtn})
-		createDialog.Resize(dialogSize)
-		createDialog.Show()
+		editorDialog = dialog.NewCustomWithoutButtons(title, formContent, w)
+		editorDialog.SetButtons([]fyne.CanvasObject{cancelBtn, submitBtn})
+		editorDialog.Resize(dialogSize)
+		editorDialog.Show()
+	}
+
+	showCreateEncounterDialog = func() {
+		showEncounterEditorDialog(
+			"Create Encounter",
+			"Create",
+			"",
+			nil,
+			func(name string, combatants []domain.Combatant) error {
+				encounterID := uuid.NewString()
+				_, err := svc.CreateEncounter(encounterID, name, combatants)
+				return err
+			},
+		)
 	}
 
 	showApplyDamageDialogForIndex = func(targetIndex int) {
@@ -885,6 +992,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		var launchBtn *widget.Button
 		var restartBtn *widget.Button
 		var deleteBtn *widget.Button
+		var editBtn *widget.Button
 
 		renderSelected := func(idx int) {
 			if idx < 0 || idx >= len(summaries) {
@@ -908,11 +1016,13 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				launchBtn.Disable()
 				restartBtn.Disable()
 				deleteBtn.Disable()
+				editBtn.Disable()
 				return
 			}
 			launchBtn.Enable()
 			restartBtn.Enable()
 			deleteBtn.Enable()
+			editBtn.Enable()
 		}
 
 		list = widget.NewList(
@@ -1030,12 +1140,35 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				w,
 			)
 		})
+		editBtn = widget.NewButton("Edit", func() {
+			if selectedID == "" {
+				return
+			}
+			targetID := selectedID
+			targetName := summaries[selectedIdx].Name
+			encForEdit, err := svc.GetEncounterByID(targetID)
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			encounterDialog.Hide()
+			showEncounterEditorDialog(
+				fmt.Sprintf("Edit Encounter: %s", targetName),
+				"Save",
+				encForEdit.Name,
+				encForEdit.Combatants,
+				func(name string, combatants []domain.Combatant) error {
+					_, updateErr := svc.UpdateEncounter(targetID, name, combatants)
+					return updateErr
+				},
+			)
+		})
 
 		renderSelected(0)
 		list.Select(0)
 		updateActionButtons()
 
-		actions := container.NewGridWithColumns(3, launchBtn, restartBtn, deleteBtn)
+		actions := container.NewGridWithColumns(4, launchBtn, restartBtn, editBtn, deleteBtn)
 		content := container.NewVBox(
 			scroll,
 			widget.NewSeparator(),

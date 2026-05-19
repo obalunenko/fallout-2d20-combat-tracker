@@ -38,6 +38,22 @@ SELECT id, name, start_date, updated_at
 FROM campaigns
 ORDER BY updated_at DESC, id DESC;
 
+-- name: GetCampaignByID :one
+SELECT id, name, start_date, updated_at
+FROM campaigns
+WHERE id = sqlc.arg(campaign_id);
+
+-- name: UpdateCampaignByID :execrows
+UPDATE campaigns
+SET name = sqlc.arg(name),
+    start_date = sqlc.arg(start_date),
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = sqlc.arg(campaign_id);
+
+-- name: DeletePlayersByCampaignID :exec
+DELETE FROM players
+WHERE campaign_id = sqlc.arg(campaign_id);
+
 -- name: InsertPlayer :exec
 INSERT INTO players (id, campaign_id, name, created_at, updated_at)
 VALUES (
@@ -105,6 +121,13 @@ FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
 ORDER BY updated_at DESC, id DESC
 LIMIT 1;
+
+-- name: GetEncounterByIDByCampaignID :one
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
+FROM encounters
+WHERE deleted_at IS NULL
+  AND campaign_id = sqlc.arg(campaign_id)
+  AND id = sqlc.arg(encounter_id);
 
 -- name: ListCombatantsByEncounterID :many
 SELECT id, name, side, level, xp, initiative, hp, defense,
