@@ -32,44 +32,58 @@ CREATE TABLE IF NOT EXISTS combatants (
     hp INTEGER NOT NULL DEFAULT 1,
     max_hp INTEGER NOT NULL DEFAULT 1,
     defense INTEGER NOT NULL DEFAULT 0,
-    defense_head INTEGER NOT NULL DEFAULT 0,
-    defense_torso INTEGER NOT NULL DEFAULT 0,
-    defense_left_arm INTEGER NOT NULL DEFAULT 0,
-    defense_right_arm INTEGER NOT NULL DEFAULT 0,
-    defense_left_leg INTEGER NOT NULL DEFAULT 0,
-    defense_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_poison INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_poison_immune INTEGER NOT NULL DEFAULT 0,
     level INTEGER NOT NULL DEFAULT 1,
     xp INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS body_locations (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS combatant_defense_by_location (
+    combatant_id TEXT NOT NULL,
+    body_location_id INTEGER NOT NULL,
+    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (combatant_id, body_location_id),
+    FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
+    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
+);
+
+CREATE TABLE IF NOT EXISTS damage_types (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS combatant_resistance_global (
+    combatant_id TEXT NOT NULL,
+    damage_type_id INTEGER NOT NULL,
+    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
+    immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (combatant_id, damage_type_id),
+    FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
+    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
+);
+
+CREATE TABLE IF NOT EXISTS combatant_resistance_by_location (
+    combatant_id TEXT NOT NULL,
+    damage_type_id INTEGER NOT NULL,
+    body_location_id INTEGER NOT NULL,
+    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (combatant_id, damage_type_id, body_location_id),
+    FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
+    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
+    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_combatants_encounter_position
@@ -135,44 +149,48 @@ CREATE TABLE IF NOT EXISTS player_characters (
     max_hp INTEGER NOT NULL DEFAULT 1,
     defense INTEGER NOT NULL DEFAULT 0,
     torso_only INTEGER NOT NULL DEFAULT 0,
-    defense_head INTEGER NOT NULL DEFAULT 0,
-    defense_torso INTEGER NOT NULL DEFAULT 0,
-    defense_left_arm INTEGER NOT NULL DEFAULT 0,
-    defense_right_arm INTEGER NOT NULL DEFAULT 0,
-    defense_left_leg INTEGER NOT NULL DEFAULT 0,
-    defense_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_poison INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_head INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_torso INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_left_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_right_arm INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_left_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_physical_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_energy_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_radiation_immune INTEGER NOT NULL DEFAULT 0,
-    damage_resistance_poison_immune INTEGER NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS player_character_defense_by_location (
+    player_character_id TEXT NOT NULL,
+    body_location_id INTEGER NOT NULL,
+    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (player_character_id, body_location_id),
+    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
+    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
+);
+
+CREATE TABLE IF NOT EXISTS player_character_resistance_global (
+    player_character_id TEXT NOT NULL,
+    damage_type_id INTEGER NOT NULL,
+    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
+    immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (player_character_id, damage_type_id),
+    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
+    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
+);
+
+CREATE TABLE IF NOT EXISTS player_character_resistance_by_location (
+    player_character_id TEXT NOT NULL,
+    damage_type_id INTEGER NOT NULL,
+    body_location_id INTEGER NOT NULL,
+    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (player_character_id, damage_type_id, body_location_id),
+    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
+    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
+    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_player_characters_one_active

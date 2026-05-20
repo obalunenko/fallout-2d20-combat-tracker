@@ -168,57 +168,28 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 
 	for i, c := range enc.Combatants {
 		domain.NormalizeCombatantHP(&c)
-		if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
-			ID:                                c.ID,
-			EncounterID:                       enc.ID,
-			Name:                              c.Name,
-			Side:                              string(c.Side),
+			if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
+				ID:                                c.ID,
+				EncounterID:                       enc.ID,
+				Name:                              c.Name,
+				Side:                              string(c.Side),
 			TorsoOnly:                         boolToInt64(c.TorsoOnly),
 			Level:                             int64(c.Level),
 			Xp:                                int64(c.XP),
-			Initiative:                        int64(c.Initiative),
-			Hp:                                int64(c.HP),
-			MaxHp:                             int64(c.MaxHP),
-			Defense:                           int64(c.Defense),
-			DefenseHead:                       int64(c.DefenseHead),
-			DefenseTorso:                      int64(c.DefenseTorso),
-			DefenseLeftArm:                    int64(c.DefenseLeftArm),
-			DefenseRightArm:                   int64(c.DefenseRightArm),
-			DefenseLeftLeg:                    int64(c.DefenseLeftLeg),
-			DefenseRightLeg:                   int64(c.DefenseRightLeg),
-			DamageResistancePhysicalHead:      int64(c.ResistPhysicalHead),
-			DamageResistancePhysicalTorso:     int64(c.ResistPhysicalTorso),
-			DamageResistancePhysicalLeftArm:   int64(c.ResistPhysicalLeftArm),
-			DamageResistancePhysicalRightArm:  int64(c.ResistPhysicalRightArm),
-			DamageResistancePhysicalLeftLeg:   int64(c.ResistPhysicalLeftLeg),
-			DamageResistancePhysicalRightLeg:  int64(c.ResistPhysicalRightLeg),
-			DamageResistancePhysical:          int64(c.ResistPhysical),
-			DamageResistanceEnergy:            int64(c.ResistEnergy),
-			DamageResistanceRadiation:         int64(c.ResistRadiation),
-			DamageResistancePoison:            int64(c.ResistPoison),
-			DamageResistanceEnergyHead:        int64(c.ResistEnergyHead),
-			DamageResistanceEnergyTorso:       int64(c.ResistEnergyTorso),
-			DamageResistanceEnergyLeftArm:     int64(c.ResistEnergyLeftArm),
-			DamageResistanceEnergyRightArm:    int64(c.ResistEnergyRightArm),
-			DamageResistanceEnergyLeftLeg:     int64(c.ResistEnergyLeftLeg),
-			DamageResistanceEnergyRightLeg:    int64(c.ResistEnergyRightLeg),
-			DamageResistanceRadiationHead:     int64(c.ResistRadiationHead),
-			DamageResistanceRadiationTorso:    int64(c.ResistRadiationTorso),
-			DamageResistanceRadiationLeftArm:  int64(c.ResistRadiationLeftArm),
-			DamageResistanceRadiationRightArm: int64(c.ResistRadiationRightArm),
-			DamageResistanceRadiationLeftLeg:  int64(c.ResistRadiationLeftLeg),
-			DamageResistanceRadiationRightLeg: int64(c.ResistRadiationRightLeg),
-			DamageResistancePhysicalImmune:    boolToInt64(c.ImmunePhysical),
-			DamageResistanceEnergyImmune:      boolToInt64(c.ImmuneEnergy),
-			DamageResistanceRadiationImmune:   boolToInt64(c.ImmuneRadiation),
-			DamageResistancePoisonImmune:      boolToInt64(c.ImmunePoison),
-			Active:                            boolToInt64(c.Active),
-			Defeated:                          boolToInt64(c.Defeated),
-			Position:                          int64(i),
-		}); err != nil {
-			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
+				Initiative:                        int64(c.Initiative),
+				Hp:                                int64(c.HP),
+				MaxHp:                             int64(c.MaxHP),
+				Defense:                           int64(c.Defense),
+				Active:                            boolToInt64(c.Active),
+				Defeated:                          boolToInt64(c.Defeated),
+				Position:                          int64(i),
+			}); err != nil {
+				return fmt.Errorf("insert combatant %s: %w", c.ID, err)
+			}
+			if err = upsertCombatantNormalizedStats(ctx, qtx, c.ID, c); err != nil {
+				return fmt.Errorf("sync normalized combatant stats %s: %w", c.ID, err)
+			}
 		}
-	}
 
 	if err = qtx.TouchCampaign(ctx, enc.CampaignID); err != nil {
 		return fmt.Errorf("touch campaign: %w", err)
@@ -588,54 +559,25 @@ func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, play
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-			ID:                                charID,
-			PlayerID:                          playerID,
-			CampaignID:                        campaignID,
-			Name:                              strings.TrimSpace(p.Character.Name),
+			if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
+				ID:                                charID,
+				PlayerID:                          playerID,
+				CampaignID:                        campaignID,
+				Name:                              strings.TrimSpace(p.Character.Name),
 			Level:                             int64(p.Character.Level),
 			Initiative:                        int64(p.Character.Initiative),
-			Hp:                                int64(p.Character.HP),
-			MaxHp:                             int64(p.Character.MaxHP),
-			Defense:                           int64(p.Character.Defense),
-			TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
-			DefenseHead:                       int64(p.Character.DefenseHead),
-			DefenseTorso:                      int64(p.Character.DefenseTorso),
-			DefenseLeftArm:                    int64(p.Character.DefenseLeftArm),
-			DefenseRightArm:                   int64(p.Character.DefenseRightArm),
-			DefenseLeftLeg:                    int64(p.Character.DefenseLeftLeg),
-			DefenseRightLeg:                   int64(p.Character.DefenseRightLeg),
-			DamageResistancePhysicalHead:      int64(p.Character.ResistPhysicalHead),
-			DamageResistancePhysicalTorso:     int64(p.Character.ResistPhysicalTorso),
-			DamageResistancePhysicalLeftArm:   int64(p.Character.ResistPhysicalLeftArm),
-			DamageResistancePhysicalRightArm:  int64(p.Character.ResistPhysicalRightArm),
-			DamageResistancePhysicalLeftLeg:   int64(p.Character.ResistPhysicalLeftLeg),
-			DamageResistancePhysicalRightLeg:  int64(p.Character.ResistPhysicalRightLeg),
-			DamageResistancePhysical:          int64(p.Character.ResistPhysical),
-			DamageResistanceEnergy:            int64(p.Character.ResistEnergy),
-			DamageResistanceRadiation:         int64(p.Character.ResistRadiation),
-			DamageResistancePoison:            int64(p.Character.ResistPoison),
-			DamageResistanceEnergyHead:        int64(p.Character.ResistEnergyHead),
-			DamageResistanceEnergyTorso:       int64(p.Character.ResistEnergyTorso),
-			DamageResistanceEnergyLeftArm:     int64(p.Character.ResistEnergyLeftArm),
-			DamageResistanceEnergyRightArm:    int64(p.Character.ResistEnergyRightArm),
-			DamageResistanceEnergyLeftLeg:     int64(p.Character.ResistEnergyLeftLeg),
-			DamageResistanceEnergyRightLeg:    int64(p.Character.ResistEnergyRightLeg),
-			DamageResistanceRadiationHead:     int64(p.Character.ResistRadiationHead),
-			DamageResistanceRadiationTorso:    int64(p.Character.ResistRadiationTorso),
-			DamageResistanceRadiationLeftArm:  int64(p.Character.ResistRadiationLeftArm),
-			DamageResistanceRadiationRightArm: int64(p.Character.ResistRadiationRightArm),
-			DamageResistanceRadiationLeftLeg:  int64(p.Character.ResistRadiationLeftLeg),
-			DamageResistanceRadiationRightLeg: int64(p.Character.ResistRadiationRightLeg),
-			DamageResistancePhysicalImmune:    boolToInt64(p.Character.ImmunePhysical),
-			DamageResistanceEnergyImmune:      boolToInt64(p.Character.ImmuneEnergy),
-			DamageResistanceRadiationImmune:   boolToInt64(p.Character.ImmuneRadiation),
-			DamageResistancePoisonImmune:      boolToInt64(p.Character.ImmunePoison),
-			Active:                            1,
-		}); err != nil {
-			return nil, fmt.Errorf("insert player character: %w", err)
+				Hp:                                int64(p.Character.HP),
+				MaxHp:                             int64(p.Character.MaxHP),
+				Defense:                           int64(p.Character.Defense),
+				TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
+				Active:                            1,
+			}); err != nil {
+				return nil, fmt.Errorf("insert player character: %w", err)
+			}
+			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+			}
 		}
-	}
 
 	if _, activeErr := qtx.GetActiveCampaign(ctx); activeErr == sql.ErrNoRows {
 		affected, setErr := qtx.SetActiveCampaign(ctx, campaignID)
@@ -702,54 +644,25 @@ func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, play
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-			ID:                                charID,
-			PlayerID:                          playerID,
-			CampaignID:                        campaignID,
-			Name:                              strings.TrimSpace(p.Character.Name),
+			if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
+				ID:                                charID,
+				PlayerID:                          playerID,
+				CampaignID:                        campaignID,
+				Name:                              strings.TrimSpace(p.Character.Name),
 			Level:                             int64(p.Character.Level),
 			Initiative:                        int64(p.Character.Initiative),
-			Hp:                                int64(p.Character.HP),
-			MaxHp:                             int64(p.Character.MaxHP),
-			Defense:                           int64(p.Character.Defense),
-			TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
-			DefenseHead:                       int64(p.Character.DefenseHead),
-			DefenseTorso:                      int64(p.Character.DefenseTorso),
-			DefenseLeftArm:                    int64(p.Character.DefenseLeftArm),
-			DefenseRightArm:                   int64(p.Character.DefenseRightArm),
-			DefenseLeftLeg:                    int64(p.Character.DefenseLeftLeg),
-			DefenseRightLeg:                   int64(p.Character.DefenseRightLeg),
-			DamageResistancePhysicalHead:      int64(p.Character.ResistPhysicalHead),
-			DamageResistancePhysicalTorso:     int64(p.Character.ResistPhysicalTorso),
-			DamageResistancePhysicalLeftArm:   int64(p.Character.ResistPhysicalLeftArm),
-			DamageResistancePhysicalRightArm:  int64(p.Character.ResistPhysicalRightArm),
-			DamageResistancePhysicalLeftLeg:   int64(p.Character.ResistPhysicalLeftLeg),
-			DamageResistancePhysicalRightLeg:  int64(p.Character.ResistPhysicalRightLeg),
-			DamageResistancePhysical:          int64(p.Character.ResistPhysical),
-			DamageResistanceEnergy:            int64(p.Character.ResistEnergy),
-			DamageResistanceRadiation:         int64(p.Character.ResistRadiation),
-			DamageResistancePoison:            int64(p.Character.ResistPoison),
-			DamageResistanceEnergyHead:        int64(p.Character.ResistEnergyHead),
-			DamageResistanceEnergyTorso:       int64(p.Character.ResistEnergyTorso),
-			DamageResistanceEnergyLeftArm:     int64(p.Character.ResistEnergyLeftArm),
-			DamageResistanceEnergyRightArm:    int64(p.Character.ResistEnergyRightArm),
-			DamageResistanceEnergyLeftLeg:     int64(p.Character.ResistEnergyLeftLeg),
-			DamageResistanceEnergyRightLeg:    int64(p.Character.ResistEnergyRightLeg),
-			DamageResistanceRadiationHead:     int64(p.Character.ResistRadiationHead),
-			DamageResistanceRadiationTorso:    int64(p.Character.ResistRadiationTorso),
-			DamageResistanceRadiationLeftArm:  int64(p.Character.ResistRadiationLeftArm),
-			DamageResistanceRadiationRightArm: int64(p.Character.ResistRadiationRightArm),
-			DamageResistanceRadiationLeftLeg:  int64(p.Character.ResistRadiationLeftLeg),
-			DamageResistanceRadiationRightLeg: int64(p.Character.ResistRadiationRightLeg),
-			DamageResistancePhysicalImmune:    boolToInt64(p.Character.ImmunePhysical),
-			DamageResistanceEnergyImmune:      boolToInt64(p.Character.ImmuneEnergy),
-			DamageResistanceRadiationImmune:   boolToInt64(p.Character.ImmuneRadiation),
-			DamageResistancePoisonImmune:      boolToInt64(p.Character.ImmunePoison),
-			Active:                            1,
-		}); err != nil {
-			return nil, fmt.Errorf("insert player character: %w", err)
+				Hp:                                int64(p.Character.HP),
+				MaxHp:                             int64(p.Character.MaxHP),
+				Defense:                           int64(p.Character.Defense),
+				TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
+				Active:                            1,
+			}); err != nil {
+				return nil, fmt.Errorf("insert player character: %w", err)
+			}
+			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+			}
 		}
-	}
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
@@ -891,6 +804,210 @@ func (s *EncounterStore) ListEncounterLogs(encounterID string) ([]domain.Encount
 		})
 	}
 	return logs, nil
+}
+
+const (
+	bodyLocationHead     int64 = 1
+	bodyLocationTorso    int64 = 2
+	bodyLocationLeftArm  int64 = 3
+	bodyLocationRightArm int64 = 4
+	bodyLocationLeftLeg  int64 = 5
+	bodyLocationRightLeg int64 = 6
+
+	damageTypePhysical  int64 = 1
+	damageTypeEnergy    int64 = 2
+	damageTypeRadiation int64 = 3
+	damageTypePoison    int64 = 4
+)
+
+func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, combatantID string, c domain.Combatant) error {
+	defenseByLocation := []struct {
+		bodyLocationID int64
+		defense        int64
+	}{
+		{bodyLocationHead, int64(c.DefenseHead)},
+		{bodyLocationTorso, int64(c.DefenseTorso)},
+		{bodyLocationLeftArm, int64(c.DefenseLeftArm)},
+		{bodyLocationRightArm, int64(c.DefenseRightArm)},
+		{bodyLocationLeftLeg, int64(c.DefenseLeftLeg)},
+		{bodyLocationRightLeg, int64(c.DefenseRightLeg)},
+	}
+	for _, stat := range defenseByLocation {
+		if err := qtx.UpsertCombatantDefenseByLocation(ctx, dbgen.UpsertCombatantDefenseByLocationParams{
+			CombatantID:    combatantID,
+			BodyLocationID: stat.bodyLocationID,
+			Defense:        stat.defense,
+		}); err != nil {
+			return fmt.Errorf("upsert defense by location: %w", err)
+		}
+	}
+
+	resistanceGlobal := []struct {
+		damageTypeID int64
+		resistance   int64
+		immune       int64
+	}{
+		{damageTypePhysical, int64(c.ResistPhysical), boolToInt64(c.ImmunePhysical)},
+		{damageTypeEnergy, int64(c.ResistEnergy), boolToInt64(c.ImmuneEnergy)},
+		{damageTypeRadiation, int64(c.ResistRadiation), boolToInt64(c.ImmuneRadiation)},
+		{damageTypePoison, int64(c.ResistPoison), boolToInt64(c.ImmunePoison)},
+	}
+	for _, stat := range resistanceGlobal {
+		if err := qtx.UpsertCombatantResistanceGlobal(ctx, dbgen.UpsertCombatantResistanceGlobalParams{
+			CombatantID:  combatantID,
+			DamageTypeID: stat.damageTypeID,
+			Resistance:   stat.resistance,
+			Immune:       stat.immune,
+		}); err != nil {
+			return fmt.Errorf("upsert global resistance: %w", err)
+		}
+	}
+
+	bodyLocationIDs := []int64{
+		bodyLocationHead,
+		bodyLocationTorso,
+		bodyLocationLeftArm,
+		bodyLocationRightArm,
+		bodyLocationLeftLeg,
+		bodyLocationRightLeg,
+	}
+	resistanceByLocation := []struct {
+		damageTypeID int64
+		values       []int64
+	}{
+		{damageTypePhysical, []int64{
+			int64(c.ResistPhysicalHead),
+			int64(c.ResistPhysicalTorso),
+			int64(c.ResistPhysicalLeftArm),
+			int64(c.ResistPhysicalRightArm),
+			int64(c.ResistPhysicalLeftLeg),
+			int64(c.ResistPhysicalRightLeg),
+		}},
+		{damageTypeEnergy, []int64{
+			int64(c.ResistEnergyHead),
+			int64(c.ResistEnergyTorso),
+			int64(c.ResistEnergyLeftArm),
+			int64(c.ResistEnergyRightArm),
+			int64(c.ResistEnergyLeftLeg),
+			int64(c.ResistEnergyRightLeg),
+		}},
+		{damageTypeRadiation, []int64{
+			int64(c.ResistRadiationHead),
+			int64(c.ResistRadiationTorso),
+			int64(c.ResistRadiationLeftArm),
+			int64(c.ResistRadiationRightArm),
+			int64(c.ResistRadiationLeftLeg),
+			int64(c.ResistRadiationRightLeg),
+		}},
+	}
+	for _, stat := range resistanceByLocation {
+		for idx, bodyLocationID := range bodyLocationIDs {
+			if err := qtx.UpsertCombatantResistanceByLocation(ctx, dbgen.UpsertCombatantResistanceByLocationParams{
+				CombatantID:    combatantID,
+				DamageTypeID:   stat.damageTypeID,
+				BodyLocationID: bodyLocationID,
+				Resistance:     stat.values[idx],
+			}); err != nil {
+				return fmt.Errorf("upsert location resistance: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Queries, playerCharacterID string, c domain.Combatant) error {
+	defenseByLocation := []struct {
+		bodyLocationID int64
+		defense        int64
+	}{
+		{bodyLocationHead, int64(c.DefenseHead)},
+		{bodyLocationTorso, int64(c.DefenseTorso)},
+		{bodyLocationLeftArm, int64(c.DefenseLeftArm)},
+		{bodyLocationRightArm, int64(c.DefenseRightArm)},
+		{bodyLocationLeftLeg, int64(c.DefenseLeftLeg)},
+		{bodyLocationRightLeg, int64(c.DefenseRightLeg)},
+	}
+	for _, stat := range defenseByLocation {
+		if err := qtx.UpsertPlayerCharacterDefenseByLocation(ctx, dbgen.UpsertPlayerCharacterDefenseByLocationParams{
+			PlayerCharacterID: playerCharacterID,
+			BodyLocationID:    stat.bodyLocationID,
+			Defense:           stat.defense,
+		}); err != nil {
+			return fmt.Errorf("upsert defense by location: %w", err)
+		}
+	}
+
+	resistanceGlobal := []struct {
+		damageTypeID int64
+		resistance   int64
+		immune       int64
+	}{
+		{damageTypePhysical, int64(c.ResistPhysical), boolToInt64(c.ImmunePhysical)},
+		{damageTypeEnergy, int64(c.ResistEnergy), boolToInt64(c.ImmuneEnergy)},
+		{damageTypeRadiation, int64(c.ResistRadiation), boolToInt64(c.ImmuneRadiation)},
+		{damageTypePoison, int64(c.ResistPoison), boolToInt64(c.ImmunePoison)},
+	}
+	for _, stat := range resistanceGlobal {
+		if err := qtx.UpsertPlayerCharacterResistanceGlobal(ctx, dbgen.UpsertPlayerCharacterResistanceGlobalParams{
+			PlayerCharacterID: playerCharacterID,
+			DamageTypeID:      stat.damageTypeID,
+			Resistance:        stat.resistance,
+			Immune:            stat.immune,
+		}); err != nil {
+			return fmt.Errorf("upsert global resistance: %w", err)
+		}
+	}
+
+	bodyLocationIDs := []int64{
+		bodyLocationHead,
+		bodyLocationTorso,
+		bodyLocationLeftArm,
+		bodyLocationRightArm,
+		bodyLocationLeftLeg,
+		bodyLocationRightLeg,
+	}
+	resistanceByLocation := []struct {
+		damageTypeID int64
+		values       []int64
+	}{
+		{damageTypePhysical, []int64{
+			int64(c.ResistPhysicalHead),
+			int64(c.ResistPhysicalTorso),
+			int64(c.ResistPhysicalLeftArm),
+			int64(c.ResistPhysicalRightArm),
+			int64(c.ResistPhysicalLeftLeg),
+			int64(c.ResistPhysicalRightLeg),
+		}},
+		{damageTypeEnergy, []int64{
+			int64(c.ResistEnergyHead),
+			int64(c.ResistEnergyTorso),
+			int64(c.ResistEnergyLeftArm),
+			int64(c.ResistEnergyRightArm),
+			int64(c.ResistEnergyLeftLeg),
+			int64(c.ResistEnergyRightLeg),
+		}},
+		{damageTypeRadiation, []int64{
+			int64(c.ResistRadiationHead),
+			int64(c.ResistRadiationTorso),
+			int64(c.ResistRadiationLeftArm),
+			int64(c.ResistRadiationRightArm),
+			int64(c.ResistRadiationLeftLeg),
+			int64(c.ResistRadiationRightLeg),
+		}},
+	}
+	for _, stat := range resistanceByLocation {
+		for idx, bodyLocationID := range bodyLocationIDs {
+			if err := qtx.UpsertPlayerCharacterResistanceByLocation(ctx, dbgen.UpsertPlayerCharacterResistanceByLocationParams{
+				PlayerCharacterID: playerCharacterID,
+				DamageTypeID:      stat.damageTypeID,
+				BodyLocationID:    bodyLocationID,
+				Resistance:        stat.values[idx],
+			}); err != nil {
+				return fmt.Errorf("upsert location resistance: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 func (s *EncounterStore) activeCampaignID(ctx context.Context) (string, error) {

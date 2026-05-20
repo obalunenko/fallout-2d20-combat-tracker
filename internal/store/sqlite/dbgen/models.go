@@ -14,6 +14,11 @@ type AppState struct {
 	UpdatedAt        time.Time
 }
 
+type BodyLocation struct {
+	ID   int64
+	Code string
+}
+
 type Campaign struct {
 	ID        string
 	Name      string
@@ -24,55 +29,54 @@ type Campaign struct {
 }
 
 type Combatant struct {
-	ID                                string
-	EncounterID                       string
-	Name                              string
-	Side                              string
-	TorsoOnly                         int64
-	Initiative                        int64
-	Active                            int64
-	Defeated                          int64
-	Position                          int64
-	Hp                                int64
-	MaxHp                             int64
-	Defense                           int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
-	DamageResistancePhysicalHead      int64
-	DamageResistancePhysicalTorso     int64
-	DamageResistancePhysicalLeftArm   int64
-	DamageResistancePhysicalRightArm  int64
-	DamageResistancePhysicalLeftLeg   int64
-	DamageResistancePhysicalRightLeg  int64
-	DamageResistancePhysical          int64
-	DamageResistanceEnergy            int64
-	DamageResistanceRadiation         int64
-	DamageResistancePoison            int64
-	DamageResistanceEnergyHead        int64
-	DamageResistanceEnergyTorso       int64
-	DamageResistanceEnergyLeftArm     int64
-	DamageResistanceEnergyRightArm    int64
-	DamageResistanceEnergyLeftLeg     int64
-	DamageResistanceEnergyRightLeg    int64
-	DamageResistanceRadiationHead     int64
-	DamageResistanceRadiationTorso    int64
-	DamageResistanceRadiationLeftArm  int64
-	DamageResistanceRadiationRightArm int64
-	DamageResistanceRadiationLeftLeg  int64
-	DamageResistanceRadiationRightLeg int64
-	DamageResistancePhysicalImmune    int64
-	DamageResistanceEnergyImmune      int64
-	DamageResistanceRadiationImmune   int64
-	DamageResistancePoisonImmune      int64
-	Level                             int64
-	Xp                                int64
-	CreatedAt                         time.Time
-	UpdatedAt                         time.Time
-	DeletedAt                         interface{}
+	ID          string
+	EncounterID string
+	Name        string
+	Side        string
+	TorsoOnly   int64
+	Initiative  int64
+	Active      int64
+	Defeated    int64
+	Position    int64
+	Hp          int64
+	MaxHp       int64
+	Defense     int64
+	Level       int64
+	Xp          int64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   interface{}
+}
+
+type CombatantDefenseByLocation struct {
+	CombatantID    string
+	BodyLocationID int64
+	Defense        int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CombatantResistanceByLocation struct {
+	CombatantID    string
+	DamageTypeID   int64
+	BodyLocationID int64
+	Resistance     int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CombatantResistanceGlobal struct {
+	CombatantID  string
+	DamageTypeID int64
+	Resistance   int64
+	Immune       int64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type DamageType struct {
+	ID   int64
+	Code string
 }
 
 type Encounter struct {
@@ -116,50 +120,44 @@ type Player struct {
 }
 
 type PlayerCharacter struct {
-	ID                                string
-	PlayerID                          string
-	CampaignID                        string
-	Name                              string
-	Level                             int64
-	Initiative                        int64
-	Hp                                int64
-	MaxHp                             int64
-	Defense                           int64
-	TorsoOnly                         int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
-	DamageResistancePhysicalHead      int64
-	DamageResistancePhysicalTorso     int64
-	DamageResistancePhysicalLeftArm   int64
-	DamageResistancePhysicalRightArm  int64
-	DamageResistancePhysicalLeftLeg   int64
-	DamageResistancePhysicalRightLeg  int64
-	DamageResistancePhysical          int64
-	DamageResistanceEnergy            int64
-	DamageResistanceRadiation         int64
-	DamageResistancePoison            int64
-	DamageResistanceEnergyHead        int64
-	DamageResistanceEnergyTorso       int64
-	DamageResistanceEnergyLeftArm     int64
-	DamageResistanceEnergyRightArm    int64
-	DamageResistanceEnergyLeftLeg     int64
-	DamageResistanceEnergyRightLeg    int64
-	DamageResistanceRadiationHead     int64
-	DamageResistanceRadiationTorso    int64
-	DamageResistanceRadiationLeftArm  int64
-	DamageResistanceRadiationRightArm int64
-	DamageResistanceRadiationLeftLeg  int64
-	DamageResistanceRadiationRightLeg int64
-	DamageResistancePhysicalImmune    int64
-	DamageResistanceEnergyImmune      int64
-	DamageResistanceRadiationImmune   int64
-	DamageResistancePoisonImmune      int64
-	Active                            int64
-	CreatedAt                         time.Time
-	UpdatedAt                         time.Time
-	DeletedAt                         interface{}
+	ID         string
+	PlayerID   string
+	CampaignID string
+	Name       string
+	Level      int64
+	Initiative int64
+	Hp         int64
+	MaxHp      int64
+	Defense    int64
+	TorsoOnly  int64
+	Active     int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
+}
+
+type PlayerCharacterDefenseByLocation struct {
+	PlayerCharacterID string
+	BodyLocationID    int64
+	Defense           int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PlayerCharacterResistanceByLocation struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	BodyLocationID    int64
+	Resistance        int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PlayerCharacterResistanceGlobal struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	Resistance        int64
+	Immune            int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }

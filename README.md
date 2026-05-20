@@ -56,6 +56,19 @@ make tools-list
 make tools-verify
 ```
 
+### DB Normalization Status
+
+- Combat stats are normalized into dedicated tables:
+  - `combatant_defense_by_location`
+  - `combatant_resistance_global`
+  - `combatant_resistance_by_location`
+  - `player_character_defense_by_location`
+  - `player_character_resistance_global`
+  - `player_character_resistance_by_location`
+- Legacy wide columns in `combatants` and `player_characters` were removed in migration `00023`.
+- Current read/write SQL (`sqlc/query.sql`) relies on normalized tables only.
+- Migration notes for `00020`-`00023`: `internal/store/sqlite/migrations/README.md`.
+
 ## Run
 
 ```bash
