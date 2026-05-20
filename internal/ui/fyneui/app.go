@@ -317,12 +317,31 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		),
 	)
 	encounterOrderPanel := pipPanel("ENCOUNTER ORDER", encounterOrderBox)
-	combatantsPanel := pipPanel("INITIATIVE ORDER", list)
 	selectedPanel := pipPanel(
-		"SELECTED COMBATANT",
+		"ACTIVE TARGET",
 		container.NewVBox(selectedLabel, widget.NewSeparator(), container.NewGridWithColumns(2, applyDamageBtn, healBtn)),
 	)
 	logPanel := pipPanel("DATA LOG", logOutput)
+	campOverviewLabel := widget.NewLabel("No active campaign")
+	campOverviewLabel.TextStyle = fyne.TextStyle{Monospace: true}
+	campOverviewLabel.Wrapping = fyne.TextWrapWord
+	campSnapshotLabel := widget.NewLabel("No active encounter")
+	campSnapshotLabel.TextStyle = fyne.TextStyle{Monospace: true}
+	campSnapshotLabel.Wrapping = fyne.TextWrapWord
+
+	campRosterOutput := widget.NewMultiLineEntry()
+	campRosterOutput.TextStyle = fyne.TextStyle{Monospace: true}
+	campRosterOutput.Wrapping = fyne.TextWrapWord
+	campRosterOutput.SetMinRowsVisible(10)
+	campRosterOutput.Disable()
+	campRosterOutput.SetText("No active campaign")
+
+	partyLibraryOutput := widget.NewMultiLineEntry()
+	partyLibraryOutput.TextStyle = fyne.TextStyle{Monospace: true}
+	partyLibraryOutput.Wrapping = fyne.TextWrapWord
+	partyLibraryOutput.SetMinRowsVisible(10)
+	partyLibraryOutput.Disable()
+	partyLibraryOutput.SetText("No saved party members found")
 
 	statTabContent := container.NewVBox(
 		turnPanel,
@@ -332,12 +351,37 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		encounterOrderPanel,
 	)
 	statTabScroll := container.NewVScroll(statTabContent)
-	invTabContent := container.NewGridWithColumns(2, combatantsPanel, selectedPanel)
+	campActionsPanel := pipPanel(
+		"CAMPAIGN ACTIONS",
+		container.NewGridWithColumns(
+			4,
+			widget.NewButton("OPEN CAMPAIGN", func() { showCampaignListDialog() }),
+			widget.NewButton("NEW CAMPAIGN", func() { showCreateCampaignDialog() }),
+			widget.NewButton("OPEN ENCOUNTER", func() { showEncounterListDialog() }),
+			widget.NewButton("NEW ENCOUNTER", func() { showCreateEncounterDialog() }),
+		),
+	)
+	campTabContent := container.NewVBox(
+		pipPanel("CAMPAIGN OVERVIEW", campOverviewLabel),
+		widget.NewSeparator(),
+		pipPanel("TACTICAL SNAPSHOT", campSnapshotLabel),
+		widget.NewSeparator(),
+		container.NewGridWithColumns(
+			2,
+			pipPanel("ACTIVE ROSTER", campRosterOutput),
+			pipPanel("PARTY LIBRARY", partyLibraryOutput),
+		),
+		widget.NewSeparator(),
+		selectedPanel,
+		widget.NewSeparator(),
+		campActionsPanel,
+	)
+	campTabScroll := container.NewVScroll(campTabContent)
 	dataTabContent := container.NewBorder(nil, nil, nil, nil, logPanel)
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("STAT", container.NewPadded(statTabScroll)),
-		container.NewTabItem("INV", container.NewPadded(invTabContent)),
+		container.NewTabItem("CAMP", container.NewPadded(campTabScroll)),
 		container.NewTabItem("DATA", container.NewPadded(dataTabContent)),
 	)
 	tabs.SetTabLocation(container.TabLocationTop)
@@ -407,6 +451,89 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		}
 		setEventLog(lines)
 	}
+	formatCampaignRoster := func(players []domain.NewCampaignPlayer) string {
+		if len(players) == 0 {
+			return "No active players in campaign"
+		}
+		lines := make([]string, 0, len(players))
+		for i, p := range players {
+			lines = append(lines, fmt.Sprintf(
+				"[%02d] %s -> %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+				i+1,
+				p.PlayerName,
+				p.Character.Name,
+				p.Character.Level,
+				p.Character.Initiative,
+				p.Character.HP,
+				p.Character.MaxHP,
+				p.Character.Defense,
+				formatDRValue(p.Character.ResistPoison, p.Character.ImmunePoison),
+			))
+		}
+		return strings.Join(lines, "\n")
+	}
+	formatPartyLibrary := func(members []domain.Combatant) string {
+		if len(members) == 0 {
+			return "No saved party members found in database"
+		}
+		lines := make([]string, 0, len(members))
+		for i, c := range members {
+			lines = append(lines, fmt.Sprintf(
+				"[%02d] %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+				i+1,
+				c.Name,
+				c.Level,
+				c.Initiative,
+				c.HP,
+				c.MaxHP,
+				c.Defense,
+				formatDRValue(c.ResistPoison, c.ImmunePoison),
+			))
+		}
+		return strings.Join(lines, "\n")
+	}
+	formatTacticalSnapshot := func(encounter *domain.Encounter) string {
+		if encounter == nil {
+			return "No active encounter"
+		}
+		partyTotal, partyAlive, partyDefeated := 0, 0, 0
+		npcTotal, npcAlive, npcDefeated := 0, 0, 0
+		activeName := "-"
+		for i := range encounter.Combatants {
+			c := encounter.Combatants[i]
+			isDefeated := c.Defeated || c.HP <= 0
+			if c.Active && !isDefeated {
+				activeName = encounterDisplayNameByID(encounter, c.ID)
+			}
+			if c.Side == domain.SideParty {
+				partyTotal++
+				if isDefeated {
+					partyDefeated++
+				} else {
+					partyAlive++
+				}
+				continue
+			}
+			npcTotal++
+			if isDefeated {
+				npcDefeated++
+			} else {
+				npcAlive++
+			}
+		}
+		return fmt.Sprintf(
+			"Encounter: %s\nRound: %d\nActive Turn: %s\nParty: %d total / %d alive / %d defeated\nNPC: %d total / %d alive / %d defeated",
+			encounter.Name,
+			encounter.Round,
+			activeName,
+			partyTotal,
+			partyAlive,
+			partyDefeated,
+			npcTotal,
+			npcAlive,
+			npcDefeated,
+		)
+	}
 
 	refresh = func() {
 		var err error
@@ -417,6 +544,10 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				enc = nil
 				expandedCombatantID = ""
 				campaignStatusLabel.SetText("Campaign: -")
+				campOverviewLabel.SetText("No active campaign")
+				campSnapshotLabel.SetText("No active encounter")
+				campRosterOutput.SetText("No active campaign")
+				partyLibraryOutput.SetText("No active campaign")
 				roundLabel.SetText("Round: -")
 				refreshSelected(selectedLabel, nil, 0)
 				refreshResources()
@@ -433,13 +564,35 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			return
 		}
 		campaignStatusLabel.SetText(fmt.Sprintf("Campaign: %s (%s)", activeCampaign.Name, activeCampaign.StartDate))
+		campOverviewLabel.SetText(fmt.Sprintf(
+			"Name: %s\nID: %s\nStart Date: %s\nUpdated: %s",
+			activeCampaign.Name,
+			activeCampaign.ID,
+			activeCampaign.StartDate,
+			formatEncounterUpdatedAt(activeCampaign.UpdatedAt),
+		))
 		setupHint.SetText(fmt.Sprintf("Campaign: %s\nNo active encounter.\nCreate one from scratch to begin tracking combat.", activeCampaign.Name))
+		players, rosterErr := svc.ListCampaignPlayers(activeCampaign.ID)
+		if rosterErr != nil {
+			handleErr(rosterErr)
+			campRosterOutput.SetText("Failed to load campaign players")
+		} else {
+			campRosterOutput.SetText(formatCampaignRoster(players))
+		}
+		partyMembers, partyErr := svc.ListPartyMembers()
+		if partyErr != nil {
+			handleErr(partyErr)
+			partyLibraryOutput.SetText("Failed to load party library")
+		} else {
+			partyLibraryOutput.SetText(formatPartyLibrary(partyMembers))
+		}
 
 		enc, err = svc.GetEncounter()
 		if err != nil {
 			if errors.Is(err, domain.ErrEncounterNotInitialized) {
 				enc = nil
 				expandedCombatantID = ""
+				campSnapshotLabel.SetText("No active encounter\nUse NEW ENCOUNTER or OPEN ENCOUNTER to continue.")
 				roundLabel.SetText("Round: -")
 				refreshSelected(selectedLabel, nil, 0)
 				refreshResources()
@@ -456,6 +609,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			return
 		}
 
+		campSnapshotLabel.SetText(formatTacticalSnapshot(enc))
 		roundLabel.SetText(fmt.Sprintf("Round: %d", enc.Round))
 		expandedExists := false
 		for i := range enc.Combatants {

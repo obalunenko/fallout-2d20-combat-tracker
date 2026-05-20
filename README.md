@@ -19,7 +19,7 @@ Desktop combat tracker for Fallout 2d20 built entirely with Go.
 - Next turn progression
 - Party AP / GM Threat controls (`+1` / `-1`)
 - Persistent local storage in SQLite
-- Pip-Boy themed interface with `STAT / INV / DATA` tabs
+- Pip-Boy themed interface with `STAT / CAMP / DATA` tabs
 
 ## Create Encounter
 
