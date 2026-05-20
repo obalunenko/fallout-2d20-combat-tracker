@@ -94,8 +94,26 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		} else if c.Active {
 			status = "Active"
 		}
+		if isTorsoOnlyCombatant(c) {
+			return fmt.Sprintf(
+				"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s",
+				encounterDisplayNameByID(enc, c.ID),
+				c.Side,
+				c.Level,
+				c.XP,
+				c.Initiative,
+				c.HP,
+				c.MaxHP,
+				c.Defense,
+				status,
+				formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
+				formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
+				formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
+				formatDRValue(c.ResistPoison, c.ImmunePoison),
+			)
+		}
 		return fmt.Sprintf(
-			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Damage Resistance\nLocation  | Physical | Energy | Radiation\n-------------------------------------------\nHead      | %8d | %6d | %9d\nTorso     | %8d | %6d | %9d\nLeft Arm  | %8d | %6d | %9d\nRight Arm | %8d | %6d | %9d\nLeft Leg  | %8d | %6d | %9d\nRight Leg | %8d | %6d | %9d",
+			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Defense / Damage Resistance\nLocation  | Defense | Physical | Energy | Radiation\n-----------------------------------------------------\nHead      | %7d | %8d | %6d | %9d\nTorso     | %7d | %8d | %6d | %9d\nLeft Arm  | %7d | %8d | %6d | %9d\nRight Arm | %7d | %8d | %6d | %9d\nLeft Leg  | %7d | %8d | %6d | %9d\nRight Leg | %7d | %8d | %6d | %9d",
 			encounterDisplayNameByID(enc, c.ID),
 			c.Side,
 			c.Level,
@@ -106,12 +124,12 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			c.Defense,
 			status,
 			formatDRValue(c.ResistPoison, c.ImmunePoison),
-			c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
-			c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
-			c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
-			c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
-			c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
-			c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
+			c.DefenseHead, c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
+			c.DefenseTorso, c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
+			c.DefenseLeftArm, c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
+			c.DefenseRightArm, c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
+			c.DefenseLeftLeg, c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
+			c.DefenseRightLeg, c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
 		)
 	}
 
@@ -700,6 +718,12 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					target.drRadRA.SetText("0")
 					target.drRadLL.SetText("0")
 					target.drRadRL.SetText("0")
+					target.drPhysHead.SetText("0")
+					target.drPhysTorso.SetText("0")
+					target.drPhysLA.SetText("0")
+					target.drPhysRA.SetText("0")
+					target.drPhysLL.SetText("0")
+					target.drPhysRL.SetText("0")
 					target.immPhysical.SetChecked(false)
 					target.immEnergy.SetChecked(false)
 					target.immRadiation.SetChecked(false)
@@ -741,12 +765,12 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				}
 				row.hpMax.SetText(strconv.Itoa(maxHP))
 				row.defense.SetText(strconv.Itoa(p.Character.Defense))
-				defenseHead := p.Character.ResistPhysicalHead
-				defenseTorso := p.Character.ResistPhysicalTorso
-				defenseLA := p.Character.ResistPhysicalLeftArm
-				defenseRA := p.Character.ResistPhysicalRightArm
-				defenseLL := p.Character.ResistPhysicalLeftLeg
-				defenseRL := p.Character.ResistPhysicalRightLeg
+				defenseHead := p.Character.DefenseHead
+				defenseTorso := p.Character.DefenseTorso
+				defenseLA := p.Character.DefenseLeftArm
+				defenseRA := p.Character.DefenseRightArm
+				defenseLL := p.Character.DefenseLeftLeg
+				defenseRL := p.Character.DefenseRightLeg
 				row.defenseHead.SetText(strconv.Itoa(defenseHead))
 				row.defenseTorso.SetText(strconv.Itoa(defenseTorso))
 				row.defenseLA.SetText(strconv.Itoa(defenseLA))
@@ -766,6 +790,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				row.drRadLL.SetText(strconv.Itoa(p.Character.ResistRadiationLeftLeg))
 				row.drRadRL.SetText(strconv.Itoa(p.Character.ResistRadiationRightLeg))
 				row.immPhysical.SetChecked(p.Character.ImmunePhysical)
+				if !p.Character.ImmunePhysical {
+					row.drPhysHead.SetText(strconv.Itoa(p.Character.ResistPhysicalHead))
+					row.drPhysTorso.SetText(strconv.Itoa(p.Character.ResistPhysicalTorso))
+					row.drPhysLA.SetText(strconv.Itoa(p.Character.ResistPhysicalLeftArm))
+					row.drPhysRA.SetText(strconv.Itoa(p.Character.ResistPhysicalRightArm))
+					row.drPhysLL.SetText(strconv.Itoa(p.Character.ResistPhysicalLeftLeg))
+					row.drPhysRL.SetText(strconv.Itoa(p.Character.ResistPhysicalRightLeg))
+				}
 				row.immEnergy.SetChecked(p.Character.ImmuneEnergy)
 				row.immRadiation.SetChecked(p.Character.ImmuneRadiation)
 				row.immPoison.SetChecked(p.Character.ImmunePoison)
@@ -986,9 +1018,10 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			difficultyPreview.SetText(formatDifficultyPreview(metrics))
 		}
 		headers := container.NewGridWithColumns(
-			12,
+			13,
 			newTableHeaderLabel("Name"),
 			newTableHeaderLabel("Side"),
+			newTableHeaderLabel("Torso"),
 			newTableHeaderLabel("Number"),
 			newTableHeaderLabel("Level"),
 			newTableHeaderLabel("XP"),
@@ -1031,12 +1064,19 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					target.drRadRA.SetText("0")
 					target.drRadLL.SetText("0")
 					target.drRadRL.SetText("0")
+					target.drPhysHead.SetText("0")
+					target.drPhysTorso.SetText("0")
+					target.drPhysLA.SetText("0")
+					target.drPhysRA.SetText("0")
+					target.drPhysLL.SetText("0")
+					target.drPhysRL.SetText("0")
 					target.immPhysical.SetChecked(false)
 					target.immEnergy.SetChecked(false)
 					target.immRadiation.SetChecked(false)
 					target.drPoison.SetText("0")
 					target.immPoison.SetChecked(false)
 					target.side.SetSelected(defaultSide)
+					target.torsoOnly.SetChecked(defaultSide == "npc")
 					refreshDifficultyPreview()
 					return
 				}
@@ -1181,7 +1221,11 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		targetDisplayName := encounterDisplayNameByID(enc, target.ID)
 		typeSelect := widget.NewSelect([]string{"physical", "energy", "radiation", "poison"}, nil)
 		typeSelect.SetSelected("physical")
-		locationSelect := widget.NewSelect([]string{"head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"}, nil)
+		locationOptions := []string{"head", "torso", "left_arm", "right_arm", "left_leg", "right_leg"}
+		if isTorsoOnlyCombatant(target) {
+			locationOptions = []string{"torso"}
+		}
+		locationSelect := widget.NewSelect(locationOptions, nil)
 		locationSelect.SetSelected("torso")
 
 		amountEntry := widget.NewEntry()
@@ -1566,11 +1610,27 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	if c.Defeated {
 		status = "Defeated"
 	}
+	if isTorsoOnlyCombatant(c) {
+		label.SetText(
+			fmt.Sprintf(
+				"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nTorso-only: yes\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s\nStatus: %s",
+				displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP,
+				c.Defense,
+				formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
+				formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
+				formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
+				formatDRValue(c.ResistPoison, c.ImmunePoison),
+				status,
+			),
+		)
+		return
+	}
 	label.SetText(
 		fmt.Sprintf(
-			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDRP Head: %d\nDRP Torso: %d\nDRP Left Arm: %d\nDRP Right Arm: %d\nDRP Left Leg: %d\nDRP Right Leg: %d\nDRE Head: %d\nDRE Torso: %d\nDRE Left Arm: %d\nDRE Right Arm: %d\nDRE Left Leg: %d\nDRE Right Leg: %d\nDRR Head: %d\nDRR Torso: %d\nDRR Left Arm: %d\nDRR Right Arm: %d\nDRR Left Leg: %d\nDRR Right Leg: %d\nDR Poison: %s\nStatus: %s",
+			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDEF Head: %d\nDEF Torso: %d\nDEF Left Arm: %d\nDEF Right Arm: %d\nDEF Left Leg: %d\nDEF Right Leg: %d\nDRP Head: %d\nDRP Torso: %d\nDRP Left Arm: %d\nDRP Right Arm: %d\nDRP Left Leg: %d\nDRP Right Leg: %d\nDRE Head: %d\nDRE Torso: %d\nDRE Left Arm: %d\nDRE Right Arm: %d\nDRE Left Leg: %d\nDRE Right Leg: %d\nDRR Head: %d\nDRR Torso: %d\nDRR Left Arm: %d\nDRR Right Arm: %d\nDRR Left Leg: %d\nDRR Right Leg: %d\nDR Poison: %s\nStatus: %s",
 			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP,
 			c.Defense,
+			c.DefenseHead, c.DefenseTorso, c.DefenseLeftArm, c.DefenseRightArm, c.DefenseLeftLeg, c.DefenseRightLeg,
 			c.ResistPhysicalHead, c.ResistPhysicalTorso, c.ResistPhysicalLeftArm, c.ResistPhysicalRightArm, c.ResistPhysicalLeftLeg, c.ResistPhysicalRightLeg,
 			c.ResistEnergyHead, c.ResistEnergyTorso, c.ResistEnergyLeftArm, c.ResistEnergyRightArm, c.ResistEnergyLeftLeg, c.ResistEnergyRightLeg,
 			c.ResistRadiationHead, c.ResistRadiationTorso, c.ResistRadiationLeftArm, c.ResistRadiationRightArm, c.ResistRadiationLeftLeg, c.ResistRadiationRightLeg,
@@ -1721,9 +1781,14 @@ func parseBodyLocation(v string) (domain.BodyLocation, error) {
 	}
 }
 
+func isTorsoOnlyCombatant(c domain.Combatant) bool {
+	return c.TorsoOnly
+}
+
 type combatantInputRow struct {
 	name          *widget.Entry
 	side          *widget.Select
+	torsoOnly     *widget.Check
 	number        *widget.Entry
 	level         *widget.Entry
 	xp            *widget.Entry
@@ -1749,6 +1814,12 @@ type combatantInputRow struct {
 	drRadRA       *widget.Entry
 	drRadLL       *widget.Entry
 	drRadRL       *widget.Entry
+	drPhysHead    *widget.Entry
+	drPhysTorso   *widget.Entry
+	drPhysLA      *widget.Entry
+	drPhysRA      *widget.Entry
+	drPhysLL      *widget.Entry
+	drPhysRL      *widget.Entry
 	drPoison      *widget.Entry
 	immPhysical   *widget.Check
 	immEnergy     *widget.Check
@@ -1783,6 +1854,12 @@ type campaignPlayerInputRow struct {
 	drRadRA       *widget.Entry
 	drRadLL       *widget.Entry
 	drRadRL       *widget.Entry
+	drPhysHead    *widget.Entry
+	drPhysTorso   *widget.Entry
+	drPhysLA      *widget.Entry
+	drPhysRA      *widget.Entry
+	drPhysLL      *widget.Entry
+	drPhysRL      *widget.Entry
 	drPoison      *widget.Entry
 	immPhysical   *widget.Check
 	immEnergy     *widget.Check
@@ -1805,6 +1882,9 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 
 	side := widget.NewSelect([]string{"party", "npc"}, nil)
 	side.SetSelected(defaultSide)
+	torsoOnly := widget.NewCheck("torso-only", func(bool) {
+		notifyChange()
+	})
 	number := widget.NewEntry()
 	number.SetPlaceHolder("Count")
 	number.TextStyle = fyne.TextStyle{Monospace: true}
@@ -1841,32 +1921,32 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	defense.SetText("0")
 	defense.OnChanged = func(string) { notifyChange() }
 	defenseHead := widget.NewEntry()
-	defenseHead.SetPlaceHolder("DR H")
+	defenseHead.SetPlaceHolder("DEF H")
 	defenseHead.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseHead.SetText("0")
 	defenseHead.OnChanged = func(string) { notifyChange() }
 	defenseTorso := widget.NewEntry()
-	defenseTorso.SetPlaceHolder("DR T")
+	defenseTorso.SetPlaceHolder("DEF T")
 	defenseTorso.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseTorso.SetText("0")
 	defenseTorso.OnChanged = func(string) { notifyChange() }
 	defenseLA := widget.NewEntry()
-	defenseLA.SetPlaceHolder("DR LA")
+	defenseLA.SetPlaceHolder("DEF LA")
 	defenseLA.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseLA.SetText("0")
 	defenseLA.OnChanged = func(string) { notifyChange() }
 	defenseRA := widget.NewEntry()
-	defenseRA.SetPlaceHolder("DR RA")
+	defenseRA.SetPlaceHolder("DEF RA")
 	defenseRA.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseRA.SetText("0")
 	defenseRA.OnChanged = func(string) { notifyChange() }
 	defenseLL := widget.NewEntry()
-	defenseLL.SetPlaceHolder("DR LL")
+	defenseLL.SetPlaceHolder("DEF LL")
 	defenseLL.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseLL.SetText("0")
 	defenseLL.OnChanged = func(string) { notifyChange() }
 	defenseRL := widget.NewEntry()
-	defenseRL.SetPlaceHolder("DR RL")
+	defenseRL.SetPlaceHolder("DEF RL")
 	defenseRL.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseRL.SetText("0")
 	defenseRL.OnChanged = func(string) { notifyChange() }
@@ -1930,18 +2010,48 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	drRadRL.TextStyle = fyne.TextStyle{Monospace: true}
 	drRadRL.SetText("0")
 	drRadRL.OnChanged = func(string) { notifyChange() }
+	drPhysHead := widget.NewEntry()
+	drPhysHead.SetPlaceHolder("DRP H")
+	drPhysHead.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysHead.SetText("0")
+	drPhysHead.OnChanged = func(string) { notifyChange() }
+	drPhysTorso := widget.NewEntry()
+	drPhysTorso.SetPlaceHolder("DRP T")
+	drPhysTorso.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysTorso.SetText("0")
+	drPhysTorso.OnChanged = func(string) { notifyChange() }
+	drPhysLA := widget.NewEntry()
+	drPhysLA.SetPlaceHolder("DRP LA")
+	drPhysLA.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysLA.SetText("0")
+	drPhysLA.OnChanged = func(string) { notifyChange() }
+	drPhysRA := widget.NewEntry()
+	drPhysRA.SetPlaceHolder("DRP RA")
+	drPhysRA.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysRA.SetText("0")
+	drPhysRA.OnChanged = func(string) { notifyChange() }
+	drPhysLL := widget.NewEntry()
+	drPhysLL.SetPlaceHolder("DRP LL")
+	drPhysLL.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysLL.SetText("0")
+	drPhysLL.OnChanged = func(string) { notifyChange() }
+	drPhysRL := widget.NewEntry()
+	drPhysRL.SetPlaceHolder("DRP RL")
+	drPhysRL.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysRL.SetText("0")
+	drPhysRL.OnChanged = func(string) { notifyChange() }
 	drPoison := widget.NewEntry()
 	drPoison.SetPlaceHolder("DR Poison")
 	drPoison.TextStyle = fyne.TextStyle{Monospace: true}
 	drPoison.SetText("0")
 	drPoison.OnChanged = func(string) { notifyChange() }
 
-	drPoisonCell, immPoison := newResistanceInputCell(drPoison, notifyChange)
 	immPhysical := newGlobalImmunityCheck(
 		"immune all",
-		[]*widget.Entry{defenseHead, defenseTorso, defenseLA, defenseRA, defenseLL, defenseRL},
+		[]*widget.Entry{drPhysHead, drPhysTorso, drPhysLA, drPhysRA, drPhysLL, drPhysRL},
 		notifyChange,
 	)
+	drPoisonCell, immPoison := newResistanceInputCell(drPoison, notifyChange)
 	immEnergy := newGlobalImmunityCheck(
 		"immune all",
 		[]*widget.Entry{drEnergyHead, drEnergyTorso, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL},
@@ -1956,6 +2066,7 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	row := &combatantInputRow{
 		name:          name,
 		side:          side,
+		torsoOnly:     torsoOnly,
 		number:        number,
 		level:         level,
 		xp:            xp,
@@ -1981,6 +2092,12 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		drRadRA:       drRadRA,
 		drRadLL:       drRadLL,
 		drRadRL:       drRadRL,
+		drPhysHead:    drPhysHead,
+		drPhysTorso:   drPhysTorso,
+		drPhysLA:      drPhysLA,
+		drPhysRA:      drPhysRA,
+		drPhysLL:      drPhysLL,
+		drPhysRL:      drPhysRL,
 		drPoison:      drPoison,
 		immPhysical:   immPhysical,
 		immEnergy:     immEnergy,
@@ -1995,52 +2112,102 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	}
 	bodyRow := container.NewVBox(
 		container.NewGridWithColumns(
-			4,
+			5,
 			newTableHeaderLabel("Body Part"),
+			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("Physical"),
 			newTableHeaderLabel("Energy"),
 			newTableHeaderLabel("Radiation"),
 		),
-		container.NewGridWithColumns(4, drPartLabel("Immune"), immPhysical, immEnergy, immRadiation),
-		container.NewGridWithColumns(4, drPartLabel("Head"), defenseHead, drEnergyHead, drRadHead),
-		container.NewGridWithColumns(4, drPartLabel("Torso"), defenseTorso, drEnergyTorso, drRadTorso),
-		container.NewGridWithColumns(4, drPartLabel("Left Arm"), defenseLA, drEnergyLA, drRadLA),
-		container.NewGridWithColumns(4, drPartLabel("Right Arm"), defenseRA, drEnergyRA, drRadRA),
-		container.NewGridWithColumns(4, drPartLabel("Left Leg"), defenseLL, drEnergyLL, drRadLL),
-		container.NewGridWithColumns(4, drPartLabel("Right Leg"), defenseRL, drEnergyRL, drRadRL),
+		container.NewGridWithColumns(5, drPartLabel("Immune"), widget.NewLabel(""), immPhysical, immEnergy, immRadiation),
+		container.NewGridWithColumns(5, drPartLabel("Head"), defenseHead, drPhysHead, drEnergyHead, drRadHead),
+		container.NewGridWithColumns(5, drPartLabel("Torso"), defenseTorso, drPhysTorso, drEnergyTorso, drRadTorso),
+		container.NewGridWithColumns(5, drPartLabel("Left Arm"), defenseLA, drPhysLA, drEnergyLA, drRadLA),
+		container.NewGridWithColumns(5, drPartLabel("Right Arm"), defenseRA, drPhysRA, drEnergyRA, drRadRA),
+		container.NewGridWithColumns(5, drPartLabel("Left Leg"), defenseLL, drPhysLL, drEnergyLL, drRadLL),
+		container.NewGridWithColumns(5, drPartLabel("Right Leg"), defenseRL, drPhysRL, drEnergyRL, drRadRL),
 	)
 	bodyRow.Hide()
+	torsoRow := container.NewGridWithColumns(
+		3,
+		newTableHeaderLabel("DR Physical"),
+		newTableHeaderLabel("DR Energy"),
+		newTableHeaderLabel("DR Radiation"),
+		drPhysTorso,
+		drEnergyTorso,
+		drRadTorso,
+	)
+	torsoRow.Hide()
 	var drToggleBtn *widget.Button
-	drToggleBtn = widget.NewButton("DR ▸", func() {
+	drToggleBtn = widget.NewButton("Body ▸", func() {
 		if bodyRow.Visible() {
 			bodyRow.Hide()
-			drToggleBtn.SetText("DR ▸")
+			drToggleBtn.SetText("Body ▸")
 		} else {
 			bodyRow.Show()
-			drToggleBtn.SetText("DR ▾")
+			drToggleBtn.SetText("Body ▾")
 		}
 		row.root.Refresh()
 	})
 	drToggleBtn.Importance = widget.LowImportance
+	applyTorsoOnlyMode := func(enabled bool) {
+		resetEntry := func(e *widget.Entry) {
+			e.SetText("0")
+			if enabled {
+				e.Disable()
+				return
+			}
+			e.Enable()
+		}
+		for _, e := range []*widget.Entry{
+			defenseHead, defenseLA, defenseRA, defenseLL, defenseRL,
+			drPhysHead, drPhysLA, drPhysRA, drPhysLL, drPhysRL,
+			drEnergyHead, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL,
+			drRadHead, drRadLA, drRadRA, drRadLL, drRadRL,
+		} {
+			resetEntry(e)
+		}
+		if enabled {
+			bodyRow.Hide()
+			drToggleBtn.Hide()
+			torsoRow.Show()
+			drToggleBtn.SetText("Body ▸")
+		} else {
+			drToggleBtn.Show()
+			torsoRow.Hide()
+		}
+	}
+	torsoOnly.OnChanged = func(checked bool) {
+		applyTorsoOnlyMode(checked)
+		notifyChange()
+	}
 	side.OnChanged = func(value string) {
 		if value == "party" {
 			row.number.SetText("1")
 			row.number.Disable()
 			row.xp.SetText("0")
 			row.xp.Disable()
+			torsoOnly.SetChecked(false)
 			notifyChange()
 			return
 		}
 		row.number.Enable()
 		row.xp.Enable()
+		if strings.TrimSpace(name.Text) == "" {
+			torsoOnly.SetChecked(true)
+		}
 		notifyChange()
+	}
+	if defaultSide == "npc" {
+		torsoOnly.SetChecked(true)
 	}
 	side.SetSelected(defaultSide)
 
 	baseRow := container.NewGridWithColumns(
-		12,
+		13,
 		name,
 		side,
+		torsoOnly,
 		number,
 		level,
 		xp,
@@ -2052,7 +2219,7 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		drToggleBtn,
 		removeBtn,
 	)
-	row.root = container.NewVBox(baseRow, bodyRow)
+	row.root = container.NewVBox(baseRow, torsoRow, bodyRow)
 	return row
 }
 
@@ -2086,27 +2253,27 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
 	defense.SetText("0")
 	defenseHead := widget.NewEntry()
-	defenseHead.SetPlaceHolder("DR H")
+	defenseHead.SetPlaceHolder("DEF H")
 	defenseHead.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseHead.SetText("0")
 	defenseTorso := widget.NewEntry()
-	defenseTorso.SetPlaceHolder("DR T")
+	defenseTorso.SetPlaceHolder("DEF T")
 	defenseTorso.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseTorso.SetText("0")
 	defenseLA := widget.NewEntry()
-	defenseLA.SetPlaceHolder("DR LA")
+	defenseLA.SetPlaceHolder("DEF LA")
 	defenseLA.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseLA.SetText("0")
 	defenseRA := widget.NewEntry()
-	defenseRA.SetPlaceHolder("DR RA")
+	defenseRA.SetPlaceHolder("DEF RA")
 	defenseRA.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseRA.SetText("0")
 	defenseLL := widget.NewEntry()
-	defenseLL.SetPlaceHolder("DR LL")
+	defenseLL.SetPlaceHolder("DEF LL")
 	defenseLL.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseLL.SetText("0")
 	defenseRL := widget.NewEntry()
-	defenseRL.SetPlaceHolder("DR RL")
+	defenseRL.SetPlaceHolder("DEF RL")
 	defenseRL.TextStyle = fyne.TextStyle{Monospace: true}
 	defenseRL.SetText("0")
 	drEnergyHead := widget.NewEntry()
@@ -2157,17 +2324,41 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	drRadRL.SetPlaceHolder("DRR RL")
 	drRadRL.TextStyle = fyne.TextStyle{Monospace: true}
 	drRadRL.SetText("0")
+	drPhysHead := widget.NewEntry()
+	drPhysHead.SetPlaceHolder("DRP H")
+	drPhysHead.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysHead.SetText("0")
+	drPhysTorso := widget.NewEntry()
+	drPhysTorso.SetPlaceHolder("DRP T")
+	drPhysTorso.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysTorso.SetText("0")
+	drPhysLA := widget.NewEntry()
+	drPhysLA.SetPlaceHolder("DRP LA")
+	drPhysLA.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysLA.SetText("0")
+	drPhysRA := widget.NewEntry()
+	drPhysRA.SetPlaceHolder("DRP RA")
+	drPhysRA.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysRA.SetText("0")
+	drPhysLL := widget.NewEntry()
+	drPhysLL.SetPlaceHolder("DRP LL")
+	drPhysLL.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysLL.SetText("0")
+	drPhysRL := widget.NewEntry()
+	drPhysRL.SetPlaceHolder("DRP RL")
+	drPhysRL.TextStyle = fyne.TextStyle{Monospace: true}
+	drPhysRL.SetText("0")
 	drPoison := widget.NewEntry()
 	drPoison.SetPlaceHolder("DR Poison")
 	drPoison.TextStyle = fyne.TextStyle{Monospace: true}
 	drPoison.SetText("0")
 
-	drPoisonCell, immPoison := newResistanceInputCell(drPoison, nil)
 	immPhysical := newGlobalImmunityCheck(
 		"immune all",
-		[]*widget.Entry{defenseHead, defenseTorso, defenseLA, defenseRA, defenseLL, defenseRL},
+		[]*widget.Entry{drPhysHead, drPhysTorso, drPhysLA, drPhysRA, drPhysLL, drPhysRL},
 		nil,
 	)
+	drPoisonCell, immPoison := newResistanceInputCell(drPoison, nil)
 	immEnergy := newGlobalImmunityCheck(
 		"immune all",
 		[]*widget.Entry{drEnergyHead, drEnergyTorso, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL},
@@ -2205,6 +2396,12 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		drRadRA:       drRadRA,
 		drRadLL:       drRadLL,
 		drRadRL:       drRadRL,
+		drPhysHead:    drPhysHead,
+		drPhysTorso:   drPhysTorso,
+		drPhysLA:      drPhysLA,
+		drPhysRA:      drPhysRA,
+		drPhysLL:      drPhysLL,
+		drPhysRL:      drPhysRL,
 		drPoison:      drPoison,
 		immPhysical:   immPhysical,
 		immEnergy:     immEnergy,
@@ -2221,35 +2418,36 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	}
 	bodyRow := container.NewVBox(
 		container.NewGridWithColumns(
-			4,
+			5,
 			newTableHeaderLabel("Body Part"),
+			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("Physical"),
 			newTableHeaderLabel("Energy"),
 			newTableHeaderLabel("Radiation"),
 		),
-		container.NewGridWithColumns(4, drPartLabel("Immune"), immPhysical, immEnergy, immRadiation),
-		container.NewGridWithColumns(4, drPartLabel("Head"), defenseHead, drEnergyHead, drRadHead),
-		container.NewGridWithColumns(4, drPartLabel("Torso"), defenseTorso, drEnergyTorso, drRadTorso),
-		container.NewGridWithColumns(4, drPartLabel("Left Arm"), defenseLA, drEnergyLA, drRadLA),
-		container.NewGridWithColumns(4, drPartLabel("Right Arm"), defenseRA, drEnergyRA, drRadRA),
-		container.NewGridWithColumns(4, drPartLabel("Left Leg"), defenseLL, drEnergyLL, drRadLL),
-		container.NewGridWithColumns(4, drPartLabel("Right Leg"), defenseRL, drEnergyRL, drRadRL),
+		container.NewGridWithColumns(5, drPartLabel("Immune"), widget.NewLabel(""), immPhysical, immEnergy, immRadiation),
+		container.NewGridWithColumns(5, drPartLabel("Head"), defenseHead, drPhysHead, drEnergyHead, drRadHead),
+		container.NewGridWithColumns(5, drPartLabel("Torso"), defenseTorso, drPhysTorso, drEnergyTorso, drRadTorso),
+		container.NewGridWithColumns(5, drPartLabel("Left Arm"), defenseLA, drPhysLA, drEnergyLA, drRadLA),
+		container.NewGridWithColumns(5, drPartLabel("Right Arm"), defenseRA, drPhysRA, drEnergyRA, drRadRA),
+		container.NewGridWithColumns(5, drPartLabel("Left Leg"), defenseLL, drPhysLL, drEnergyLL, drRadLL),
+		container.NewGridWithColumns(5, drPartLabel("Right Leg"), defenseRL, drPhysRL, drEnergyRL, drRadRL),
 	)
 	bodyRow.Hide()
 	var drToggleBtn *widget.Button
-	drToggleBtn = widget.NewButton("DR ▸", func() {
+	drToggleBtn = widget.NewButton("Body ▸", func() {
 		if bodyRow.Visible() {
 			bodyRow.Hide()
-			drToggleBtn.SetText("DR ▸")
+			drToggleBtn.SetText("Body ▸")
 		} else {
 			bodyRow.Show()
-			drToggleBtn.SetText("DR ▾")
+			drToggleBtn.SetText("Body ▾")
 		}
 		row.root.Refresh()
 	})
 	drToggleBtn.Importance = widget.LowImportance
 	baseRow := container.NewGridWithColumns(
-		11,
+		12,
 		playerName,
 		characterName,
 		level,
@@ -2336,6 +2534,13 @@ func combatantInputRowIsEmpty(row *combatantInputRow) bool {
 		strings.TrimSpace(row.drRadRA.Text) == "0" &&
 		strings.TrimSpace(row.drRadLL.Text) == "0" &&
 		strings.TrimSpace(row.drRadRL.Text) == "0" &&
+		strings.TrimSpace(row.drPhysHead.Text) == "0" &&
+		strings.TrimSpace(row.drPhysTorso.Text) == "0" &&
+		strings.TrimSpace(row.drPhysLA.Text) == "0" &&
+		strings.TrimSpace(row.drPhysRA.Text) == "0" &&
+		strings.TrimSpace(row.drPhysLL.Text) == "0" &&
+		strings.TrimSpace(row.drPhysRL.Text) == "0" &&
+		!row.immPhysical.Checked &&
 		strings.TrimSpace(row.drPoison.Text) == "0" &&
 		!row.immPoison.Checked
 }
@@ -2353,6 +2558,7 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 		selectedSide = "party"
 	}
 	row.side.SetSelected(selectedSide)
+	row.torsoOnly.SetChecked(template.TorsoOnly)
 
 	row.name.SetText(strings.TrimSpace(template.Name))
 	row.number.SetText(strconv.Itoa(count))
@@ -2369,12 +2575,12 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	}
 	row.hpMax.SetText(strconv.Itoa(maxHP))
 	row.defense.SetText(strconv.Itoa(template.Defense))
-	defenseHead := template.ResistPhysicalHead
-	defenseTorso := template.ResistPhysicalTorso
-	defenseLA := template.ResistPhysicalLeftArm
-	defenseRA := template.ResistPhysicalRightArm
-	defenseLL := template.ResistPhysicalLeftLeg
-	defenseRL := template.ResistPhysicalRightLeg
+	defenseHead := template.DefenseHead
+	defenseTorso := template.DefenseTorso
+	defenseLA := template.DefenseLeftArm
+	defenseRA := template.DefenseRightArm
+	defenseLL := template.DefenseLeftLeg
+	defenseRL := template.DefenseRightLeg
 	row.defenseHead.SetText(strconv.Itoa(defenseHead))
 	row.defenseTorso.SetText(strconv.Itoa(defenseTorso))
 	row.defenseLA.SetText(strconv.Itoa(defenseLA))
@@ -2394,6 +2600,14 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	row.drRadLL.SetText(strconv.Itoa(template.ResistRadiationLeftLeg))
 	row.drRadRL.SetText(strconv.Itoa(template.ResistRadiationRightLeg))
 	row.immPhysical.SetChecked(template.ImmunePhysical)
+	if !template.ImmunePhysical {
+		row.drPhysHead.SetText(strconv.Itoa(template.ResistPhysicalHead))
+		row.drPhysTorso.SetText(strconv.Itoa(template.ResistPhysicalTorso))
+		row.drPhysLA.SetText(strconv.Itoa(template.ResistPhysicalLeftArm))
+		row.drPhysRA.SetText(strconv.Itoa(template.ResistPhysicalRightArm))
+		row.drPhysLL.SetText(strconv.Itoa(template.ResistPhysicalLeftLeg))
+		row.drPhysRL.SetText(strconv.Itoa(template.ResistPhysicalRightLeg))
+	}
 	row.immEnergy.SetChecked(template.ImmuneEnergy)
 	row.immRadiation.SetChecked(template.ImmuneRadiation)
 
@@ -2470,27 +2684,27 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		if err != nil || defense < 0 {
 			return nil, fmt.Errorf("combatant %q: invalid defense %q", name, defenseText)
 		}
-		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "DR head", name)
+		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "defense head", name)
 		if err != nil {
 			return nil, err
 		}
-		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "DR torso", name)
+		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "defense torso", name)
 		if err != nil {
 			return nil, err
 		}
-		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "DR left arm", name)
+		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "defense left arm", name)
 		if err != nil {
 			return nil, err
 		}
-		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "DR right arm", name)
+		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "defense right arm", name)
 		if err != nil {
 			return nil, err
 		}
-		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "DR left leg", name)
+		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "defense left leg", name)
 		if err != nil {
 			return nil, err
 		}
-		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "DR right leg", name)
+		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "defense right leg", name)
 		if err != nil {
 			return nil, err
 		}
@@ -2542,9 +2756,40 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		if err != nil {
 			return nil, err
 		}
+		drPhysHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysHead.Text), "DR physical head", name)
+		if err != nil {
+			return nil, err
+		}
+		drPhysTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysTorso.Text), "DR physical torso", name)
+		if err != nil {
+			return nil, err
+		}
+		drPhysLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLA.Text), "DR physical left arm", name)
+		if err != nil {
+			return nil, err
+		}
+		drPhysRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRA.Text), "DR physical right arm", name)
+		if err != nil {
+			return nil, err
+		}
+		drPhysLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLL.Text), "DR physical left leg", name)
+		if err != nil {
+			return nil, err
+		}
+		drPhysRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRL.Text), "DR physical right leg", name)
+		if err != nil {
+			return nil, err
+		}
 		drPoison, immPoison, err := parseResistanceCell(name, "poison", row.drPoison.Text, row.immPoison.Checked)
 		if err != nil {
 			return nil, err
+		}
+		if row.torsoOnly != nil && row.torsoOnly.Checked {
+			defenseTorso = defense
+			defenseHead, defenseLA, defenseRA, defenseLL, defenseRL = 0, 0, 0, 0, 0
+			drPhysHead, drPhysLA, drPhysRA, drPhysLL, drPhysRL = 0, 0, 0, 0, 0
+			drEnergyHead, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL = 0, 0, 0, 0, 0
+			drRadHead, drRadLA, drRadRA, drRadLL, drRadRL = 0, 0, 0, 0, 0
 		}
 
 		side := domain.SideNPC
@@ -2565,12 +2810,19 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 				HP:                      hp,
 				MaxHP:                   hpMax,
 				Defense:                 defense,
-				ResistPhysicalHead:      defenseHead,
-				ResistPhysicalTorso:     defenseTorso,
-				ResistPhysicalLeftArm:   defenseLA,
-				ResistPhysicalRightArm:  defenseRA,
-				ResistPhysicalLeftLeg:   defenseLL,
-				ResistPhysicalRightLeg:  defenseRL,
+				TorsoOnly:               row.torsoOnly != nil && row.torsoOnly.Checked,
+				DefenseHead:             defenseHead,
+				DefenseTorso:            defenseTorso,
+				DefenseLeftArm:          defenseLA,
+				DefenseRightArm:         defenseRA,
+				DefenseLeftLeg:          defenseLL,
+				DefenseRightLeg:         defenseRL,
+				ResistPhysicalHead:      drPhysHead,
+				ResistPhysicalTorso:     drPhysTorso,
+				ResistPhysicalLeftArm:   drPhysLA,
+				ResistPhysicalRightArm:  drPhysRA,
+				ResistPhysicalLeftLeg:   drPhysLL,
+				ResistPhysicalRightLeg:  drPhysRL,
 				ResistEnergyHead:        drEnergyHead,
 				ResistEnergyTorso:       drEnergyTorso,
 				ResistEnergyLeftArm:     drEnergyLA,
@@ -2698,27 +2950,27 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		if err != nil {
 			return nil, err
 		}
-		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "DR head", playerName)
+		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "defense head", playerName)
 		if err != nil {
 			return nil, err
 		}
-		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "DR torso", playerName)
+		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "defense torso", playerName)
 		if err != nil {
 			return nil, err
 		}
-		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "DR left arm", playerName)
+		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "defense left arm", playerName)
 		if err != nil {
 			return nil, err
 		}
-		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "DR right arm", playerName)
+		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "defense right arm", playerName)
 		if err != nil {
 			return nil, err
 		}
-		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "DR left leg", playerName)
+		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "defense left leg", playerName)
 		if err != nil {
 			return nil, err
 		}
-		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "DR right leg", playerName)
+		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "defense right leg", playerName)
 		if err != nil {
 			return nil, err
 		}
@@ -2770,6 +3022,30 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		if err != nil {
 			return nil, err
 		}
+		drPhysHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysHead.Text), "DR physical head", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysTorso.Text), "DR physical torso", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLA.Text), "DR physical left arm", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRA.Text), "DR physical right arm", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLL.Text), "DR physical left leg", playerName)
+		if err != nil {
+			return nil, err
+		}
+		drPhysRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRL.Text), "DR physical right leg", playerName)
+		if err != nil {
+			return nil, err
+		}
 		drPoison, immPoison, err := parseResistanceCell(characterName, "poison", row.drPoison.Text, row.immPoison.Checked)
 		if err != nil {
 			return nil, err
@@ -2786,12 +3062,18 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 				HP:                      hp,
 				MaxHP:                   hpMax,
 				Defense:                 defense,
-				ResistPhysicalHead:      defenseHead,
-				ResistPhysicalTorso:     defenseTorso,
-				ResistPhysicalLeftArm:   defenseLA,
-				ResistPhysicalRightArm:  defenseRA,
-				ResistPhysicalLeftLeg:   defenseLL,
-				ResistPhysicalRightLeg:  defenseRL,
+				DefenseHead:             defenseHead,
+				DefenseTorso:            defenseTorso,
+				DefenseLeftArm:          defenseLA,
+				DefenseRightArm:         defenseRA,
+				DefenseLeftLeg:          defenseLL,
+				DefenseRightLeg:         defenseRL,
+				ResistPhysicalHead:      drPhysHead,
+				ResistPhysicalTorso:     drPhysTorso,
+				ResistPhysicalLeftArm:   drPhysLA,
+				ResistPhysicalRightArm:  drPhysRA,
+				ResistPhysicalLeftLeg:   drPhysLL,
+				ResistPhysicalRightLeg:  drPhysRL,
 				ResistEnergyHead:        drEnergyHead,
 				ResistEnergyTorso:       drEnergyTorso,
 				ResistEnergyLeftArm:     drEnergyLA,

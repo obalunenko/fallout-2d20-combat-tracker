@@ -37,12 +37,19 @@ type Combatant struct {
 	ID                      string
 	Name                    string
 	Side                    Side
+	TorsoOnly               bool
 	Level                   int
 	XP                      int
 	Initiative              int
 	HP                      int
 	MaxHP                   int
 	Defense                 int
+	DefenseHead             int
+	DefenseTorso            int
+	DefenseLeftArm          int
+	DefenseRightArm         int
+	DefenseLeftLeg          int
+	DefenseRightLeg         int
 	ResistPhysical          int
 	ResistEnergy            int
 	ResistRadiation         int
@@ -291,13 +298,13 @@ func (e *Encounter) normalizeActive() {
 func (c *Combatant) resistanceByType(damageType DamageType) (int, bool, error) {
 	switch damageType {
 	case DamagePhysical:
-		return 0, false, nil
+		return 0, c.ImmunePhysical, nil
 	case DamageEnergy:
-		return 0, false, nil
+		return 0, c.ImmuneEnergy, nil
 	case DamageRadiation:
-		return 0, false, nil
+		return 0, c.ImmuneRadiation, nil
 	case DamagePoison:
-		return c.ResistPoison, c.ImmunePoison, nil
+		return max(c.ResistPoison, 0), c.ImmunePoison, nil
 	default:
 		return 0, false, fmt.Errorf("unknown damage type: %q", damageType)
 	}
@@ -340,6 +347,7 @@ func (c *Combatant) normalizeHPState() {
 	if c.HP == 0 {
 		c.Defeated = true
 	}
+	c.normalizeLocationDefense()
 	c.normalizeLocationResistance()
 }
 
@@ -351,6 +359,10 @@ func NormalizeCombatantHP(c *Combatant) {
 }
 
 func (c *Combatant) normalizeLocationResistance() {
+	c.ResistPhysical = max(c.ResistPhysical, 0)
+	c.ResistEnergy = max(c.ResistEnergy, 0)
+	c.ResistRadiation = max(c.ResistRadiation, 0)
+	c.ResistPoison = max(c.ResistPoison, 0)
 	c.ResistPhysicalHead = max(c.ResistPhysicalHead, 0)
 	c.ResistPhysicalTorso = max(c.ResistPhysicalTorso, 0)
 	c.ResistPhysicalLeftArm = max(c.ResistPhysicalLeftArm, 0)
@@ -369,6 +381,15 @@ func (c *Combatant) normalizeLocationResistance() {
 	c.ResistRadiationRightArm = max(c.ResistRadiationRightArm, 0)
 	c.ResistRadiationLeftLeg = max(c.ResistRadiationLeftLeg, 0)
 	c.ResistRadiationRightLeg = max(c.ResistRadiationRightLeg, 0)
+}
+
+func (c *Combatant) normalizeLocationDefense() {
+	c.DefenseHead = max(c.DefenseHead, 0)
+	c.DefenseTorso = max(c.DefenseTorso, 0)
+	c.DefenseLeftArm = max(c.DefenseLeftArm, 0)
+	c.DefenseRightArm = max(c.DefenseRightArm, 0)
+	c.DefenseLeftLeg = max(c.DefenseLeftLeg, 0)
+	c.DefenseRightLeg = max(c.DefenseRightLeg, 0)
 }
 
 func (c *Combatant) physicalLocationResistance(location BodyLocation) (int, error) {

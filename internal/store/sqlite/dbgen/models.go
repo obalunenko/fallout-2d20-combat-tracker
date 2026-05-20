@@ -26,6 +26,7 @@ type Combatant struct {
 	EncounterID                       string
 	Name                              string
 	Side                              string
+	TorsoOnly                         int64
 	Initiative                        int64
 	Active                            int64
 	Defeated                          int64
@@ -39,6 +40,12 @@ type Combatant struct {
 	DefenseRightArm                   int64
 	DefenseLeftLeg                    int64
 	DefenseRightLeg                   int64
+	DamageResistancePhysicalHead      int64
+	DamageResistancePhysicalTorso     int64
+	DamageResistancePhysicalLeftArm   int64
+	DamageResistancePhysicalRightArm  int64
+	DamageResistancePhysicalLeftLeg   int64
+	DamageResistancePhysicalRightLeg  int64
 	DamageResistance                  int64
 	DamageResistancePhysical          int64
 	DamageResistanceEnergy            int64
@@ -110,12 +117,19 @@ type PlayerCharacter struct {
 	Hp                                int64
 	MaxHp                             int64
 	Defense                           int64
+	TorsoOnly                         int64
 	DefenseHead                       int64
 	DefenseTorso                      int64
 	DefenseLeftArm                    int64
 	DefenseRightArm                   int64
 	DefenseLeftLeg                    int64
 	DefenseRightLeg                   int64
+	DamageResistancePhysicalHead      int64
+	DamageResistancePhysicalTorso     int64
+	DamageResistancePhysicalLeftArm   int64
+	DamageResistancePhysicalRightArm  int64
+	DamageResistancePhysicalLeftLeg   int64
+	DamageResistancePhysicalRightLeg  int64
 	DamageResistancePhysical          int64
 	DamageResistanceEnergy            int64
 	DamageResistanceRadiation         int64

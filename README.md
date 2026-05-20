@@ -27,7 +27,8 @@ Use `NEW ENCOUNTER` in the app header, then:
 
 - enter encounter name
 - add combatant rows with `+ Add Combatant`
-- fill each row with `Name`, `Side` (`party` or `npc`), `Level`, `XP` (for `npc`), `Initiative`, `HP`, `Defense`, `DR Phys`, `DR Energy`, `DR Rad`, `DR Poison`
+- fill each row with `Name`, `Side` (`party` or `npc`), `Level`, `XP` (for `npc`), `Initiative`, `HP`, `Defense`, `Body Defense`, `DR Phys`, `DR Energy`, `DR Rad`, `DR Poison`
+- for creatures you can enable `torso-only` to use simplified body setup (torso stats only)
 - in DR fields you can enter a number or `IMM` for immunity
 
 ## Storage
