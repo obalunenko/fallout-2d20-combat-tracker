@@ -252,7 +252,10 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
 	id, encounter_id, name, side, level, xp, initiative, hp, max_hp, defense,
+	defense_head, defense_torso, defense_left_arm, defense_right_arm, defense_left_leg, defense_right_leg,
 	damage_resistance, damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+	damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
+	damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
 	damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
 	active, defeated, position
 )
@@ -278,33 +281,69 @@ VALUES (
   ?19,
   ?20,
   ?21,
-  ?22
+  ?22,
+  ?23,
+  ?24,
+  ?25,
+  ?26,
+  ?27,
+  ?28,
+  ?29,
+  ?30,
+  ?31,
+  ?32,
+  ?33,
+  ?34,
+  ?35,
+  ?36,
+  ?37,
+  ?38,
+  ?39,
+  ?40
 )
 `
 
 type InsertCombatantParams struct {
-	ID                              string
-	EncounterID                     string
-	Name                            string
-	Side                            string
-	Level                           int64
-	Xp                              int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistance                int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
-	Active                          int64
-	Defeated                        int64
-	Position                        int64
+	ID                                string
+	EncounterID                       string
+	Name                              string
+	Side                              string
+	Level                             int64
+	Xp                                int64
+	Initiative                        int64
+	Hp                                int64
+	MaxHp                             int64
+	Defense                           int64
+	DefenseHead                       int64
+	DefenseTorso                      int64
+	DefenseLeftArm                    int64
+	DefenseRightArm                   int64
+	DefenseLeftLeg                    int64
+	DefenseRightLeg                   int64
+	DamageResistance                  int64
+	DamageResistancePhysical          int64
+	DamageResistanceEnergy            int64
+	DamageResistanceRadiation         int64
+	DamageResistancePoison            int64
+	DamageResistanceEnergyHead        int64
+	DamageResistanceEnergyTorso       int64
+	DamageResistanceEnergyLeftArm     int64
+	DamageResistanceEnergyRightArm    int64
+	DamageResistanceEnergyLeftLeg     int64
+	DamageResistanceEnergyRightLeg    int64
+	DamageResistanceRadiationHead     int64
+	DamageResistanceRadiationTorso    int64
+	DamageResistanceRadiationLeftArm  int64
+	DamageResistanceRadiationRightArm int64
+	DamageResistanceRadiationLeftLeg  int64
+	DamageResistanceRadiationRightLeg int64
+	DamageResistancePhysicalImmune    int64
+	DamageResistanceEnergyImmune      int64
+	DamageResistanceRadiationImmune   int64
+	DamageResistancePoisonImmune      int64
+	Active                            int64
+	Defeated                          int64
+	Position                          int64
 }
 
 func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams) error {
@@ -319,11 +358,29 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.Hp,
 		arg.MaxHp,
 		arg.Defense,
+		arg.DefenseHead,
+		arg.DefenseTorso,
+		arg.DefenseLeftArm,
+		arg.DefenseRightArm,
+		arg.DefenseLeftLeg,
+		arg.DefenseRightLeg,
 		arg.DamageResistance,
 		arg.DamageResistancePhysical,
 		arg.DamageResistanceEnergy,
 		arg.DamageResistanceRadiation,
 		arg.DamageResistancePoison,
+		arg.DamageResistanceEnergyHead,
+		arg.DamageResistanceEnergyTorso,
+		arg.DamageResistanceEnergyLeftArm,
+		arg.DamageResistanceEnergyRightArm,
+		arg.DamageResistanceEnergyLeftLeg,
+		arg.DamageResistanceEnergyRightLeg,
+		arg.DamageResistanceRadiationHead,
+		arg.DamageResistanceRadiationTorso,
+		arg.DamageResistanceRadiationLeftArm,
+		arg.DamageResistanceRadiationRightArm,
+		arg.DamageResistanceRadiationLeftLeg,
+		arg.DamageResistanceRadiationRightLeg,
 		arg.DamageResistancePhysicalImmune,
 		arg.DamageResistanceEnergyImmune,
 		arg.DamageResistanceRadiationImmune,
@@ -388,7 +445,10 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
   id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense,
+  defense_head, defense_torso, defense_left_arm, defense_right_arm, defense_left_leg, defense_right_leg,
   damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+  damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
+  damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
   damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
   active, created_at, updated_at
 )
@@ -411,30 +471,66 @@ VALUES (
   ?16,
   ?17,
   ?18,
+  ?19,
+  ?20,
+  ?21,
+  ?22,
+  ?23,
+  ?24,
+  ?25,
+  ?26,
+  ?27,
+  ?28,
+  ?29,
+  ?30,
+  ?31,
+  ?32,
+  ?33,
+  ?34,
+  ?35,
+  ?36,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
 
 type InsertPlayerCharacterParams struct {
-	ID                              string
-	PlayerID                        string
-	CampaignID                      string
-	Name                            string
-	Level                           int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
-	Active                          int64
+	ID                                string
+	PlayerID                          string
+	CampaignID                        string
+	Name                              string
+	Level                             int64
+	Initiative                        int64
+	Hp                                int64
+	MaxHp                             int64
+	Defense                           int64
+	DefenseHead                       int64
+	DefenseTorso                      int64
+	DefenseLeftArm                    int64
+	DefenseRightArm                   int64
+	DefenseLeftLeg                    int64
+	DefenseRightLeg                   int64
+	DamageResistancePhysical          int64
+	DamageResistanceEnergy            int64
+	DamageResistanceRadiation         int64
+	DamageResistancePoison            int64
+	DamageResistanceEnergyHead        int64
+	DamageResistanceEnergyTorso       int64
+	DamageResistanceEnergyLeftArm     int64
+	DamageResistanceEnergyRightArm    int64
+	DamageResistanceEnergyLeftLeg     int64
+	DamageResistanceEnergyRightLeg    int64
+	DamageResistanceRadiationHead     int64
+	DamageResistanceRadiationTorso    int64
+	DamageResistanceRadiationLeftArm  int64
+	DamageResistanceRadiationRightArm int64
+	DamageResistanceRadiationLeftLeg  int64
+	DamageResistanceRadiationRightLeg int64
+	DamageResistancePhysicalImmune    int64
+	DamageResistanceEnergyImmune      int64
+	DamageResistanceRadiationImmune   int64
+	DamageResistancePoisonImmune      int64
+	Active                            int64
 }
 
 func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCharacterParams) error {
@@ -448,10 +544,28 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 		arg.Hp,
 		arg.MaxHp,
 		arg.Defense,
+		arg.DefenseHead,
+		arg.DefenseTorso,
+		arg.DefenseLeftArm,
+		arg.DefenseRightArm,
+		arg.DefenseLeftLeg,
+		arg.DefenseRightLeg,
 		arg.DamageResistancePhysical,
 		arg.DamageResistanceEnergy,
 		arg.DamageResistanceRadiation,
 		arg.DamageResistancePoison,
+		arg.DamageResistanceEnergyHead,
+		arg.DamageResistanceEnergyTorso,
+		arg.DamageResistanceEnergyLeftArm,
+		arg.DamageResistanceEnergyRightArm,
+		arg.DamageResistanceEnergyLeftLeg,
+		arg.DamageResistanceEnergyRightLeg,
+		arg.DamageResistanceRadiationHead,
+		arg.DamageResistanceRadiationTorso,
+		arg.DamageResistanceRadiationLeftArm,
+		arg.DamageResistanceRadiationRightArm,
+		arg.DamageResistanceRadiationLeftLeg,
+		arg.DamageResistanceRadiationRightLeg,
 		arg.DamageResistancePhysicalImmune,
 		arg.DamageResistanceEnergyImmune,
 		arg.DamageResistanceRadiationImmune,
@@ -471,10 +585,28 @@ SELECT
   pc.hp,
   pc.max_hp,
   pc.defense,
+  pc.defense_head,
+  pc.defense_torso,
+  pc.defense_left_arm,
+  pc.defense_right_arm,
+  pc.defense_left_leg,
+  pc.defense_right_leg,
   pc.damage_resistance_physical,
   pc.damage_resistance_energy,
   pc.damage_resistance_radiation,
   pc.damage_resistance_poison,
+  pc.damage_resistance_energy_head,
+  pc.damage_resistance_energy_torso,
+  pc.damage_resistance_energy_left_arm,
+  pc.damage_resistance_energy_right_arm,
+  pc.damage_resistance_energy_left_leg,
+  pc.damage_resistance_energy_right_leg,
+  pc.damage_resistance_radiation_head,
+  pc.damage_resistance_radiation_torso,
+  pc.damage_resistance_radiation_left_arm,
+  pc.damage_resistance_radiation_right_arm,
+  pc.damage_resistance_radiation_left_leg,
+  pc.damage_resistance_radiation_right_leg,
   pc.damage_resistance_physical_immune,
   pc.damage_resistance_energy_immune,
   pc.damage_resistance_radiation_immune,
@@ -486,22 +618,40 @@ ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC
 `
 
 type ListActivePartyCharactersByCampaignIDRow struct {
-	ID                              string
-	PlayerName                      string
-	CharacterName                   string
-	Level                           int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
+	ID                                string
+	PlayerName                        string
+	CharacterName                     string
+	Level                             int64
+	Initiative                        int64
+	Hp                                int64
+	MaxHp                             int64
+	Defense                           int64
+	DefenseHead                       int64
+	DefenseTorso                      int64
+	DefenseLeftArm                    int64
+	DefenseRightArm                   int64
+	DefenseLeftLeg                    int64
+	DefenseRightLeg                   int64
+	DamageResistancePhysical          int64
+	DamageResistanceEnergy            int64
+	DamageResistanceRadiation         int64
+	DamageResistancePoison            int64
+	DamageResistanceEnergyHead        int64
+	DamageResistanceEnergyTorso       int64
+	DamageResistanceEnergyLeftArm     int64
+	DamageResistanceEnergyRightArm    int64
+	DamageResistanceEnergyLeftLeg     int64
+	DamageResistanceEnergyRightLeg    int64
+	DamageResistanceRadiationHead     int64
+	DamageResistanceRadiationTorso    int64
+	DamageResistanceRadiationLeftArm  int64
+	DamageResistanceRadiationRightArm int64
+	DamageResistanceRadiationLeftLeg  int64
+	DamageResistanceRadiationRightLeg int64
+	DamageResistancePhysicalImmune    int64
+	DamageResistanceEnergyImmune      int64
+	DamageResistanceRadiationImmune   int64
+	DamageResistancePoisonImmune      int64
 }
 
 func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, campaignID string) ([]ListActivePartyCharactersByCampaignIDRow, error) {
@@ -522,10 +672,28 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 			&i.Hp,
 			&i.MaxHp,
 			&i.Defense,
+			&i.DefenseHead,
+			&i.DefenseTorso,
+			&i.DefenseLeftArm,
+			&i.DefenseRightArm,
+			&i.DefenseLeftLeg,
+			&i.DefenseRightLeg,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
 			&i.DamageResistanceRadiation,
 			&i.DamageResistancePoison,
+			&i.DamageResistanceEnergyHead,
+			&i.DamageResistanceEnergyTorso,
+			&i.DamageResistanceEnergyLeftArm,
+			&i.DamageResistanceEnergyRightArm,
+			&i.DamageResistanceEnergyLeftLeg,
+			&i.DamageResistanceEnergyRightLeg,
+			&i.DamageResistanceRadiationHead,
+			&i.DamageResistanceRadiationTorso,
+			&i.DamageResistanceRadiationLeftArm,
+			&i.DamageResistanceRadiationRightArm,
+			&i.DamageResistanceRadiationLeftLeg,
+			&i.DamageResistanceRadiationRightLeg,
 			&i.DamageResistancePhysicalImmune,
 			&i.DamageResistanceEnergyImmune,
 			&i.DamageResistanceRadiationImmune,
@@ -587,7 +755,10 @@ func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error)
 
 const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
 SELECT id, name, side, level, xp, initiative, hp, max_hp, defense,
+       defense_head, defense_torso, defense_left_arm, defense_right_arm, defense_left_leg, defense_right_leg,
        damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+       damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
+       damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
        damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
        active, defeated
 FROM combatants
@@ -596,25 +767,43 @@ ORDER BY position ASC
 `
 
 type ListCombatantsByEncounterIDRow struct {
-	ID                              string
-	Name                            string
-	Side                            string
-	Level                           int64
-	Xp                              int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
-	Active                          int64
-	Defeated                        int64
+	ID                                string
+	Name                              string
+	Side                              string
+	Level                             int64
+	Xp                                int64
+	Initiative                        int64
+	Hp                                int64
+	MaxHp                             int64
+	Defense                           int64
+	DefenseHead                       int64
+	DefenseTorso                      int64
+	DefenseLeftArm                    int64
+	DefenseRightArm                   int64
+	DefenseLeftLeg                    int64
+	DefenseRightLeg                   int64
+	DamageResistancePhysical          int64
+	DamageResistanceEnergy            int64
+	DamageResistanceRadiation         int64
+	DamageResistancePoison            int64
+	DamageResistanceEnergyHead        int64
+	DamageResistanceEnergyTorso       int64
+	DamageResistanceEnergyLeftArm     int64
+	DamageResistanceEnergyRightArm    int64
+	DamageResistanceEnergyLeftLeg     int64
+	DamageResistanceEnergyRightLeg    int64
+	DamageResistanceRadiationHead     int64
+	DamageResistanceRadiationTorso    int64
+	DamageResistanceRadiationLeftArm  int64
+	DamageResistanceRadiationRightArm int64
+	DamageResistanceRadiationLeftLeg  int64
+	DamageResistanceRadiationRightLeg int64
+	DamageResistancePhysicalImmune    int64
+	DamageResistanceEnergyImmune      int64
+	DamageResistanceRadiationImmune   int64
+	DamageResistancePoisonImmune      int64
+	Active                            int64
+	Defeated                          int64
 }
 
 func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID string) ([]ListCombatantsByEncounterIDRow, error) {
@@ -636,10 +825,28 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 			&i.Hp,
 			&i.MaxHp,
 			&i.Defense,
+			&i.DefenseHead,
+			&i.DefenseTorso,
+			&i.DefenseLeftArm,
+			&i.DefenseRightArm,
+			&i.DefenseLeftLeg,
+			&i.DefenseRightLeg,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
 			&i.DamageResistanceRadiation,
 			&i.DamageResistancePoison,
+			&i.DamageResistanceEnergyHead,
+			&i.DamageResistanceEnergyTorso,
+			&i.DamageResistanceEnergyLeftArm,
+			&i.DamageResistanceEnergyRightArm,
+			&i.DamageResistanceEnergyLeftLeg,
+			&i.DamageResistanceEnergyRightLeg,
+			&i.DamageResistanceRadiationHead,
+			&i.DamageResistanceRadiationTorso,
+			&i.DamageResistanceRadiationLeftArm,
+			&i.DamageResistanceRadiationRightArm,
+			&i.DamageResistanceRadiationLeftLeg,
+			&i.DamageResistanceRadiationRightLeg,
 			&i.DamageResistancePhysicalImmune,
 			&i.DamageResistanceEnergyImmune,
 			&i.DamageResistanceRadiationImmune,
@@ -706,10 +913,28 @@ WITH latest_party AS (
     c.hp,
     c.max_hp,
     c.defense,
+    c.defense_head,
+    c.defense_torso,
+    c.defense_left_arm,
+    c.defense_right_arm,
+    c.defense_left_leg,
+    c.defense_right_leg,
     c.damage_resistance_physical,
     c.damage_resistance_energy,
     c.damage_resistance_radiation,
     c.damage_resistance_poison,
+    c.damage_resistance_energy_head,
+    c.damage_resistance_energy_torso,
+    c.damage_resistance_energy_left_arm,
+    c.damage_resistance_energy_right_arm,
+    c.damage_resistance_energy_left_leg,
+    c.damage_resistance_energy_right_leg,
+    c.damage_resistance_radiation_head,
+    c.damage_resistance_radiation_torso,
+    c.damage_resistance_radiation_left_arm,
+    c.damage_resistance_radiation_right_arm,
+    c.damage_resistance_radiation_left_leg,
+    c.damage_resistance_radiation_right_leg,
     c.damage_resistance_physical_immune,
     c.damage_resistance_energy_immune,
     c.damage_resistance_radiation_immune,
@@ -732,10 +957,28 @@ SELECT
   hp,
   max_hp,
   defense,
+  defense_head,
+  defense_torso,
+  defense_left_arm,
+  defense_right_arm,
+  defense_left_leg,
+  defense_right_leg,
   damage_resistance_physical,
   damage_resistance_energy,
   damage_resistance_radiation,
   damage_resistance_poison,
+  damage_resistance_energy_head,
+  damage_resistance_energy_torso,
+  damage_resistance_energy_left_arm,
+  damage_resistance_energy_right_arm,
+  damage_resistance_energy_left_leg,
+  damage_resistance_energy_right_leg,
+  damage_resistance_radiation_head,
+  damage_resistance_radiation_torso,
+  damage_resistance_radiation_left_arm,
+  damage_resistance_radiation_right_arm,
+  damage_resistance_radiation_left_leg,
+  damage_resistance_radiation_right_leg,
   damage_resistance_physical_immune,
   damage_resistance_energy_immune,
   damage_resistance_radiation_immune,
@@ -746,21 +989,39 @@ ORDER BY name COLLATE NOCASE ASC
 `
 
 type ListEncounterPartyTemplatesByCampaignIDRow struct {
-	Name                            string
-	Level                           int64
-	Xp                              int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
+	Name                              string
+	Level                             int64
+	Xp                                int64
+	Initiative                        int64
+	Hp                                int64
+	MaxHp                             int64
+	Defense                           int64
+	DefenseHead                       int64
+	DefenseTorso                      int64
+	DefenseLeftArm                    int64
+	DefenseRightArm                   int64
+	DefenseLeftLeg                    int64
+	DefenseRightLeg                   int64
+	DamageResistancePhysical          int64
+	DamageResistanceEnergy            int64
+	DamageResistanceRadiation         int64
+	DamageResistancePoison            int64
+	DamageResistanceEnergyHead        int64
+	DamageResistanceEnergyTorso       int64
+	DamageResistanceEnergyLeftArm     int64
+	DamageResistanceEnergyRightArm    int64
+	DamageResistanceEnergyLeftLeg     int64
+	DamageResistanceEnergyRightLeg    int64
+	DamageResistanceRadiationHead     int64
+	DamageResistanceRadiationTorso    int64
+	DamageResistanceRadiationLeftArm  int64
+	DamageResistanceRadiationRightArm int64
+	DamageResistanceRadiationLeftLeg  int64
+	DamageResistanceRadiationRightLeg int64
+	DamageResistancePhysicalImmune    int64
+	DamageResistanceEnergyImmune      int64
+	DamageResistanceRadiationImmune   int64
+	DamageResistancePoisonImmune      int64
 }
 
 func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, campaignID interface{}) ([]ListEncounterPartyTemplatesByCampaignIDRow, error) {
@@ -780,10 +1041,28 @@ func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, c
 			&i.Hp,
 			&i.MaxHp,
 			&i.Defense,
+			&i.DefenseHead,
+			&i.DefenseTorso,
+			&i.DefenseLeftArm,
+			&i.DefenseRightArm,
+			&i.DefenseLeftLeg,
+			&i.DefenseRightLeg,
 			&i.DamageResistancePhysical,
 			&i.DamageResistanceEnergy,
 			&i.DamageResistanceRadiation,
 			&i.DamageResistancePoison,
+			&i.DamageResistanceEnergyHead,
+			&i.DamageResistanceEnergyTorso,
+			&i.DamageResistanceEnergyLeftArm,
+			&i.DamageResistanceEnergyRightArm,
+			&i.DamageResistanceEnergyLeftLeg,
+			&i.DamageResistanceEnergyRightLeg,
+			&i.DamageResistanceRadiationHead,
+			&i.DamageResistanceRadiationTorso,
+			&i.DamageResistanceRadiationLeftArm,
+			&i.DamageResistanceRadiationRightArm,
+			&i.DamageResistanceRadiationLeftLeg,
+			&i.DamageResistanceRadiationRightLeg,
 			&i.DamageResistancePhysicalImmune,
 			&i.DamageResistanceEnergyImmune,
 			&i.DamageResistanceRadiationImmune,

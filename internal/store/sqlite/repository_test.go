@@ -34,12 +34,14 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 			{
 				ID: "p1", Name: "Roland", Side: domain.SideParty,
 				Level: 7, XP: 0, Initiative: 11, HP: 22, MaxHP: 22, Defense: 2,
+				ResistPhysicalHead: 2, ResistPhysicalTorso: 2, ResistPhysicalLeftArm: 2, ResistPhysicalRightArm: 2, ResistPhysicalLeftLeg: 2, ResistPhysicalRightLeg: 2,
 				ResistPhysical: 3, ResistEnergy: 2, ResistRadiation: 1, ResistPoison: 0,
 				ImmunePoison: true, Active: false, Defeated: false,
 			},
 			{
 				ID: "n1", Name: "Radscorpion", Side: domain.SideNPC,
 				Level: 5, XP: 80, Initiative: 9, HP: 18, MaxHP: 18, Defense: 1,
+				ResistPhysicalHead: 1, ResistPhysicalTorso: 1, ResistPhysicalLeftArm: 1, ResistPhysicalRightArm: 1, ResistPhysicalLeftLeg: 1, ResistPhysicalRightLeg: 1,
 				ResistPhysical: 2, ResistEnergy: 1, ResistRadiation: 4, ResistPoison: 3,
 				ImmunePhysical: true, Active: true, Defeated: false,
 			},

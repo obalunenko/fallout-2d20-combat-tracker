@@ -223,14 +223,14 @@ func TestSoftDeleteEncounterHidesFromListAndActivation(t *testing.T) {
 func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
-		{ID: "p1", Name: "Player", Initiative: 10, Side: domain.SideParty, HP: 12, ResistPhysical: 2},
-		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 5, ResistEnergy: 1},
+		{ID: "p1", Name: "Player", Initiative: 10, Side: domain.SideParty, HP: 12},
+		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 5},
 	})
 	require.NoError(t, err)
 
-	_, applied, err := svc.ApplyDamage("n1", domain.DamageEnergy, 9)
+	_, applied, err := svc.ApplyDamage("n1", domain.DamageEnergy, domain.BodyTorso, 9)
 	require.NoError(t, err)
-	assert.Equal(t, 8, applied)
+	assert.Equal(t, 9, applied)
 
 	enc, err := svc.GetEncounter()
 	require.NoError(t, err)
@@ -242,11 +242,11 @@ func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 func TestApplyDamageRespectsImmunity(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
-		{ID: "n1", Name: "Ghoul", Initiative: 8, Side: domain.SideNPC, HP: 9, ImmuneRadiation: true},
+		{ID: "n1", Name: "Ghoul", Initiative: 8, Side: domain.SideNPC, HP: 9, ImmunePoison: true},
 	})
 	require.NoError(t, err)
 
-	_, applied, err := svc.ApplyDamage("n1", domain.DamageRadiation, 99)
+	_, applied, err := svc.ApplyDamage("n1", domain.DamagePoison, domain.BodyHead, 99)
 	require.NoError(t, err)
 	assert.Equal(t, 0, applied)
 
@@ -263,7 +263,7 @@ func TestHealPersistsAndCanRevive(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, 6)
+	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, domain.BodyTorso, 6)
 	require.NoError(t, err)
 
 	_, healed, err := svc.Heal("n1", 5)
@@ -286,7 +286,7 @@ func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 
 	_, err = svc.AdvanceTurn()
 	require.NoError(t, err)
-	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, 3)
+	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, domain.BodyLeftArm, 3)
 	require.NoError(t, err)
 	_, _, err = svc.Heal("n1", 2)
 	require.NoError(t, err)

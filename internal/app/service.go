@@ -374,7 +374,7 @@ func (s *Service) SpendThreat(v int) (*domain.Encounter, error) {
 	return enc, nil
 }
 
-func (s *Service) ApplyDamage(combatantID string, damageType domain.DamageType, amount int) (*domain.Encounter, int, error) {
+func (s *Service) ApplyDamage(combatantID string, damageType domain.DamageType, location domain.BodyLocation, amount int) (*domain.Encounter, int, error) {
 	if combatantID == "" {
 		return nil, 0, fmt.Errorf("combatant id is required")
 	}
@@ -383,7 +383,7 @@ func (s *Service) ApplyDamage(combatantID string, damageType domain.DamageType, 
 		return nil, 0, err
 	}
 
-	applied, err := enc.ApplyDamage(combatantID, damageType, amount)
+	applied, err := enc.ApplyDamage(combatantID, damageType, location, amount)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -395,7 +395,7 @@ func (s *Service) ApplyDamage(combatantID string, damageType domain.DamageType, 
 	if combatant := findCombatantByID(enc, combatantID); combatant != nil {
 		targetLabel = combatant.Name
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Damage -> %s type:%s raw:%d applied:%d", targetLabel, damageType, amount, applied)); err != nil {
+	if err := s.appendOperationLog(enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, damageType, location, amount, applied)); err != nil {
 		return nil, 0, err
 	}
 	return enc, applied, nil
