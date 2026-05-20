@@ -228,12 +228,11 @@ func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID
 }
 
 const insertCampaign = `-- name: InsertCampaign :exec
-INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
+INSERT INTO campaigns (id, name, start_date, updated_at)
 VALUES (
   ?1,
   ?2,
   ?3,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
@@ -254,7 +253,7 @@ INSERT INTO combatants (
 	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense,
 	defense_head, defense_torso, defense_left_arm, defense_right_arm, defense_left_leg, defense_right_leg,
 	damage_resistance_physical_head, damage_resistance_physical_torso, damage_resistance_physical_left_arm, damage_resistance_physical_right_arm, damage_resistance_physical_left_leg, damage_resistance_physical_right_leg,
-	damage_resistance, damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+	damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
 	damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
 	damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
 	damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
@@ -306,8 +305,7 @@ VALUES (
   ?43,
   ?44,
   ?45,
-  ?46,
-  ?47
+  ?46
 )
 `
 
@@ -335,7 +333,6 @@ type InsertCombatantParams struct {
 	DamageResistancePhysicalRightArm  int64
 	DamageResistancePhysicalLeftLeg   int64
 	DamageResistancePhysicalRightLeg  int64
-	DamageResistance                  int64
 	DamageResistancePhysical          int64
 	DamageResistanceEnergy            int64
 	DamageResistanceRadiation         int64
@@ -386,7 +383,6 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.DamageResistancePhysicalRightArm,
 		arg.DamageResistancePhysicalLeftLeg,
 		arg.DamageResistancePhysicalRightLeg,
-		arg.DamageResistance,
 		arg.DamageResistancePhysical,
 		arg.DamageResistanceEnergy,
 		arg.DamageResistanceRadiation,
@@ -443,13 +439,11 @@ func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLog
 }
 
 const insertPlayer = `-- name: InsertPlayer :exec
-INSERT INTO players (id, campaign_id, name, created_at, updated_at)
+INSERT INTO players (id, campaign_id, name)
 VALUES (
   ?1,
   ?2,
-  ?3,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+  ?3
 )
 `
 
@@ -473,7 +467,7 @@ INSERT INTO player_characters (
   damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
   damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
   damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
-  active, created_at, updated_at
+  active
 )
 VALUES (
   ?1,
@@ -518,9 +512,7 @@ VALUES (
   ?40,
   ?41,
   ?42,
-  ?43,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+  ?43
 )
 `
 

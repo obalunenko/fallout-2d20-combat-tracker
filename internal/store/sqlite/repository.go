@@ -192,7 +192,6 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 			DamageResistancePhysicalRightArm:  int64(c.ResistPhysicalRightArm),
 			DamageResistancePhysicalLeftLeg:   int64(c.ResistPhysicalLeftLeg),
 			DamageResistancePhysicalRightLeg:  int64(c.ResistPhysicalRightLeg),
-			DamageResistance:                  int64(c.ResistPhysical),
 			DamageResistancePhysical:          int64(c.ResistPhysical),
 			DamageResistanceEnergy:            int64(c.ResistEnergy),
 			DamageResistanceRadiation:         int64(c.ResistRadiation),

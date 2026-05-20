@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS encounters (
     enemy_count INTEGER NOT NULL DEFAULT 0,
     enemy_avg_level REAL NOT NULL DEFAULT 0,
     enemy_total_xp INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL
 );
@@ -43,7 +44,6 @@ CREATE TABLE IF NOT EXISTS combatants (
     damage_resistance_physical_right_arm INTEGER NOT NULL DEFAULT 0,
     damage_resistance_physical_left_leg INTEGER NOT NULL DEFAULT 0,
     damage_resistance_physical_right_leg INTEGER NOT NULL DEFAULT 0,
-    damage_resistance INTEGER NOT NULL DEFAULT 0,
     damage_resistance_physical INTEGER NOT NULL DEFAULT 0,
     damage_resistance_energy INTEGER NOT NULL DEFAULT 0,
     damage_resistance_radiation INTEGER NOT NULL DEFAULT 0,
@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS combatants (
     damage_resistance_poison_immune INTEGER NOT NULL DEFAULT 0,
     level INTEGER NOT NULL DEFAULT 1,
     xp INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
 );
 
@@ -84,6 +87,8 @@ CREATE TABLE IF NOT EXISTS encounter_logs (
     round INTEGER NOT NULL,
     message TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
 );
 
@@ -95,12 +100,14 @@ CREATE TABLE IF NOT EXISTS campaigns (
     name TEXT NOT NULL,
     start_date TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL
 );
 
 CREATE TABLE IF NOT EXISTS app_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     active_campaign_id TEXT NULL,
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     FOREIGN KEY (active_campaign_id) REFERENCES campaigns(id)
 );
 
@@ -110,6 +117,7 @@ CREATE TABLE IF NOT EXISTS players (
     name TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
 );
 
@@ -162,6 +170,7 @@ CREATE TABLE IF NOT EXISTS player_characters (
     active INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
 );

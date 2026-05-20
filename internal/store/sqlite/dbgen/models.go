@@ -11,6 +11,7 @@ import (
 type AppState struct {
 	ID               int64
 	ActiveCampaignID interface{}
+	UpdatedAt        time.Time
 }
 
 type Campaign struct {
@@ -19,6 +20,7 @@ type Campaign struct {
 	StartDate string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt interface{}
 }
 
 type Combatant struct {
@@ -46,7 +48,6 @@ type Combatant struct {
 	DamageResistancePhysicalRightArm  int64
 	DamageResistancePhysicalLeftLeg   int64
 	DamageResistancePhysicalRightLeg  int64
-	DamageResistance                  int64
 	DamageResistancePhysical          int64
 	DamageResistanceEnergy            int64
 	DamageResistanceRadiation         int64
@@ -69,6 +70,9 @@ type Combatant struct {
 	DamageResistancePoisonImmune      int64
 	Level                             int64
 	Xp                                int64
+	CreatedAt                         time.Time
+	UpdatedAt                         time.Time
+	DeletedAt                         interface{}
 }
 
 type Encounter struct {
@@ -87,6 +91,7 @@ type Encounter struct {
 	EnemyCount      int64
 	EnemyAvgLevel   float64
 	EnemyTotalXp    int64
+	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       interface{}
 }
@@ -97,6 +102,8 @@ type EncounterLog struct {
 	Round       int64
 	Message     string
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   interface{}
 }
 
 type Player struct {
@@ -105,6 +112,7 @@ type Player struct {
 	Name       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	DeletedAt  interface{}
 }
 
 type PlayerCharacter struct {
@@ -153,4 +161,5 @@ type PlayerCharacter struct {
 	Active                            int64
 	CreatedAt                         time.Time
 	UpdatedAt                         time.Time
+	DeletedAt                         interface{}
 }

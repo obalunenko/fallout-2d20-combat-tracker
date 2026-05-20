@@ -19,12 +19,11 @@ WHERE id = 1
   );
 
 -- name: InsertCampaign :exec
-INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
+INSERT INTO campaigns (id, name, start_date, updated_at)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(name),
   sqlc.arg(start_date),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 
@@ -55,13 +54,11 @@ DELETE FROM players
 WHERE campaign_id = sqlc.arg(campaign_id);
 
 -- name: InsertPlayer :exec
-INSERT INTO players (id, campaign_id, name, created_at, updated_at)
+INSERT INTO players (id, campaign_id, name)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(campaign_id),
-  sqlc.arg(name),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+  sqlc.arg(name)
 );
 
 -- name: InsertPlayerCharacter :exec
@@ -73,7 +70,7 @@ INSERT INTO player_characters (
   damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
   damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
   damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
-  active, created_at, updated_at
+  active
 )
 VALUES (
   sqlc.arg(id),
@@ -118,9 +115,7 @@ VALUES (
   sqlc.arg(damage_resistance_energy_immune),
   sqlc.arg(damage_resistance_radiation_immune),
   sqlc.arg(damage_resistance_poison_immune),
-  sqlc.arg(active),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+  sqlc.arg(active)
 );
 
 -- name: ListActivePartyCharactersByCampaignID :many
@@ -259,7 +254,7 @@ INSERT INTO combatants (
 	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense,
 	defense_head, defense_torso, defense_left_arm, defense_right_arm, defense_left_leg, defense_right_leg,
 	damage_resistance_physical_head, damage_resistance_physical_torso, damage_resistance_physical_left_arm, damage_resistance_physical_right_arm, damage_resistance_physical_left_leg, damage_resistance_physical_right_leg,
-	damage_resistance, damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
+	damage_resistance_physical, damage_resistance_energy, damage_resistance_radiation, damage_resistance_poison,
 	damage_resistance_energy_head, damage_resistance_energy_torso, damage_resistance_energy_left_arm, damage_resistance_energy_right_arm, damage_resistance_energy_left_leg, damage_resistance_energy_right_leg,
 	damage_resistance_radiation_head, damage_resistance_radiation_torso, damage_resistance_radiation_left_arm, damage_resistance_radiation_right_arm, damage_resistance_radiation_left_leg, damage_resistance_radiation_right_leg,
 	damage_resistance_physical_immune, damage_resistance_energy_immune, damage_resistance_radiation_immune, damage_resistance_poison_immune,
@@ -289,7 +284,6 @@ VALUES (
   sqlc.arg(damage_resistance_physical_right_arm),
   sqlc.arg(damage_resistance_physical_left_leg),
   sqlc.arg(damage_resistance_physical_right_leg),
-  sqlc.arg(damage_resistance),
   sqlc.arg(damage_resistance_physical),
   sqlc.arg(damage_resistance_energy),
   sqlc.arg(damage_resistance_radiation),
