@@ -168,28 +168,28 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 
 	for i, c := range enc.Combatants {
 		domain.NormalizeCombatantHP(&c)
-			if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
-				ID:                                c.ID,
-				EncounterID:                       enc.ID,
-				Name:                              c.Name,
-				Side:                              string(c.Side),
-			TorsoOnly:                         boolToInt64(c.TorsoOnly),
-			Level:                             int64(c.Level),
-			Xp:                                int64(c.XP),
-				Initiative:                        int64(c.Initiative),
-				Hp:                                int64(c.HP),
-				MaxHp:                             int64(c.MaxHP),
-				Defense:                           int64(c.Defense),
-				Active:                            boolToInt64(c.Active),
-				Defeated:                          boolToInt64(c.Defeated),
-				Position:                          int64(i),
-			}); err != nil {
-				return fmt.Errorf("insert combatant %s: %w", c.ID, err)
-			}
-			if err = upsertCombatantNormalizedStats(ctx, qtx, c.ID, c); err != nil {
-				return fmt.Errorf("sync normalized combatant stats %s: %w", c.ID, err)
-			}
+		if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
+			ID:          c.ID,
+			EncounterID: enc.ID,
+			Name:        c.Name,
+			Side:        string(c.Side),
+			TorsoOnly:   boolToInt64(c.TorsoOnly),
+			Level:       int64(c.Level),
+			Xp:          int64(c.XP),
+			Initiative:  int64(c.Initiative),
+			Hp:          int64(c.HP),
+			MaxHp:       int64(c.MaxHP),
+			Defense:     int64(c.Defense),
+			Active:      boolToInt64(c.Active),
+			Defeated:    boolToInt64(c.Defeated),
+			Position:    int64(i),
+		}); err != nil {
+			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
 		}
+		if err = upsertCombatantNormalizedStats(ctx, qtx, c.ID, c); err != nil {
+			return fmt.Errorf("sync normalized combatant stats %s: %w", c.ID, err)
+		}
+	}
 
 	if err = qtx.TouchCampaign(ctx, enc.CampaignID); err != nil {
 		return fmt.Errorf("touch campaign: %w", err)
@@ -402,59 +402,7 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 		}
 		return party, nil
 	}
-
-	rows, err := s.q.ListEncounterPartyTemplatesByCampaignID(ctx, campaignID)
-	if err != nil {
-		return nil, fmt.Errorf("list party templates: %w", err)
-	}
-
-	party := make([]domain.Combatant, 0, len(rows))
-	for _, r := range rows {
-		party = append(party, domain.Combatant{
-			Name:                    r.Name,
-			Side:                    domain.SideParty,
-			TorsoOnly:               r.TorsoOnly == 1,
-			Level:                   int(r.Level),
-			XP:                      int(r.Xp),
-			Initiative:              int(r.Initiative),
-			HP:                      int(r.Hp),
-			MaxHP:                   int(r.MaxHp),
-			Defense:                 int(r.Defense),
-			DefenseHead:             int(r.DefenseHead),
-			DefenseTorso:            int(r.DefenseTorso),
-			DefenseLeftArm:          int(r.DefenseLeftArm),
-			DefenseRightArm:         int(r.DefenseRightArm),
-			DefenseLeftLeg:          int(r.DefenseLeftLeg),
-			DefenseRightLeg:         int(r.DefenseRightLeg),
-			ResistPhysicalHead:      int(r.DamageResistancePhysicalHead),
-			ResistPhysicalTorso:     int(r.DamageResistancePhysicalTorso),
-			ResistPhysicalLeftArm:   int(r.DamageResistancePhysicalLeftArm),
-			ResistPhysicalRightArm:  int(r.DamageResistancePhysicalRightArm),
-			ResistPhysicalLeftLeg:   int(r.DamageResistancePhysicalLeftLeg),
-			ResistPhysicalRightLeg:  int(r.DamageResistancePhysicalRightLeg),
-			ResistEnergyHead:        int(r.DamageResistanceEnergyHead),
-			ResistEnergyTorso:       int(r.DamageResistanceEnergyTorso),
-			ResistEnergyLeftArm:     int(r.DamageResistanceEnergyLeftArm),
-			ResistEnergyRightArm:    int(r.DamageResistanceEnergyRightArm),
-			ResistEnergyLeftLeg:     int(r.DamageResistanceEnergyLeftLeg),
-			ResistEnergyRightLeg:    int(r.DamageResistanceEnergyRightLeg),
-			ResistRadiationHead:     int(r.DamageResistanceRadiationHead),
-			ResistRadiationTorso:    int(r.DamageResistanceRadiationTorso),
-			ResistRadiationLeftArm:  int(r.DamageResistanceRadiationLeftArm),
-			ResistRadiationRightArm: int(r.DamageResistanceRadiationRightArm),
-			ResistRadiationLeftLeg:  int(r.DamageResistanceRadiationLeftLeg),
-			ResistRadiationRightLeg: int(r.DamageResistanceRadiationRightLeg),
-			ResistPhysical:          int(r.DamageResistancePhysical),
-			ResistEnergy:            int(r.DamageResistanceEnergy),
-			ResistRadiation:         int(r.DamageResistanceRadiation),
-			ResistPoison:            int(r.DamageResistancePoison),
-			ImmunePhysical:          r.DamageResistancePhysicalImmune == 1,
-			ImmuneEnergy:            r.DamageResistanceEnergyImmune == 1,
-			ImmuneRadiation:         r.DamageResistanceRadiationImmune == 1,
-			ImmunePoison:            r.DamageResistancePoisonImmune == 1,
-		})
-	}
-	return party, nil
+	return []domain.Combatant{}, nil
 }
 
 func (s *EncounterStore) ListCampaignPlayers(campaignID string) ([]domain.NewCampaignPlayer, error) {
@@ -559,25 +507,25 @@ func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, play
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-			if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-				ID:                                charID,
-				PlayerID:                          playerID,
-				CampaignID:                        campaignID,
-				Name:                              strings.TrimSpace(p.Character.Name),
-			Level:                             int64(p.Character.Level),
-			Initiative:                        int64(p.Character.Initiative),
-				Hp:                                int64(p.Character.HP),
-				MaxHp:                             int64(p.Character.MaxHP),
-				Defense:                           int64(p.Character.Defense),
-				TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
-				Active:                            1,
-			}); err != nil {
-				return nil, fmt.Errorf("insert player character: %w", err)
-			}
-			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
-				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
-			}
+		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
+			ID:         charID,
+			PlayerID:   playerID,
+			CampaignID: campaignID,
+			Name:       strings.TrimSpace(p.Character.Name),
+			Level:      int64(p.Character.Level),
+			Initiative: int64(p.Character.Initiative),
+			Hp:         int64(p.Character.HP),
+			MaxHp:      int64(p.Character.MaxHP),
+			Defense:    int64(p.Character.Defense),
+			TorsoOnly:  boolToInt64(p.Character.TorsoOnly),
+			Active:     1,
+		}); err != nil {
+			return nil, fmt.Errorf("insert player character: %w", err)
 		}
+		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+		}
+	}
 
 	if _, activeErr := qtx.GetActiveCampaign(ctx); activeErr == sql.ErrNoRows {
 		affected, setErr := qtx.SetActiveCampaign(ctx, campaignID)
@@ -628,41 +576,87 @@ func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, play
 	if affected == 0 {
 		return nil, domain.ErrCampaignNotFound
 	}
-	if err = qtx.DeletePlayersByCampaignID(ctx, campaignID); err != nil {
-		return nil, fmt.Errorf("delete campaign players: %w", err)
+
+	playerIDsByName, err := listCampaignPlayerIDsByName(ctx, qtx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("list campaign players: %w", err)
 	}
+
+	updatedPlayers := make(map[string]struct{}, len(players))
 	for _, p := range players {
-		playerID := uuid.NewString()
-		if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
-			ID:         playerID,
-			CampaignID: campaignID,
-			Name:       strings.TrimSpace(p.PlayerName),
-		}); err != nil {
-			return nil, fmt.Errorf("insert player: %w", err)
+		playerName := strings.TrimSpace(p.PlayerName)
+		playerKey := normalizeNameKey(playerName)
+		if playerKey == "" {
+			return nil, fmt.Errorf("player name is required")
 		}
-		charID := strings.TrimSpace(p.Character.ID)
-		if charID == "" {
-			charID = uuid.NewString()
+		if _, exists := updatedPlayers[playerKey]; exists {
+			return nil, fmt.Errorf("player %q already has an active character in this campaign", playerName)
 		}
+		updatedPlayers[playerKey] = struct{}{}
+
+		playerID, exists := playerIDsByName[playerKey]
+		if !exists {
+			playerID = uuid.NewString()
+			if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
+				ID:         playerID,
+				CampaignID: campaignID,
+				Name:       playerName,
+			}); err != nil {
+				return nil, fmt.Errorf("insert player: %w", err)
+			}
+			playerIDsByName[playerKey] = playerID
+		}
+
+		activeChar, activeErr := getActivePlayerCharacterByPlayerID(ctx, qtx, playerID)
+		if activeErr != nil {
+			return nil, fmt.Errorf("load active player character: %w", activeErr)
+		}
+
+		targetCharacterName := strings.TrimSpace(p.Character.Name)
+		charID := activeChar.ID
+		shouldInsertNewCharacter := activeChar.ID == "" || normalizeNameKey(activeChar.Name) != normalizeNameKey(targetCharacterName)
+		if shouldInsertNewCharacter {
+			if err = deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
+				return nil, fmt.Errorf("deactivate player characters: %w", err)
+			}
+			charID = strings.TrimSpace(p.Character.ID)
+			if charID == "" {
+				charID = uuid.NewString()
+			}
 			if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-				ID:                                charID,
-				PlayerID:                          playerID,
-				CampaignID:                        campaignID,
-				Name:                              strings.TrimSpace(p.Character.Name),
-			Level:                             int64(p.Character.Level),
-			Initiative:                        int64(p.Character.Initiative),
-				Hp:                                int64(p.Character.HP),
-				MaxHp:                             int64(p.Character.MaxHP),
-				Defense:                           int64(p.Character.Defense),
-				TorsoOnly:                         boolToInt64(p.Character.TorsoOnly),
-				Active:                            1,
+				ID:         charID,
+				PlayerID:   playerID,
+				CampaignID: campaignID,
+				Name:       targetCharacterName,
+				Level:      int64(p.Character.Level),
+				Initiative: int64(p.Character.Initiative),
+				Hp:         int64(p.Character.HP),
+				MaxHp:      int64(p.Character.MaxHP),
+				Defense:    int64(p.Character.Defense),
+				TorsoOnly:  boolToInt64(p.Character.TorsoOnly),
+				Active:     1,
 			}); err != nil {
 				return nil, fmt.Errorf("insert player character: %w", err)
 			}
-			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
-				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+		} else {
+			if err = updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character); err != nil {
+				return nil, fmt.Errorf("update player character: %w", err)
 			}
 		}
+
+		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+		}
+	}
+
+	for playerKey, playerID := range playerIDsByName {
+		if _, keep := updatedPlayers[playerKey]; keep {
+			continue
+		}
+		if err = deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
+			return nil, fmt.Errorf("deactivate removed campaign players: %w", err)
+		}
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
@@ -671,6 +665,57 @@ func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, play
 		Name:      name,
 		StartDate: startDate,
 	}, nil
+}
+
+type playerCharacterRef struct {
+	ID   string
+	Name string
+}
+
+func listCampaignPlayerIDsByName(ctx context.Context, qtx *dbgen.Queries, campaignID string) (map[string]string, error) {
+	rows, err := qtx.ListPlayerIDsAndNamesByCampaignID(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]string)
+	for _, row := range rows {
+		result[normalizeNameKey(row.Name)] = row.ID
+	}
+	return result, nil
+}
+
+func getActivePlayerCharacterByPlayerID(ctx context.Context, qtx *dbgen.Queries, playerID string) (playerCharacterRef, error) {
+	row, err := qtx.GetActivePlayerCharacterByPlayerID(ctx, playerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return playerCharacterRef{}, nil
+		}
+		return playerCharacterRef{}, err
+	}
+	return playerCharacterRef{ID: row.ID, Name: row.Name}, nil
+}
+
+func deactivateActiveCharactersByPlayerID(ctx context.Context, qtx *dbgen.Queries, playerID string) error {
+	return qtx.DeactivateActiveCharactersByPlayerID(ctx, playerID)
+}
+
+func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID, campaignID string, c domain.Combatant) error {
+	return qtx.UpdateActivePlayerCharacterByID(ctx, dbgen.UpdateActivePlayerCharacterByIDParams{
+		CharacterID: characterID,
+		CampaignID:  campaignID,
+		Name:        strings.TrimSpace(c.Name),
+		Level:       int64(c.Level),
+		Initiative:  int64(c.Initiative),
+		Hp:          int64(c.HP),
+		MaxHp:       int64(c.MaxHP),
+		Defense:     int64(c.Defense),
+		TorsoOnly:   boolToInt64(c.TorsoOnly),
+	})
+}
+
+func normalizeNameKey(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func (s *EncounterStore) GetActiveCampaign() (*domain.Campaign, error) {

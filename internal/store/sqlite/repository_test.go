@@ -256,7 +256,7 @@ func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *test
 	assert.Equal(t, 7, party[0].Initiative)
 }
 
-func TestEncounterStoreListPartyMembersFallbacksToEncounterTemplatesWhenNoActiveCharacters(t *testing.T) {
+func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *testing.T) {
 	store := newTestStore(t)
 	_, err := store.db.Exec(`UPDATE player_characters SET active = 0 WHERE campaign_id = ?`, "repo-test-campaign")
 	require.NoError(t, err)
@@ -279,10 +279,74 @@ func TestEncounterStoreListPartyMembersFallbacksToEncounterTemplatesWhenNoActive
 
 	party, err := store.ListPartyMembers()
 	require.NoError(t, err)
+	require.Empty(t, party)
+}
+
+func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T) {
+	store := newTestStore(t)
+
+	_, err := store.UpdateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				ID:         "repo-char-2",
+				Name:       "Ranger",
+				Side:       domain.SideParty,
+				Level:      2,
+				Initiative: 8,
+				HP:         8,
+				MaxHP:      8,
+				Defense:    2,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, int64(2), queryInt64(
+		t,
+		store.db,
+		`SELECT COUNT(*) FROM player_characters pc
+         JOIN players p ON p.id = pc.player_id
+         WHERE p.campaign_id = ? AND lower(trim(p.name)) = lower(trim(?))`,
+		"repo-test-campaign",
+		"Player 1",
+	))
+	assert.Equal(t, int64(1), queryInt64(
+		t,
+		store.db,
+		`SELECT COUNT(*) FROM player_characters pc
+         JOIN players p ON p.id = pc.player_id
+         WHERE p.campaign_id = ? AND lower(trim(p.name)) = lower(trim(?)) AND pc.active = 1`,
+		"repo-test-campaign",
+		"Player 1",
+	))
+	assert.Equal(t, int64(1), queryInt64(
+		t,
+		store.db,
+		`SELECT COUNT(*) FROM player_characters pc
+         JOIN players p ON p.id = pc.player_id
+         WHERE p.campaign_id = ? AND lower(trim(p.name)) = lower(trim(?))
+           AND lower(trim(pc.name)) = lower(trim(?)) AND pc.active = 0`,
+		"repo-test-campaign",
+		"Player 1",
+		"Scout",
+	))
+	assert.Equal(t, int64(1), queryInt64(
+		t,
+		store.db,
+		`SELECT COUNT(*) FROM player_characters pc
+         JOIN players p ON p.id = pc.player_id
+         WHERE p.campaign_id = ? AND lower(trim(p.name)) = lower(trim(?))
+           AND lower(trim(pc.name)) = lower(trim(?)) AND pc.active = 1`,
+		"repo-test-campaign",
+		"Player 1",
+		"Ranger",
+	))
+
+	party, err := store.ListPartyMembers()
+	require.NoError(t, err)
 	require.Len(t, party, 1)
-	assert.Equal(t, "Roland", party[0].Name)
-	assert.Equal(t, 2, party[0].Level)
-	assert.Equal(t, 9, party[0].Initiative)
+	assert.Equal(t, "Ranger", party[0].Name)
 }
 
 func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {

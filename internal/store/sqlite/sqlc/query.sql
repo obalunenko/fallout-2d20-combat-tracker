@@ -79,6 +79,40 @@ VALUES (
   sqlc.arg(active)
 );
 
+-- name: ListPlayerIDsAndNamesByCampaignID :many
+SELECT id, name
+FROM players
+WHERE campaign_id = sqlc.arg(campaign_id);
+
+-- name: GetActivePlayerCharacterByPlayerID :one
+SELECT id, name
+FROM player_characters
+WHERE player_id = sqlc.arg(player_id)
+  AND active = 1
+ORDER BY updated_at DESC, id DESC
+LIMIT 1;
+
+-- name: DeactivateActiveCharactersByPlayerID :exec
+UPDATE player_characters
+SET active = 0,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE player_id = sqlc.arg(player_id)
+  AND active = 1;
+
+-- name: UpdateActivePlayerCharacterByID :exec
+UPDATE player_characters
+SET campaign_id = sqlc.arg(campaign_id),
+    name = sqlc.arg(name),
+    level = sqlc.arg(level),
+    initiative = sqlc.arg(initiative),
+    hp = sqlc.arg(hp),
+    max_hp = sqlc.arg(max_hp),
+    defense = sqlc.arg(defense),
+    torso_only = sqlc.arg(torso_only),
+    active = 1,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = sqlc.arg(character_id);
+
 -- name: UpsertPlayerCharacterDefenseByLocation :exec
 INSERT INTO player_character_defense_by_location (
   player_character_id,
