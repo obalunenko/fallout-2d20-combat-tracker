@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -34,12 +35,14 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 			{
 				ID: "p1", Name: "Roland", Side: domain.SideParty,
 				Level: 7, XP: 0, Initiative: 11, HP: 22, MaxHP: 22, Defense: 2,
+				ResistPhysicalHead: 2, ResistPhysicalTorso: 2, ResistPhysicalLeftArm: 2, ResistPhysicalRightArm: 2, ResistPhysicalLeftLeg: 2, ResistPhysicalRightLeg: 2,
 				ResistPhysical: 3, ResistEnergy: 2, ResistRadiation: 1, ResistPoison: 0,
 				ImmunePoison: true, Active: false, Defeated: false,
 			},
 			{
 				ID: "n1", Name: "Radscorpion", Side: domain.SideNPC,
 				Level: 5, XP: 80, Initiative: 9, HP: 18, MaxHP: 18, Defense: 1,
+				ResistPhysicalHead: 1, ResistPhysicalTorso: 1, ResistPhysicalLeftArm: 1, ResistPhysicalRightArm: 1, ResistPhysicalLeftLeg: 1, ResistPhysicalRightLeg: 1,
 				ResistPhysical: 2, ResistEnergy: 1, ResistRadiation: 4, ResistPoison: 3,
 				ImmunePhysical: true, Active: true, Defeated: false,
 			},
@@ -282,6 +285,117 @@ func TestEncounterStoreListPartyMembersFallbacksToEncounterTemplatesWhenNoActive
 	assert.Equal(t, 9, party[0].Initiative)
 }
 
+func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
+	store := newTestStore(t)
+	dropNormalizedSyncTriggers(t, store.db)
+
+	combatant := domain.Combatant{
+		ID:             "norm-c1",
+		Name:           "Sentry",
+		Side:           domain.SideNPC,
+		Initiative:     8,
+		HP:             10,
+		MaxHP:          10,
+		DefenseHead:    3,
+		DefenseTorso:   4,
+		DefenseLeftArm: 5,
+		DefenseRightArm: 6,
+		DefenseLeftLeg: 7,
+		DefenseRightLeg: 8,
+		ResistPhysical: 2,
+		ResistEnergy:   3,
+		ResistRadiation: 4,
+		ResistPoison:    5,
+		ResistPhysicalHead:      1,
+		ResistPhysicalTorso:     2,
+		ResistPhysicalLeftArm:   3,
+		ResistPhysicalRightArm:  4,
+		ResistPhysicalLeftLeg:   5,
+		ResistPhysicalRightLeg:  6,
+		ResistEnergyHead:        2,
+		ResistEnergyTorso:       3,
+		ResistEnergyLeftArm:     4,
+		ResistEnergyRightArm:    5,
+		ResistEnergyLeftLeg:     6,
+		ResistEnergyRightLeg:    7,
+		ResistRadiationHead:     3,
+		ResistRadiationTorso:    4,
+		ResistRadiationLeftArm:  5,
+		ResistRadiationRightArm: 6,
+		ResistRadiationLeftLeg:  7,
+		ResistRadiationRightLeg: 8,
+		ImmunePhysical:          true,
+	}
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:         "norm-enc-1",
+		Name:       "Normalized Save",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{combatant},
+	}))
+
+	assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_defense_by_location WHERE combatant_id = ?`, combatant.ID))
+	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, combatant.ID))
+	assert.Equal(t, int64(18), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, combatant.ID))
+	assert.Equal(t, int64(3), queryInt64(t, store.db, `SELECT defense FROM combatant_defense_by_location WHERE combatant_id = ? AND body_location_id = 1`, combatant.ID))
+	assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM combatant_resistance_global WHERE combatant_id = ? AND damage_type_id = 1`, combatant.ID))
+}
+
+func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "repo-norm-campaign.db")
+	db, err := OpenAndMigrate(dbPath)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+	dropNormalizedSyncTriggers(t, db)
+
+	store := NewEncounterStore(db)
+	characterID := "norm-char-1"
+	_, err = store.CreateCampaign("norm-campaign-1", "Normalized Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player A",
+			Character: domain.Combatant{
+				ID:                      characterID,
+				Name:                    "Vera",
+				Side:                    domain.SideParty,
+				Level:                   2,
+				Initiative:              9,
+				HP:                      11,
+				MaxHP:                   11,
+				DefenseHead:             2,
+				DefenseTorso:            2,
+				DefenseLeftArm:          2,
+				DefenseRightArm:         2,
+				DefenseLeftLeg:          2,
+				DefenseRightLeg:         2,
+				ResistEnergy:            3,
+				ResistEnergyHead:        1,
+				ResistEnergyTorso:       2,
+				ResistEnergyLeftArm:     3,
+				ResistEnergyRightArm:    4,
+				ResistEnergyLeftLeg:     5,
+				ResistEnergyRightLeg:    6,
+				ImmuneRadiation:         true,
+				ResistRadiation:         7,
+				ResistRadiationHead:     1,
+				ResistRadiationTorso:    1,
+				ResistRadiationLeftArm:  1,
+				ResistRadiationRightArm: 1,
+				ResistRadiationLeftLeg:  1,
+				ResistRadiationRightLeg: 1,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, int64(6), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_defense_by_location WHERE player_character_id = ?`, characterID))
+	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_global WHERE player_character_id = ?`, characterID))
+	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_by_location WHERE player_character_id = ?`, characterID))
+	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 2`, characterID))
+	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT immune FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 3`, characterID))
+}
+
 func newTestStore(t *testing.T) *EncounterStore {
 	t.Helper()
 	return newTestStoreWithContext(t, context.Background())
@@ -315,4 +429,22 @@ func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore 
 	})
 	require.NoError(t, err)
 	return store
+}
+
+func dropNormalizedSyncTriggers(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, err := db.Exec(`
+		DROP TRIGGER IF EXISTS trg_sync_player_character_stats_after_update;
+		DROP TRIGGER IF EXISTS trg_sync_player_character_stats_after_insert;
+		DROP TRIGGER IF EXISTS trg_sync_combatant_stats_after_update;
+		DROP TRIGGER IF EXISTS trg_sync_combatant_stats_after_insert;
+	`)
+	require.NoError(t, err)
+}
+
+func queryInt64(t *testing.T, db *sql.DB, query string, args ...any) int64 {
+	t.Helper()
+	var v int64
+	require.NoError(t, db.QueryRow(query, args...).Scan(&v))
+	return v
 }

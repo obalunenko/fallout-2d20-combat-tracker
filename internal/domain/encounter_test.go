@@ -107,14 +107,28 @@ func TestApplyDamageReducesHPByResistance(t *testing.T) {
 
 	e := NewEncounter("enc-1", "test", []Combatant{{
 		ID: "c1", Name: "Alpha", Initiative: 10,
-		HP: 10, ResistPhysical: 3,
+		HP: 10, ResistPhysicalTorso: 2,
 	}})
 
-	applied, err := e.ApplyDamage("c1", DamagePhysical, 8)
+	applied, err := e.ApplyDamage("c1", DamagePhysical, BodyTorso, 8)
 	require.NoError(t, err)
-	assert.Equal(t, 5, applied)
-	assert.Equal(t, 5, e.Combatants[0].HP)
+	assert.Equal(t, 6, applied)
+	assert.Equal(t, 4, e.Combatants[0].HP)
 	assert.False(t, e.Combatants[0].Defeated)
+}
+
+func TestApplyDamagePhysicalIgnoresBodyDefense(t *testing.T) {
+	t.Parallel()
+
+	e := NewEncounter("enc-1", "test", []Combatant{{
+		ID: "c1", Name: "Alpha", Initiative: 10,
+		HP: 10, Defense: 5, DefenseTorso: 7, ResistPhysicalTorso: 0,
+	}})
+
+	applied, err := e.ApplyDamage("c1", DamagePhysical, BodyTorso, 8)
+	require.NoError(t, err)
+	assert.Equal(t, 8, applied)
+	assert.Equal(t, 2, e.Combatants[0].HP)
 }
 
 func TestApplyDamageRespectsImmunity(t *testing.T) {
@@ -122,10 +136,10 @@ func TestApplyDamageRespectsImmunity(t *testing.T) {
 
 	e := NewEncounter("enc-1", "test", []Combatant{{
 		ID: "c1", Name: "Alpha", Initiative: 10,
-		HP: 10, ResistEnergy: 2, ImmuneEnergy: true,
+		HP: 10, ImmunePoison: true,
 	}})
 
-	applied, err := e.ApplyDamage("c1", DamageEnergy, 999)
+	applied, err := e.ApplyDamage("c1", DamagePoison, BodyHead, 999)
 	require.NoError(t, err)
 	assert.Equal(t, 0, applied)
 	assert.Equal(t, 10, e.Combatants[0].HP)
@@ -140,7 +154,7 @@ func TestApplyDamageMarksDefeatedWhenHPZeroOrLess(t *testing.T) {
 		HP: 4, ResistPoison: 1,
 	}})
 
-	applied, err := e.ApplyDamage("c1", DamagePoison, 10)
+	applied, err := e.ApplyDamage("c1", DamagePoison, BodyLeftLeg, 10)
 	require.NoError(t, err)
 	assert.Equal(t, 9, applied)
 	assert.Equal(t, 0, e.Combatants[0].HP)
@@ -154,13 +168,15 @@ func TestApplyDamageValidation(t *testing.T) {
 		ID: "c1", Name: "Alpha", Initiative: 10, HP: 4,
 	}})
 
-	_, err := e.ApplyDamage("", DamagePhysical, 1)
+	_, err := e.ApplyDamage("", DamagePhysical, BodyTorso, 1)
 	require.Error(t, err)
-	_, err = e.ApplyDamage("c1", DamagePhysical, -1)
+	_, err = e.ApplyDamage("c1", DamagePhysical, BodyTorso, -1)
 	require.Error(t, err)
-	_, err = e.ApplyDamage("missing", DamagePhysical, 1)
+	_, err = e.ApplyDamage("missing", DamagePhysical, BodyTorso, 1)
 	require.Error(t, err)
-	_, err = e.ApplyDamage("c1", DamageType("invalid"), 1)
+	_, err = e.ApplyDamage("c1", DamageType("invalid"), BodyTorso, 1)
+	require.Error(t, err)
+	_, err = e.ApplyDamage("c1", DamagePhysical, BodyLocation("invalid"), 1)
 	require.Error(t, err)
 }
 

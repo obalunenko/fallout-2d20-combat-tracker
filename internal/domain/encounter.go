@@ -22,26 +22,62 @@ const (
 	DamagePoison    DamageType = "poison"
 )
 
+type BodyLocation string
+
+const (
+	BodyHead     BodyLocation = "head"
+	BodyTorso    BodyLocation = "torso"
+	BodyLeftArm  BodyLocation = "left_arm"
+	BodyRightArm BodyLocation = "right_arm"
+	BodyLeftLeg  BodyLocation = "left_leg"
+	BodyRightLeg BodyLocation = "right_leg"
+)
+
 type Combatant struct {
-	ID              string
-	Name            string
-	Side            Side
-	Level           int
-	XP              int
-	Initiative      int
-	HP              int
-	MaxHP           int
-	Defense         int
-	ResistPhysical  int
-	ResistEnergy    int
-	ResistRadiation int
-	ResistPoison    int
-	ImmunePhysical  bool
-	ImmuneEnergy    bool
-	ImmuneRadiation bool
-	ImmunePoison    bool
-	Active          bool
-	Defeated        bool
+	ID                      string
+	Name                    string
+	Side                    Side
+	TorsoOnly               bool
+	Level                   int
+	XP                      int
+	Initiative              int
+	HP                      int
+	MaxHP                   int
+	Defense                 int
+	DefenseHead             int
+	DefenseTorso            int
+	DefenseLeftArm          int
+	DefenseRightArm         int
+	DefenseLeftLeg          int
+	DefenseRightLeg         int
+	ResistPhysical          int
+	ResistEnergy            int
+	ResistRadiation         int
+	ResistPoison            int
+	ResistPhysicalHead      int
+	ResistPhysicalTorso     int
+	ResistPhysicalLeftArm   int
+	ResistPhysicalRightArm  int
+	ResistPhysicalLeftLeg   int
+	ResistPhysicalRightLeg  int
+	ResistEnergyHead        int
+	ResistEnergyTorso       int
+	ResistEnergyLeftArm     int
+	ResistEnergyRightArm    int
+	ResistEnergyLeftLeg     int
+	ResistEnergyRightLeg    int
+	ResistRadiationHead     int
+	ResistRadiationTorso    int
+	ResistRadiationLeftArm  int
+	ResistRadiationRightArm int
+	ResistRadiationLeftLeg  int
+	ResistRadiationRightLeg int
+	ImmunePhysical          bool
+	ImmuneEnergy            bool
+	ImmuneRadiation         bool
+	ImmunePoison            bool
+	Active                  bool
+	Defeated                bool
 }
 
 type Resources struct {
@@ -176,7 +212,7 @@ func (e *Encounter) SpendThreat(v int) error {
 	return nil
 }
 
-func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, amount int) (int, error) {
+func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, location BodyLocation, amount int) (int, error) {
 	if combatantID == "" {
 		return 0, fmt.Errorf("combatant id is required")
 	}
@@ -200,10 +236,14 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, amoun
 	if err != nil {
 		return 0, err
 	}
+	locationResistance, err := target.resistanceByTypeAndLocation(damageType, location)
+	if err != nil {
+		return 0, err
+	}
 
 	effective := 0
 	if !immune {
-		effective = max(amount-resistance, 0)
+		effective = max(amount-resistance-locationResistance, 0)
 	}
 
 	target.HP -= effective
@@ -258,15 +298,31 @@ func (e *Encounter) normalizeActive() {
 func (c *Combatant) resistanceByType(damageType DamageType) (int, bool, error) {
 	switch damageType {
 	case DamagePhysical:
-		return c.ResistPhysical, c.ImmunePhysical, nil
+		return 0, c.ImmunePhysical, nil
 	case DamageEnergy:
-		return c.ResistEnergy, c.ImmuneEnergy, nil
+		return 0, c.ImmuneEnergy, nil
 	case DamageRadiation:
-		return c.ResistRadiation, c.ImmuneRadiation, nil
+		return 0, c.ImmuneRadiation, nil
 	case DamagePoison:
-		return c.ResistPoison, c.ImmunePoison, nil
+		return max(c.ResistPoison, 0), c.ImmunePoison, nil
 	default:
 		return 0, false, fmt.Errorf("unknown damage type: %q", damageType)
+	}
+}
+
+func (c *Combatant) resistanceByTypeAndLocation(damageType DamageType, location BodyLocation) (int, error) {
+	switch damageType {
+	case DamagePhysical:
+		return c.physicalLocationResistance(location)
+	case DamageEnergy:
+		return c.energyLocationResistance(location)
+	case DamageRadiation:
+		return c.radiationLocationResistance(location)
+	case DamagePoison:
+		// Poison is global-only, no body location reduction.
+		return 0, nil
+	default:
+		return 0, fmt.Errorf("unknown damage type: %q", damageType)
 	}
 }
 
@@ -291,6 +347,8 @@ func (c *Combatant) normalizeHPState() {
 	if c.HP == 0 {
 		c.Defeated = true
 	}
+	c.normalizeLocationDefense()
+	c.normalizeLocationResistance()
 }
 
 func NormalizeCombatantHP(c *Combatant) {
@@ -298,6 +356,97 @@ func NormalizeCombatantHP(c *Combatant) {
 		return
 	}
 	c.normalizeHPState()
+}
+
+func (c *Combatant) normalizeLocationResistance() {
+	c.ResistPhysical = max(c.ResistPhysical, 0)
+	c.ResistEnergy = max(c.ResistEnergy, 0)
+	c.ResistRadiation = max(c.ResistRadiation, 0)
+	c.ResistPoison = max(c.ResistPoison, 0)
+	c.ResistPhysicalHead = max(c.ResistPhysicalHead, 0)
+	c.ResistPhysicalTorso = max(c.ResistPhysicalTorso, 0)
+	c.ResistPhysicalLeftArm = max(c.ResistPhysicalLeftArm, 0)
+	c.ResistPhysicalRightArm = max(c.ResistPhysicalRightArm, 0)
+	c.ResistPhysicalLeftLeg = max(c.ResistPhysicalLeftLeg, 0)
+	c.ResistPhysicalRightLeg = max(c.ResistPhysicalRightLeg, 0)
+	c.ResistEnergyHead = max(c.ResistEnergyHead, 0)
+	c.ResistEnergyTorso = max(c.ResistEnergyTorso, 0)
+	c.ResistEnergyLeftArm = max(c.ResistEnergyLeftArm, 0)
+	c.ResistEnergyRightArm = max(c.ResistEnergyRightArm, 0)
+	c.ResistEnergyLeftLeg = max(c.ResistEnergyLeftLeg, 0)
+	c.ResistEnergyRightLeg = max(c.ResistEnergyRightLeg, 0)
+	c.ResistRadiationHead = max(c.ResistRadiationHead, 0)
+	c.ResistRadiationTorso = max(c.ResistRadiationTorso, 0)
+	c.ResistRadiationLeftArm = max(c.ResistRadiationLeftArm, 0)
+	c.ResistRadiationRightArm = max(c.ResistRadiationRightArm, 0)
+	c.ResistRadiationLeftLeg = max(c.ResistRadiationLeftLeg, 0)
+	c.ResistRadiationRightLeg = max(c.ResistRadiationRightLeg, 0)
+}
+
+func (c *Combatant) normalizeLocationDefense() {
+	c.DefenseHead = max(c.DefenseHead, 0)
+	c.DefenseTorso = max(c.DefenseTorso, 0)
+	c.DefenseLeftArm = max(c.DefenseLeftArm, 0)
+	c.DefenseRightArm = max(c.DefenseRightArm, 0)
+	c.DefenseLeftLeg = max(c.DefenseLeftLeg, 0)
+	c.DefenseRightLeg = max(c.DefenseRightLeg, 0)
+}
+
+func (c *Combatant) physicalLocationResistance(location BodyLocation) (int, error) {
+	switch location {
+	case BodyHead:
+		return max(c.ResistPhysicalHead, 0), nil
+	case BodyTorso:
+		return max(c.ResistPhysicalTorso, 0), nil
+	case BodyLeftArm:
+		return max(c.ResistPhysicalLeftArm, 0), nil
+	case BodyRightArm:
+		return max(c.ResistPhysicalRightArm, 0), nil
+	case BodyLeftLeg:
+		return max(c.ResistPhysicalLeftLeg, 0), nil
+	case BodyRightLeg:
+		return max(c.ResistPhysicalRightLeg, 0), nil
+	default:
+		return 0, fmt.Errorf("unknown body location: %q", location)
+	}
+}
+
+func (c *Combatant) energyLocationResistance(location BodyLocation) (int, error) {
+	switch location {
+	case BodyHead:
+		return max(c.ResistEnergyHead, 0), nil
+	case BodyTorso:
+		return max(c.ResistEnergyTorso, 0), nil
+	case BodyLeftArm:
+		return max(c.ResistEnergyLeftArm, 0), nil
+	case BodyRightArm:
+		return max(c.ResistEnergyRightArm, 0), nil
+	case BodyLeftLeg:
+		return max(c.ResistEnergyLeftLeg, 0), nil
+	case BodyRightLeg:
+		return max(c.ResistEnergyRightLeg, 0), nil
+	default:
+		return 0, fmt.Errorf("unknown body location: %q", location)
+	}
+}
+
+func (c *Combatant) radiationLocationResistance(location BodyLocation) (int, error) {
+	switch location {
+	case BodyHead:
+		return max(c.ResistRadiationHead, 0), nil
+	case BodyTorso:
+		return max(c.ResistRadiationTorso, 0), nil
+	case BodyLeftArm:
+		return max(c.ResistRadiationLeftArm, 0), nil
+	case BodyRightArm:
+		return max(c.ResistRadiationRightArm, 0), nil
+	case BodyLeftLeg:
+		return max(c.ResistRadiationLeftLeg, 0), nil
+	case BodyRightLeg:
+		return max(c.ResistRadiationRightLeg, 0), nil
+	default:
+		return 0, fmt.Errorf("unknown body location: %q", location)
+	}
 }
 
 type EncounterDifficulty string

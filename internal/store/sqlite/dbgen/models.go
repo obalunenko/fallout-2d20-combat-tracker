@@ -11,6 +11,12 @@ import (
 type AppState struct {
 	ID               int64
 	ActiveCampaignID interface{}
+	UpdatedAt        time.Time
+}
+
+type BodyLocation struct {
+	ID   int64
+	Code string
 }
 
 type Campaign struct {
@@ -19,31 +25,58 @@ type Campaign struct {
 	StartDate string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt interface{}
 }
 
 type Combatant struct {
-	ID                              string
-	EncounterID                     string
-	Name                            string
-	Side                            string
-	Initiative                      int64
-	Active                          int64
-	Defeated                        int64
-	Position                        int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistance                int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
-	Level                           int64
-	Xp                              int64
+	ID          string
+	EncounterID string
+	Name        string
+	Side        string
+	TorsoOnly   int64
+	Initiative  int64
+	Active      int64
+	Defeated    int64
+	Position    int64
+	Hp          int64
+	MaxHp       int64
+	Defense     int64
+	Level       int64
+	Xp          int64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   interface{}
+}
+
+type CombatantDefenseByLocation struct {
+	CombatantID    string
+	BodyLocationID int64
+	Defense        int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CombatantResistanceByLocation struct {
+	CombatantID    string
+	DamageTypeID   int64
+	BodyLocationID int64
+	Resistance     int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CombatantResistanceGlobal struct {
+	CombatantID  string
+	DamageTypeID int64
+	Resistance   int64
+	Immune       int64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type DamageType struct {
+	ID   int64
+	Code string
 }
 
 type Encounter struct {
@@ -62,6 +95,7 @@ type Encounter struct {
 	EnemyCount      int64
 	EnemyAvgLevel   float64
 	EnemyTotalXp    int64
+	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	DeletedAt       interface{}
 }
@@ -72,6 +106,8 @@ type EncounterLog struct {
 	Round       int64
 	Message     string
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   interface{}
 }
 
 type Player struct {
@@ -80,27 +116,48 @@ type Player struct {
 	Name       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	DeletedAt  interface{}
 }
 
 type PlayerCharacter struct {
-	ID                              string
-	PlayerID                        string
-	CampaignID                      string
-	Name                            string
-	Level                           int64
-	Initiative                      int64
-	Hp                              int64
-	MaxHp                           int64
-	Defense                         int64
-	DamageResistancePhysical        int64
-	DamageResistanceEnergy          int64
-	DamageResistanceRadiation       int64
-	DamageResistancePoison          int64
-	DamageResistancePhysicalImmune  int64
-	DamageResistanceEnergyImmune    int64
-	DamageResistanceRadiationImmune int64
-	DamageResistancePoisonImmune    int64
-	Active                          int64
-	CreatedAt                       time.Time
-	UpdatedAt                       time.Time
+	ID         string
+	PlayerID   string
+	CampaignID string
+	Name       string
+	Level      int64
+	Initiative int64
+	Hp         int64
+	MaxHp      int64
+	Defense    int64
+	TorsoOnly  int64
+	Active     int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
+}
+
+type PlayerCharacterDefenseByLocation struct {
+	PlayerCharacterID string
+	BodyLocationID    int64
+	Defense           int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PlayerCharacterResistanceByLocation struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	BodyLocationID    int64
+	Resistance        int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PlayerCharacterResistanceGlobal struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	Resistance        int64
+	Immune            int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
