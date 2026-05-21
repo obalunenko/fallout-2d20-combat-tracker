@@ -212,11 +212,15 @@ func TestActivateEncounterNotFound(t *testing.T) {
 func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
-		{ID: "c1", Name: "One", Initiative: 10},
-		{ID: "c2", Name: "Two", Initiative: 8},
+		{ID: "c1", Name: "One", Initiative: 10, Side: domain.SideParty, HP: 10, MaxHP: 10},
+		{ID: "c2", Name: "Two", Initiative: 8, Side: domain.SideNPC, HP: 8, MaxHP: 8},
 	})
 	require.NoError(t, err)
 
+	_, _, err = svc.ApplyDamage(t.Context(), "c1", domain.DamagePhysical, domain.BodyTorso, 4)
+	require.NoError(t, err)
+	_, _, err = svc.ApplyDamage(t.Context(), "c2", domain.DamagePhysical, domain.BodyTorso, 99)
+	require.NoError(t, err)
 	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
 	_, err = svc.AddPartyAP(t.Context(), 3)
@@ -237,6 +241,9 @@ func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
 	assert.False(t, restarted.Combatants[1].Active)
 	assert.False(t, restarted.Combatants[0].Defeated)
 	assert.False(t, restarted.Combatants[1].Defeated)
+	assert.Equal(t, 6, restarted.Combatants[0].HP)
+	assert.Equal(t, 8, restarted.Combatants[1].HP)
+	assert.Equal(t, 8, restarted.Combatants[1].MaxHP)
 }
 
 func TestSoftDeleteEncounterHidesFromListAndActivation(t *testing.T) {

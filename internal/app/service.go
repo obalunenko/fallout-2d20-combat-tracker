@@ -349,6 +349,14 @@ func (s *Service) RestartEncounter(ctx context.Context, encounterID string) (*do
 		return nil, err
 	}
 
+	for i := range enc.Combatants {
+		if enc.Combatants[i].Side != domain.SideNPC {
+			continue
+		}
+		domain.NormalizeCombatantHP(&enc.Combatants[i])
+		enc.Combatants[i].HP = enc.Combatants[i].MaxHP
+		enc.Combatants[i].Defeated = false
+	}
 	restarted := domain.NewEncounter(enc.ID, enc.Name, enc.Combatants)
 	if err := s.repo.Save(ctx, restarted); err != nil {
 		return nil, err
