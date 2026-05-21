@@ -22,7 +22,7 @@ type BodyLocation struct {
 type Campaign struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt interface{}

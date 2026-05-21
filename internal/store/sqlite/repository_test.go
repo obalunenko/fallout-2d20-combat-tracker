@@ -490,6 +490,21 @@ func TestEncounterStoreMaintainsCampaignPlayerAuditFields(t *testing.T) {
 	assert.False(t, characterFields.updatedAt.Time.Before(characterFields.createdAt.Time))
 }
 
+func TestEncounterStoreStoresCampaignStartDateAsDateTime(t *testing.T) {
+	store := newTestStore(t)
+	expected := testCampaignStartDate(t)
+
+	assert.Equal(t, "DATETIME", queryColumnType(t, store.db, "campaigns", "start_date"))
+
+	var stored time.Time
+	require.NoError(t, store.db.QueryRow(`SELECT start_date FROM campaigns WHERE id = ?`, "repo-test-campaign").Scan(&stored))
+	assert.Equal(t, expected, stored)
+
+	activeCampaign, err := store.GetActiveCampaign(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, expected, activeCampaign.StartDate)
+}
+
 func TestEncounterStoreCreateCampaignRejectsZeroStartDate(t *testing.T) {
 	store := newTestStore(t)
 
@@ -750,4 +765,31 @@ func queryString(t *testing.T, db *sql.DB, query string, args ...any) string {
 	var v string
 	require.NoError(t, db.QueryRow(query, args...).Scan(&v))
 	return v
+}
+
+func queryColumnType(t *testing.T, db *sql.DB, table, column string) string {
+	t.Helper()
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, table))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, rows.Close())
+	}()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal sql.NullString
+			pk         int
+		)
+		require.NoError(t, rows.Scan(&cid, &name, &columnType, &notNull, &defaultVal, &pk))
+		if name == column {
+			return columnType
+		}
+	}
+	require.NoError(t, rows.Err())
+	require.Failf(t, "column not found", "%s.%s", table, column)
+	return ""
 }

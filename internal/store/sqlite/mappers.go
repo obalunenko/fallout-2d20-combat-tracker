@@ -359,7 +359,7 @@ func campaignFromRow(r dbgen.GetActiveCampaignRow) domain.Campaign {
 	return campaignFromFields(campaignDBFields{
 		ID:        r.ID,
 		Name:      r.Name,
-		StartDate: parseCampaignStartDate(r.StartDate),
+		StartDate: truncateCampaignStartDate(r.StartDate),
 		UpdatedAt: r.UpdatedAt,
 	})
 }
@@ -368,7 +368,7 @@ func campaignFromListRow(r dbgen.ListCampaignsRow) domain.Campaign {
 	return campaignFromFields(campaignDBFields{
 		ID:        r.ID,
 		Name:      r.Name,
-		StartDate: parseCampaignStartDate(r.StartDate),
+		StartDate: truncateCampaignStartDate(r.StartDate),
 		UpdatedAt: r.UpdatedAt,
 	})
 }
@@ -381,17 +381,16 @@ func encounterLogFromRow(r dbgen.ListEncounterLogsByEncounterIDRow) domain.Encou
 	}
 }
 
-func parseCampaignStartDate(value string) time.Time {
-	parsed, err := domain.ParseCampaignStartDate(value)
-	if err != nil {
+func truncateCampaignStartDate(value time.Time) time.Time {
+	if value.IsZero() {
 		return time.Time{}
 	}
-	return parsed
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 }
 
-func formatCampaignStartDateForDB(value time.Time) string {
+func formatCampaignStartDateForDB(value time.Time) time.Time {
 	if value.IsZero() {
-		return ""
+		return time.Time{}
 	}
-	return value.Format(domain.CampaignDateLayout)
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 }

@@ -317,7 +317,7 @@ func TestCampaignFromListRowFormatsUpdatedAt(t *testing.T) {
 	actual := campaignFromListRow(dbgen.ListCampaignsRow{
 		ID:        "camp-1",
 		Name:      "Capital Wasteland",
-		StartDate: "2287-10-23",
+		StartDate: startDate,
 		UpdatedAt: updatedAt,
 	})
 

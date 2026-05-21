@@ -90,7 +90,7 @@ WHERE c.id = s.active_campaign_id
 type GetActiveCampaignRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -136,7 +136,7 @@ WHERE id = ?1
 type GetCampaignByIDRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -275,7 +275,7 @@ VALUES (
 type InsertCampaignParams struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 }
 
 func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) error {
@@ -671,7 +671,7 @@ ORDER BY updated_at DESC, id DESC
 type ListCampaignsRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -1444,7 +1444,7 @@ WHERE id = ?3
 
 type UpdateCampaignByIDParams struct {
 	Name       string
-	StartDate  string
+	StartDate  time.Time
 	CampaignID string
 }
 
