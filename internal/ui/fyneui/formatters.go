@@ -61,6 +61,74 @@ func formatDRValue(value int, immune bool) string {
 	return strconv.Itoa(value)
 }
 
+func formatCombatantLine(enc *domain.Encounter, c domain.Combatant) string {
+	name := c.Name
+	if enc != nil {
+		name = encounterDisplayNameByID(enc, c.ID)
+	}
+	prefix := "   "
+	isDefeated := c.Defeated || c.HP <= 0
+	if c.Active && !isDefeated {
+		prefix = ">> "
+	} else if isDefeated {
+		prefix = "xx "
+	}
+	line := fmt.Sprintf(
+		"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+		prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense, formatDRValue(c.ResistPoison, c.ImmunePoison),
+	)
+	if isDefeated {
+		return line + " [DEFEATED]"
+	}
+	return line
+}
+
+func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) string {
+	status := "Ready"
+	if c.Defeated || c.HP <= 0 {
+		status = "Defeated"
+	} else if c.Active {
+		status = "Active"
+	}
+	if isTorsoOnlyCombatant(c) {
+		return fmt.Sprintf(
+			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s",
+			encounterDisplayNameByID(enc, c.ID),
+			c.Side,
+			c.Level,
+			c.XP,
+			c.Initiative,
+			c.HP,
+			c.MaxHP,
+			c.Defense,
+			status,
+			formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
+			formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
+			formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
+			formatDRValue(c.ResistPoison, c.ImmunePoison),
+		)
+	}
+	return fmt.Sprintf(
+		"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Defense / Damage Resistance\nLocation  | Defense | Physical | Energy | Radiation\n-----------------------------------------------------\nHead      | %7d | %8d | %6d | %9d\nTorso     | %7d | %8d | %6d | %9d\nLeft Arm  | %7d | %8d | %6d | %9d\nRight Arm | %7d | %8d | %6d | %9d\nLeft Leg  | %7d | %8d | %6d | %9d\nRight Leg | %7d | %8d | %6d | %9d",
+		encounterDisplayNameByID(enc, c.ID),
+		c.Side,
+		c.Level,
+		c.XP,
+		c.Initiative,
+		c.HP,
+		c.MaxHP,
+		c.Defense,
+		status,
+		formatDRValue(c.ResistPoison, c.ImmunePoison),
+		c.DefenseHead, c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
+		c.DefenseTorso, c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
+		c.DefenseLeftArm, c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
+		c.DefenseRightArm, c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
+		c.DefenseLeftLeg, c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
+		c.DefenseRightLeg, c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
+	)
+}
+
 func formatEncounterUpdatedAt(raw string) string {
 	layouts := []string{
 		time.RFC3339Nano,
@@ -175,6 +243,92 @@ func formatDifficultyPreview(metrics domain.EncounterDifficultyMetrics) string {
 		metrics.EnemyCount,
 		metrics.EnemyAvgLevel,
 		metrics.EnemyTotalXP,
+	)
+}
+
+func formatCampaignRoster(players []domain.NewCampaignPlayer) string {
+	if len(players) == 0 {
+		return "No active players in campaign"
+	}
+	lines := make([]string, 0, len(players))
+	for i, p := range players {
+		lines = append(lines, fmt.Sprintf(
+			"[%02d] %s -> %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+			i+1,
+			p.PlayerName,
+			p.Character.Name,
+			p.Character.Level,
+			p.Character.Initiative,
+			p.Character.HP,
+			p.Character.MaxHP,
+			p.Character.Defense,
+			formatDRValue(p.Character.ResistPoison, p.Character.ImmunePoison),
+		))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func formatPartyLibrary(members []domain.Combatant) string {
+	if len(members) == 0 {
+		return "No saved party members found in database"
+	}
+	lines := make([]string, 0, len(members))
+	for i, c := range members {
+		lines = append(lines, fmt.Sprintf(
+			"[%02d] %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+			i+1,
+			c.Name,
+			c.Level,
+			c.Initiative,
+			c.HP,
+			c.MaxHP,
+			c.Defense,
+			formatDRValue(c.ResistPoison, c.ImmunePoison),
+		))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func formatTacticalSnapshot(encounter *domain.Encounter) string {
+	if encounter == nil {
+		return "No active encounter"
+	}
+	partyTotal, partyAlive, partyDefeated := 0, 0, 0
+	npcTotal, npcAlive, npcDefeated := 0, 0, 0
+	activeName := "-"
+	for i := range encounter.Combatants {
+		c := encounter.Combatants[i]
+		isDefeated := c.Defeated || c.HP <= 0
+		if c.Active && !isDefeated {
+			activeName = encounterDisplayNameByID(encounter, c.ID)
+		}
+		if c.Side == domain.SideParty {
+			partyTotal++
+			if isDefeated {
+				partyDefeated++
+			} else {
+				partyAlive++
+			}
+			continue
+		}
+		npcTotal++
+		if isDefeated {
+			npcDefeated++
+		} else {
+			npcAlive++
+		}
+	}
+	return fmt.Sprintf(
+		"Encounter: %s\nRound: %d\nActive Turn: %s\nParty: %d total / %d alive / %d defeated\nNPC: %d total / %d alive / %d defeated",
+		encounter.Name,
+		encounter.Round,
+		activeName,
+		partyTotal,
+		partyAlive,
+		partyDefeated,
+		npcTotal,
+		npcAlive,
+		npcDefeated,
 	)
 }
 

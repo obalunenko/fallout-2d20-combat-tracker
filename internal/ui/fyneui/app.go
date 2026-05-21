@@ -53,82 +53,9 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 	partyAPLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	threatLabel.TextStyle = fyne.TextStyle{Monospace: true}
 
-	logOutput := widget.NewMultiLineEntry()
-	logOutput.TextStyle = fyne.TextStyle{Monospace: true}
-	logOutput.Wrapping = fyne.TextWrapWord
-	logOutput.SetMinRowsVisible(18)
-	logOutput.Disable()
-	logOutput.SetText("[BOOT] Pip-Boy combat tracker initialized")
+	logOutput := newReadOnlyMonospaceOutput("[BOOT] Pip-Boy combat tracker initialized", 18)
 	setEventLog := func(lines []string) {
 		logOutput.SetText(strings.Join(lines, "\n"))
-	}
-
-	combatantLine := func(c domain.Combatant) string {
-		name := c.Name
-		if enc != nil {
-			name = encounterDisplayNameByID(enc, c.ID)
-		}
-		prefix := "   "
-		isDefeated := c.Defeated || c.HP <= 0
-		if c.Active && !isDefeated {
-			prefix = ">> "
-		} else if isDefeated {
-			prefix = "xx "
-		}
-		line := fmt.Sprintf(
-			"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
-			prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense, formatDRValue(c.ResistPoison, c.ImmunePoison),
-		)
-		if isDefeated {
-			return line + " [DEFEATED]"
-		}
-		return line
-	}
-
-	expandedCombatantDetails := func(c domain.Combatant) string {
-		status := "Ready"
-		if c.Defeated || c.HP <= 0 {
-			status = "Defeated"
-		} else if c.Active {
-			status = "Active"
-		}
-		if isTorsoOnlyCombatant(c) {
-			return fmt.Sprintf(
-				"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s",
-				encounterDisplayNameByID(enc, c.ID),
-				c.Side,
-				c.Level,
-				c.XP,
-				c.Initiative,
-				c.HP,
-				c.MaxHP,
-				c.Defense,
-				status,
-				formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
-				formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
-				formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
-				formatDRValue(c.ResistPoison, c.ImmunePoison),
-			)
-		}
-		return fmt.Sprintf(
-			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Defense / Damage Resistance\nLocation  | Defense | Physical | Energy | Radiation\n-----------------------------------------------------\nHead      | %7d | %8d | %6d | %9d\nTorso     | %7d | %8d | %6d | %9d\nLeft Arm  | %7d | %8d | %6d | %9d\nRight Arm | %7d | %8d | %6d | %9d\nLeft Leg  | %7d | %8d | %6d | %9d\nRight Leg | %7d | %8d | %6d | %9d",
-			encounterDisplayNameByID(enc, c.ID),
-			c.Side,
-			c.Level,
-			c.XP,
-			c.Initiative,
-			c.HP,
-			c.MaxHP,
-			c.Defense,
-			status,
-			formatDRValue(c.ResistPoison, c.ImmunePoison),
-			c.DefenseHead, c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
-			c.DefenseTorso, c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
-			c.DefenseLeftArm, c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
-			c.DefenseRightArm, c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
-			c.DefenseLeftLeg, c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
-			c.DefenseRightLeg, c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
-		)
 	}
 
 	list := widget.NewList(
@@ -149,7 +76,7 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 			}
 			label := o.(*widget.Label)
 			c := enc.Combatants[i]
-			label.SetText(combatantLine(c))
+			label.SetText(formatCombatantLine(enc, c))
 			if c.Defeated || c.HP <= 0 {
 				label.Importance = widget.LowImportance
 				label.TextStyle = fyne.TextStyle{Monospace: true, Italic: true}
@@ -183,7 +110,7 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 		for i, c := range enc.Combatants {
 			idx := i
 			combatantID := c.ID
-			lineBtn := widget.NewButton(combatantLine(c), func() {
+			lineBtn := widget.NewButton(formatCombatantLine(enc, c), func() {
 				selectedIndex = idx
 				refreshSelected(selectedLabel, enc, selectedIndex)
 				if expandedCombatantID == combatantID {
@@ -214,7 +141,7 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 			damageBtn.Importance = widget.LowImportance
 			healBtn.Importance = widget.LowImportance
 
-			details := widget.NewLabel(expandedCombatantDetails(c))
+			details := widget.NewLabel(formatExpandedCombatantDetails(enc, c))
 			details.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
 			details.Wrapping = fyne.TextWrapWord
 			details.Importance = widget.HighImportance
@@ -345,19 +272,8 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 	campSnapshotLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	campSnapshotLabel.Wrapping = fyne.TextWrapWord
 
-	campRosterOutput := widget.NewMultiLineEntry()
-	campRosterOutput.TextStyle = fyne.TextStyle{Monospace: true}
-	campRosterOutput.Wrapping = fyne.TextWrapWord
-	campRosterOutput.SetMinRowsVisible(10)
-	campRosterOutput.Disable()
-	campRosterOutput.SetText("No active campaign")
-
-	partyLibraryOutput := widget.NewMultiLineEntry()
-	partyLibraryOutput.TextStyle = fyne.TextStyle{Monospace: true}
-	partyLibraryOutput.Wrapping = fyne.TextWrapWord
-	partyLibraryOutput.SetMinRowsVisible(10)
-	partyLibraryOutput.Disable()
-	partyLibraryOutput.SetText("No saved party members found")
+	campRosterOutput := newReadOnlyMonospaceOutput("No active campaign", 10)
+	partyLibraryOutput := newReadOnlyMonospaceOutput("No saved party members found", 10)
 
 	statTabContent := container.NewVBox(
 		turnPanel,
@@ -466,89 +382,6 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 				formatLogTimestamp(logEntry.CreatedAt), logEntry.Round, logEntry.Message))
 		}
 		setEventLog(lines)
-	}
-	formatCampaignRoster := func(players []domain.NewCampaignPlayer) string {
-		if len(players) == 0 {
-			return "No active players in campaign"
-		}
-		lines := make([]string, 0, len(players))
-		for i, p := range players {
-			lines = append(lines, fmt.Sprintf(
-				"[%02d] %s -> %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
-				i+1,
-				p.PlayerName,
-				p.Character.Name,
-				p.Character.Level,
-				p.Character.Initiative,
-				p.Character.HP,
-				p.Character.MaxHP,
-				p.Character.Defense,
-				formatDRValue(p.Character.ResistPoison, p.Character.ImmunePoison),
-			))
-		}
-		return strings.Join(lines, "\n")
-	}
-	formatPartyLibrary := func(members []domain.Combatant) string {
-		if len(members) == 0 {
-			return "No saved party members found in database"
-		}
-		lines := make([]string, 0, len(members))
-		for i, c := range members {
-			lines = append(lines, fmt.Sprintf(
-				"[%02d] %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
-				i+1,
-				c.Name,
-				c.Level,
-				c.Initiative,
-				c.HP,
-				c.MaxHP,
-				c.Defense,
-				formatDRValue(c.ResistPoison, c.ImmunePoison),
-			))
-		}
-		return strings.Join(lines, "\n")
-	}
-	formatTacticalSnapshot := func(encounter *domain.Encounter) string {
-		if encounter == nil {
-			return "No active encounter"
-		}
-		partyTotal, partyAlive, partyDefeated := 0, 0, 0
-		npcTotal, npcAlive, npcDefeated := 0, 0, 0
-		activeName := "-"
-		for i := range encounter.Combatants {
-			c := encounter.Combatants[i]
-			isDefeated := c.Defeated || c.HP <= 0
-			if c.Active && !isDefeated {
-				activeName = encounterDisplayNameByID(encounter, c.ID)
-			}
-			if c.Side == domain.SideParty {
-				partyTotal++
-				if isDefeated {
-					partyDefeated++
-				} else {
-					partyAlive++
-				}
-				continue
-			}
-			npcTotal++
-			if isDefeated {
-				npcDefeated++
-			} else {
-				npcAlive++
-			}
-		}
-		return fmt.Sprintf(
-			"Encounter: %s\nRound: %d\nActive Turn: %s\nParty: %d total / %d alive / %d defeated\nNPC: %d total / %d alive / %d defeated",
-			encounter.Name,
-			encounter.Round,
-			activeName,
-			partyTotal,
-			partyAlive,
-			partyDefeated,
-			npcTotal,
-			npcAlive,
-			npcDefeated,
-		)
 	}
 
 	refresh = func() {

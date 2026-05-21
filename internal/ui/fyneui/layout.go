@@ -36,6 +36,16 @@ func pipPanel(title string, body fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewStack(panelBG, container.NewPadded(content))
 }
 
+func newReadOnlyMonospaceOutput(initialText string, minRows int) *widget.Entry {
+	output := widget.NewMultiLineEntry()
+	output.TextStyle = fyne.TextStyle{Monospace: true}
+	output.Wrapping = fyne.TextWrapWord
+	output.SetMinRowsVisible(minRows)
+	output.Disable()
+	output.SetText(initialText)
+	return output
+}
+
 func newScanlineOverlay() fyne.CanvasObject {
 	scan := canvas.NewRasterWithPixels(func(x, y, w, h int) color.Color {
 		if y%3 == 0 {
