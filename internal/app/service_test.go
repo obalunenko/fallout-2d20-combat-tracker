@@ -369,10 +369,10 @@ func TestListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	assert.Equal(t, 9, party[0].Initiative)
 }
 
-func TestCreateCampaignRejectsInvalidStartDate(t *testing.T) {
+func TestCreateCampaignRejectsZeroStartDate(t *testing.T) {
 	svc := newSQLiteService(t)
 
-	_, err := svc.CreateCampaign(t.Context(), "camp-1", "Bad Date", "2026/05/22", []domain.NewCampaignPlayer{
+	_, err := svc.CreateCampaign(t.Context(), "camp-1", "Bad Date", time.Time{}, []domain.NewCampaignPlayer{
 		{
 			PlayerName: "June",
 			Character: domain.Combatant{
@@ -385,7 +385,7 @@ func TestCreateCampaignRejectsInvalidStartDate(t *testing.T) {
 	})
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "YYYY-MM-DD")
+	assert.Contains(t, err.Error(), "campaign start date is required")
 }
 
 func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
@@ -583,7 +583,7 @@ func newSQLiteService(t *testing.T) *Service {
 	})
 
 	svc := NewService(sqlite.NewEncounterStore(db))
-	_, err = svc.CreateCampaign(t.Context(), "test-campaign", "Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = svc.CreateCampaign(t.Context(), "test-campaign", "Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
@@ -599,6 +599,13 @@ func newSQLiteService(t *testing.T) *Service {
 	})
 	require.NoError(t, err)
 	return svc
+}
+
+func testCampaignStartDate(t *testing.T) time.Time {
+	t.Helper()
+	startDate, err := domain.ParseCampaignStartDate("2026-01-01")
+	require.NoError(t, err)
+	return startDate
 }
 
 type logFailingRepo struct {
@@ -632,11 +639,11 @@ func (r *logFailingRepo) ListPartyMembers(_ context.Context) ([]domain.Combatant
 	return nil, nil
 }
 
-func (r *logFailingRepo) CreateCampaign(_ context.Context, _, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *logFailingRepo) CreateCampaign(_ context.Context, _, _ string, _ time.Time, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, nil
 }
 
-func (r *logFailingRepo) UpdateCampaign(_ context.Context, _, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *logFailingRepo) UpdateCampaign(_ context.Context, _, _ string, _ time.Time, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, nil
 }
 

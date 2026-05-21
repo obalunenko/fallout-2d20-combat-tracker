@@ -23,7 +23,7 @@ func showCampaignEditorDialog(
 	initialName string,
 	initialStartDate string,
 	initialPlayers []domain.NewCampaignPlayer,
-	onSubmit func(name, startDate string, players []domain.NewCampaignPlayer) error,
+	onSubmit func(name string, startDate time.Time, players []domain.NewCampaignPlayer) error,
 	refresh func(),
 ) {
 	nameEntry := widget.NewEntry()
@@ -198,7 +198,8 @@ func showCampaignEditorDialog(
 			validationError.SetText("Campaign name is required")
 			return
 		}
-		if _, err := time.Parse("2006-01-02", startDate); err != nil {
+		parsedStartDate, err := domain.ParseCampaignStartDate(startDate)
+		if err != nil {
 			validationError.SetText("Start date must be in YYYY-MM-DD format")
 			return
 		}
@@ -208,7 +209,7 @@ func showCampaignEditorDialog(
 			validationError.SetText(err.Error())
 			return
 		}
-		if err := onSubmit(campaignName, startDate, players); err != nil {
+		if err := onSubmit(campaignName, parsedStartDate, players); err != nil {
 			validationError.SetText(err.Error())
 			return
 		}
@@ -232,7 +233,7 @@ func showCreateCampaignDialogWindow(ctx context.Context, w fyne.Window, svc *app
 		"",
 		time.Now().Format("2006-01-02"),
 		nil,
-		func(name, startDate string, players []domain.NewCampaignPlayer) error {
+		func(name string, startDate time.Time, players []domain.NewCampaignPlayer) error {
 			_, err := svc.CreateCampaign(ctx, "", name, startDate, players)
 			return err
 		},
@@ -341,7 +342,7 @@ func showCampaignListDialogWindow(
 			current.Name,
 			formatCampaignStartDate(current.StartDate),
 			players,
-			func(name, startDate string, editedPlayers []domain.NewCampaignPlayer) error {
+			func(name string, startDate time.Time, editedPlayers []domain.NewCampaignPlayer) error {
 				_, updateErr := svc.UpdateCampaign(ctx, current.ID, name, startDate, editedPlayers)
 				return updateErr
 			},

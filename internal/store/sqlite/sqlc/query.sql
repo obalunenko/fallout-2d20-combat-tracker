@@ -19,11 +19,12 @@ WHERE id = 1
   );
 
 -- name: InsertCampaign :exec
-INSERT INTO campaigns (id, name, start_date, updated_at)
+INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(name),
   sqlc.arg(start_date),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 
@@ -54,16 +55,18 @@ DELETE FROM players
 WHERE campaign_id = sqlc.arg(campaign_id);
 
 -- name: InsertPlayer :exec
-INSERT INTO players (id, campaign_id, name)
+INSERT INTO players (id, campaign_id, name, created_at, updated_at)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(campaign_id),
-  sqlc.arg(name)
+  sqlc.arg(name),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 
 -- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, created_at, updated_at
 )
 VALUES (
   sqlc.arg(id),
@@ -76,7 +79,9 @@ VALUES (
   sqlc.arg(max_hp),
   sqlc.arg(defense),
   sqlc.arg(torso_only),
-  sqlc.arg(active)
+  sqlc.arg(active),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 
 -- name: ListPlayerIDsAndNamesByCampaignID :many
@@ -407,7 +412,7 @@ INSERT INTO encounters (
   difficulty_label, difficulty_score,
   party_count, party_avg_level, party_xp_budget,
   enemy_count, enemy_avg_level, enemy_total_xp,
-  updated_at, deleted_at
+  created_at, updated_at, deleted_at
 )
 VALUES (
   sqlc.arg(id),
@@ -425,6 +430,7 @@ VALUES (
   sqlc.arg(enemy_count),
   sqlc.arg(enemy_avg_level),
   sqlc.arg(enemy_total_xp),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
@@ -452,7 +458,7 @@ WHERE encounter_id = sqlc.arg(encounter_id);
 
 -- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position
+	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position, created_at, updated_at
 )
 VALUES (
   sqlc.arg(id),
@@ -468,7 +474,9 @@ VALUES (
 	  sqlc.arg(defense),
 	  sqlc.arg(active),
 	  sqlc.arg(defeated),
-	  sqlc.arg(position)
+	  sqlc.arg(position),
+	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 	);
 
 -- name: UpsertCombatantDefenseByLocation :exec
@@ -574,12 +582,13 @@ SET deleted_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
 WHERE encounters.id = sqlc.arg(encounter_id) AND encounters.deleted_at IS NULL AND encounters.campaign_id = sqlc.arg(campaign_id);
 
 -- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (id, encounter_id, round, message, created_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, created_at, updated_at)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(encounter_id),
   sqlc.arg(round),
   sqlc.arg(message),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 

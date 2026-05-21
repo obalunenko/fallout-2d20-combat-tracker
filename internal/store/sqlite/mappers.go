@@ -388,3 +388,10 @@ func parseCampaignStartDate(value string) time.Time {
 	}
 	return parsed
 }
+
+func formatCampaignStartDateForDB(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.Format(domain.CampaignDateLayout)
+}

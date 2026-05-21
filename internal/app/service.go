@@ -19,8 +19,8 @@ type EncounterRepository interface {
 	GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error)
 	UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error)
 	ListPartyMembers(ctx context.Context) ([]domain.Combatant, error)
-	CreateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
-	UpdateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
+	CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
+	UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	GetActiveCampaign(ctx context.Context) (*domain.Campaign, error)
 	ListCampaigns(ctx context.Context) ([]domain.Campaign, error)
 	ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error)
@@ -158,18 +158,11 @@ func (s *Service) GetEncounterByID(ctx context.Context, encounterID string) (*do
 	return s.repo.GetEncounterByID(ctx, encounterID)
 }
 
-func (s *Service) CreateCampaign(ctx context.Context, id, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
-	if strings.TrimSpace(startDate) == "" {
-		return nil, fmt.Errorf("campaign start date is required")
-	}
-	parsedStartDate, err := domain.ParseCampaignStartDate(startDate)
-	if err != nil {
-		return nil, fmt.Errorf("campaign start date must use YYYY-MM-DD: %w", err)
-	}
+func (s *Service) CreateCampaign(ctx context.Context, id, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return s.ExecuteCreateCampaign(ctx, CreateCampaignCommand{
 		ID:        id,
 		Name:      name,
-		StartDate: parsedStartDate,
+		StartDate: startDate,
 		Players:   players,
 	})
 }
@@ -225,7 +218,7 @@ func (s *Service) ExecuteCreateCampaign(ctx context.Context, cmd CreateCampaignC
 		cmd.Players[i].Character.Side = domain.SideParty
 		cmd.Players[i].Character.XP = 0
 	}
-	return s.repo.CreateCampaign(ctx, cmd.ID, cmd.Name, cmd.StartDate.Format(domain.CampaignDateLayout), cmd.Players)
+	return s.repo.CreateCampaign(ctx, cmd.ID, cmd.Name, cmd.StartDate, cmd.Players)
 }
 
 func (s *Service) GetActiveCampaign(ctx context.Context) (*domain.Campaign, error) {
@@ -261,18 +254,11 @@ func (s *Service) ActivateCampaign(ctx context.Context, campaignID string) (*dom
 	return s.repo.GetActiveCampaign(ctx)
 }
 
-func (s *Service) UpdateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
-	if strings.TrimSpace(startDate) == "" {
-		return nil, fmt.Errorf("campaign start date is required")
-	}
-	parsedStartDate, err := domain.ParseCampaignStartDate(startDate)
-	if err != nil {
-		return nil, fmt.Errorf("campaign start date must use YYYY-MM-DD: %w", err)
-	}
+func (s *Service) UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return s.ExecuteUpdateCampaign(ctx, UpdateCampaignCommand{
 		CampaignID: campaignID,
 		Name:       name,
-		StartDate:  parsedStartDate,
+		StartDate:  startDate,
 		Players:    players,
 	})
 }
@@ -328,7 +314,7 @@ func (s *Service) ExecuteUpdateCampaign(ctx context.Context, cmd UpdateCampaignC
 		cmd.Players[i].Character.Side = domain.SideParty
 		cmd.Players[i].Character.XP = 0
 	}
-	return s.repo.UpdateCampaign(ctx, cmd.CampaignID, cmd.Name, cmd.StartDate.Format(domain.CampaignDateLayout), cmd.Players)
+	return s.repo.UpdateCampaign(ctx, cmd.CampaignID, cmd.Name, cmd.StartDate, cmd.Players)
 }
 
 func (s *Service) ActivateEncounter(ctx context.Context, encounterID string) (*domain.Encounter, error) {

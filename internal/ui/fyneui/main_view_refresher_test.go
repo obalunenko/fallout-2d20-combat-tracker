@@ -174,11 +174,11 @@ func (r *refresherRepo) ListPartyMembers(context.Context) ([]domain.Combatant, e
 	return r.partyMembers, nil
 }
 
-func (r *refresherRepo) CreateCampaign(context.Context, string, string, string, []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *refresherRepo) CreateCampaign(context.Context, string, string, time.Time, []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (r *refresherRepo) UpdateCampaign(context.Context, string, string, string, []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *refresherRepo) UpdateCampaign(context.Context, string, string, time.Time, []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

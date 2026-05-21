@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -250,10 +251,13 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 	return players, nil
 }
 
-func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
+	}
+	if startDate.IsZero() {
+		return nil, fmt.Errorf("campaign start date is required")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -273,7 +277,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, s
 	if err = qtx.InsertCampaign(ctx, dbgen.InsertCampaignParams{
 		ID:        campaignID,
 		Name:      name,
-		StartDate: startDate,
+		StartDate: formatCampaignStartDateForDB(startDate),
 	}); err != nil {
 		return nil, fmt.Errorf("insert campaign: %w", err)
 	}
@@ -319,14 +323,17 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, s
 	return &domain.Campaign{
 		ID:        campaignID,
 		Name:      name,
-		StartDate: parseCampaignStartDate(startDate),
+		StartDate: startDate,
 	}, nil
 }
 
-func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
+	}
+	if startDate.IsZero() {
+		return nil, fmt.Errorf("campaign start date is required")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -340,7 +347,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, s
 	qtx := s.q.WithTx(tx)
 	affected, err := qtx.UpdateCampaignByID(ctx, dbgen.UpdateCampaignByIDParams{
 		Name:       name,
-		StartDate:  startDate,
+		StartDate:  formatCampaignStartDateForDB(startDate),
 		CampaignID: campaignID,
 	})
 	if err != nil {
@@ -424,7 +431,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, s
 	return &domain.Campaign{
 		ID:        campaignID,
 		Name:      name,
-		StartDate: parseCampaignStartDate(startDate),
+		StartDate: startDate,
 	}, nil
 }
 
