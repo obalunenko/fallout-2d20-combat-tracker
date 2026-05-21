@@ -90,7 +90,7 @@ WHERE c.id = s.active_campaign_id
 type GetActiveCampaignRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -136,7 +136,7 @@ WHERE id = ?1
 type GetCampaignByIDRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -262,11 +262,12 @@ func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID
 }
 
 const insertCampaign = `-- name: InsertCampaign :exec
-INSERT INTO campaigns (id, name, start_date, updated_at)
+INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
 VALUES (
   ?1,
   ?2,
   ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
@@ -274,7 +275,7 @@ VALUES (
 type InsertCampaignParams struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 }
 
 func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) error {
@@ -284,7 +285,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position
+	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -300,7 +301,9 @@ VALUES (
 	  ?11,
 	  ?12,
 	  ?13,
-	  ?14
+	  ?14,
+	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 	)
 `
 
@@ -342,12 +345,13 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 }
 
 const insertEncounterLog = `-- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (id, encounter_id, round, message, created_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, created_at, updated_at)
 VALUES (
   ?1,
   ?2,
   ?3,
   ?4,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
@@ -370,11 +374,13 @@ func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLog
 }
 
 const insertPlayer = `-- name: InsertPlayer :exec
-INSERT INTO players (id, campaign_id, name)
+INSERT INTO players (id, campaign_id, name, created_at, updated_at)
 VALUES (
   ?1,
   ?2,
-  ?3
+  ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
 
@@ -391,7 +397,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -404,7 +410,9 @@ VALUES (
   ?8,
   ?9,
   ?10,
-  ?11
+  ?11,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
 
@@ -663,7 +671,7 @@ ORDER BY updated_at DESC, id DESC
 type ListCampaignsRow struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -1436,7 +1444,7 @@ WHERE id = ?3
 
 type UpdateCampaignByIDParams struct {
 	Name       string
-	StartDate  string
+	StartDate  time.Time
 	CampaignID string
 }
 
@@ -1558,7 +1566,7 @@ INSERT INTO encounters (
   difficulty_label, difficulty_score,
   party_count, party_avg_level, party_xp_budget,
   enemy_count, enemy_avg_level, enemy_total_xp,
-  updated_at, deleted_at
+  created_at, updated_at, deleted_at
 )
 VALUES (
   ?1,
@@ -1576,6 +1584,7 @@ VALUES (
   ?13,
   ?14,
   ?15,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )

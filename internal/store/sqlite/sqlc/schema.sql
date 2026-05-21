@@ -112,7 +112,7 @@ ON encounter_logs(encounter_id, created_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS campaigns (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    start_date TEXT NOT NULL,
+    start_date DATETIME NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL

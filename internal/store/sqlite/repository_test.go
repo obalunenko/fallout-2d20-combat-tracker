@@ -3,8 +3,11 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +17,7 @@ import (
 func TestEncounterStoreGetWhenEmpty(t *testing.T) {
 	store := newTestStore(t)
 
-	enc, err := store.Get()
+	enc, err := store.Get(t.Context())
 	require.ErrorIs(t, err, domain.ErrEncounterNotInitialized)
 	assert.Nil(t, enc)
 }
@@ -49,9 +52,9 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, store.Save(expected))
+	require.NoError(t, store.Save(t.Context(), expected))
 
-	actual, err := store.Get()
+	actual, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, actual)
 
@@ -75,7 +78,7 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 			{ID: "c2", Name: "Two", Side: domain.SideNPC, Initiative: 8, Active: false},
 		},
 	}
-	require.NoError(t, store.Save(first))
+	require.NoError(t, store.Save(t.Context(), first))
 
 	updated := &domain.Encounter{
 		ID:        "enc-1",
@@ -86,9 +89,9 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 			{ID: "c3", Name: "Three", Side: domain.SideNPC, Initiative: 12, Active: true},
 		},
 	}
-	require.NoError(t, store.Save(updated))
+	require.NoError(t, store.Save(t.Context(), updated))
 
-	actual, err := store.Get()
+	actual, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.Len(t, actual.Combatants, 1)
 	assert.Equal(t, "c3", actual.Combatants[0].ID)
@@ -98,14 +101,14 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "c1", Name: "A", Side: domain.SideParty, Initiative: 10, Active: true}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-2",
 		Name:       "Bravo",
 		Round:      1,
@@ -113,32 +116,87 @@ func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c2", Name: "B", Side: domain.SideNPC, Initiative: 8, Active: true}},
 	}))
 
-	summaries, err := store.List()
+	summaries, err := store.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "enc-2", summaries[0].ID)
 
-	require.NoError(t, store.Activate("enc-1"))
+	require.NoError(t, store.Activate(t.Context(), "enc-1"))
 
-	active, err := store.Get()
+	active, err := store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-1", active.ID)
 
-	require.NoError(t, store.SoftDelete("enc-1"))
-	active, err = store.Get()
+	require.NoError(t, store.SoftDelete(t.Context(), "enc-1"))
+	active, err = store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-2", active.ID)
 
-	summaries, err = store.List()
+	summaries, err = store.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 1)
 	assert.Equal(t, "enc-2", summaries[0].ID)
 }
 
+func TestEncounterStoreMaintainsEncounterAuditFields(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:         "enc-audit-1",
+		Name:       "Audit Fields",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "c-audit-1", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 5, MaxHP: 5, Active: true}},
+	}))
+	inserted := queryAuditFields(t, store.db, "encounters", "enc-audit-1")
+
+	assert.True(t, inserted.createdAt.Valid)
+	assert.True(t, inserted.updatedAt.Valid)
+	assert.False(t, inserted.deletedAt.Valid)
+	assert.False(t, inserted.updatedAt.Time.Before(inserted.createdAt.Time))
+
+	require.NoError(t, store.Activate(t.Context(), "enc-audit-1"))
+	activated := queryAuditFields(t, store.db, "encounters", "enc-audit-1")
+
+	assert.True(t, activated.createdAt.Valid)
+	assert.True(t, activated.updatedAt.Valid)
+	assert.False(t, activated.deletedAt.Valid)
+	assert.Equal(t, inserted.createdAt.Time, activated.createdAt.Time)
+	assert.False(t, activated.updatedAt.Time.Before(inserted.updatedAt.Time))
+
+	require.NoError(t, store.SoftDelete(t.Context(), "enc-audit-1"))
+	deleted := queryAuditFields(t, store.db, "encounters", "enc-audit-1")
+
+	assert.True(t, deleted.createdAt.Valid)
+	assert.True(t, deleted.updatedAt.Valid)
+	assert.True(t, deleted.deletedAt.Valid)
+	assert.Equal(t, inserted.createdAt.Time, deleted.createdAt.Time)
+	assert.False(t, deleted.updatedAt.Time.Before(activated.updatedAt.Time))
+	assert.False(t, deleted.deletedAt.Time.Before(deleted.createdAt.Time))
+}
+
+func TestEncounterStoreMaintainsCombatantAuditFields(t *testing.T) {
+	store := newTestStore(t)
+
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:         "enc-combatant-audit",
+		Name:       "Combatant Audit",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "combatant-audit-1", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 5, MaxHP: 5, Active: true}},
+	}))
+	fields := queryAuditFields(t, store.db, "combatants", "combatant-audit-1")
+
+	assert.True(t, fields.createdAt.Valid)
+	assert.True(t, fields.updatedAt.Valid)
+	assert.False(t, fields.deletedAt.Valid)
+	assert.False(t, fields.updatedAt.Time.Before(fields.createdAt.Time))
+}
+
 func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:        "enc-diff-1",
 		Name:      "Difficulty Persist",
 		Round:     1,
@@ -151,7 +209,7 @@ func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 		},
 	}))
 
-	summaries, err := store.List()
+	summaries, err := store.List(t.Context())
 	require.NoError(t, err)
 	require.NotEmpty(t, summaries)
 
@@ -173,28 +231,68 @@ func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 	assert.Equal(t, 120, summary.EnemyTotalXP)
 }
 
+func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:        "enc-update-1",
+		Name:      "Before Update",
+		Round:     3,
+		TurnIndex: 1,
+		Resources: domain.Resources{
+			PartyAP:  2,
+			GMThreat: 1,
+		},
+		Combatants: []domain.Combatant{
+			{ID: "c1", Name: "One", Side: domain.SideParty, Initiative: 10, HP: 9, MaxHP: 9, Active: false},
+			{ID: "c2", Name: "Two", Side: domain.SideNPC, Initiative: 8, HP: 7, MaxHP: 7, Active: true},
+		},
+	}))
+
+	beforeUpdate, err := store.Get(t.Context())
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, beforeUpdate.TurnIndex, 0)
+	require.Less(t, beforeUpdate.TurnIndex, len(beforeUpdate.Combatants))
+	beforeActiveID := beforeUpdate.Combatants[beforeUpdate.TurnIndex].ID
+	beforeCombatants := append([]domain.Combatant(nil), beforeUpdate.Combatants...)
+
+	updated, err := store.UpdateEncounter(t.Context(), beforeUpdate.ID, "After Update", beforeCombatants)
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.Round, updated.Round)
+	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
+	require.GreaterOrEqual(t, updated.TurnIndex, 0)
+	require.Less(t, updated.TurnIndex, len(updated.Combatants))
+	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
+
+	persisted, err := store.Get(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
+	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
+	require.Less(t, persisted.TurnIndex, len(persisted.Combatants))
+	assert.Equal(t, beforeActiveID, persisted.Combatants[persisted.TurnIndex].ID)
+}
+
 func TestEncounterStoreNotFoundOperations(t *testing.T) {
 	store := newTestStore(t)
 
-	require.ErrorIs(t, store.Activate("missing"), domain.ErrEncounterNotFound)
-	require.ErrorIs(t, store.SoftDelete("missing"), domain.ErrEncounterNotFound)
+	require.ErrorIs(t, store.Activate(t.Context(), "missing"), domain.ErrEncounterNotFound)
+	require.ErrorIs(t, store.SoftDelete(t.Context(), "missing"), domain.ErrEncounterNotFound)
 }
 
 func TestEncounterStoreSaveNilEncounter(t *testing.T) {
 	store := newTestStore(t)
-	require.Error(t, store.Save(nil))
+	require.Error(t, store.Save(t.Context(), nil))
 }
 
 func TestEncounterStoreStopsQueriesWhenContextCanceled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	store := newTestStoreWithContext(t, ctx)
+	ctx, cancel := context.WithCancel(t.Context())
+	store := newTestStore(t)
 
 	cancel()
 
-	_, err := store.Get()
+	_, err := store.Get(ctx)
 	require.ErrorIs(t, err, context.Canceled)
 
-	err = store.Save(&domain.Encounter{
+	err = store.Save(ctx, &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Canceled",
 		Round:      1,
@@ -206,7 +304,7 @@ func TestEncounterStoreStopsQueriesWhenContextCanceled(t *testing.T) {
 
 func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 	store := newTestStore(t)
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
@@ -214,29 +312,48 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c1", Name: "A", Side: domain.SideParty, Initiative: 10, Active: true}},
 	}))
 
-	require.NoError(t, store.AppendEncounterLog("enc-1", 1, "Encounter created"))
-	require.NoError(t, store.AppendEncounterLog("enc-1", 2, "Turn advanced -> A"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 1, "Encounter created"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 2, "Turn advanced -> A"))
 
-	logs, err := store.ListEncounterLogs("enc-1")
+	logs, err := store.ListEncounterLogs(t.Context(), "enc-1")
 	require.NoError(t, err)
 	require.Len(t, logs, 2)
 	assert.Equal(t, 2, logs[0].Round)
 	assert.Contains(t, logs[0].Message, "Turn advanced")
-	assert.NotEmpty(t, logs[0].CreatedAt)
+	assert.False(t, logs[0].CreatedAt.IsZero())
 	assert.Equal(t, 1, logs[1].Round)
+}
+
+func TestEncounterStoreMaintainsEncounterLogAuditFields(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:         "enc-log-audit",
+		Name:       "Log Audit",
+		Round:      1,
+		TurnIndex:  0,
+		Combatants: []domain.Combatant{{ID: "c-log-audit", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 5, MaxHP: 5, Active: true}},
+	}))
+
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-log-audit", 1, "Audit log entry"))
+	fields := queryEncounterLogAuditFields(t, store.db, "enc-log-audit", "Audit log entry")
+
+	assert.True(t, fields.createdAt.Valid)
+	assert.True(t, fields.updatedAt.Valid)
+	assert.False(t, fields.deletedAt.Valid)
+	assert.False(t, fields.updatedAt.Time.Before(fields.createdAt.Time))
 }
 
 func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Old",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 1, Initiative: 8, HP: 7, Defense: 2}, {ID: "n1", Name: "Raider", Side: domain.SideNPC, XP: 30, Initiative: 7, HP: 6}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:        "enc-2",
 		Name:      "New",
 		Round:     1,
@@ -248,7 +365,7 @@ func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *test
 		},
 	}))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)
 	assert.Equal(t, "Scout", party[0].Name)
@@ -261,23 +378,23 @@ func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *tes
 	_, err := store.db.Exec(`UPDATE player_characters SET active = 0 WHERE campaign_id = ?`, "repo-test-campaign")
 	require.NoError(t, err)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 7, Defense: 2}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-2",
 		Name:       "Bravo",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p2", Name: "Roland", Side: domain.SideParty, Level: 4, Initiative: 12, HP: 10, Defense: 5}},
 	}))
-	require.NoError(t, store.SoftDelete("enc-2"))
+	require.NoError(t, store.SoftDelete(t.Context(), "enc-2"))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, party)
 }
@@ -285,7 +402,7 @@ func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *tes
 func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T) {
 	store := newTestStore(t)
 
-	_, err := store.UpdateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err := store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
@@ -343,10 +460,69 @@ func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T)
 		"Ranger",
 	))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)
 	assert.Equal(t, "Ranger", party[0].Name)
+}
+
+func TestEncounterStoreMaintainsCampaignPlayerAuditFields(t *testing.T) {
+	store := newTestStore(t)
+
+	campaignFields := queryAuditFields(t, store.db, "campaigns", "repo-test-campaign")
+	playerID := queryString(t, store.db, `SELECT id FROM players WHERE campaign_id = ? AND name = ?`, "repo-test-campaign", "Player 1")
+	playerFields := queryAuditFields(t, store.db, "players", playerID)
+	characterFields := queryAuditFields(t, store.db, "player_characters", "repo-char-1")
+
+	assert.True(t, campaignFields.createdAt.Valid)
+	assert.True(t, campaignFields.updatedAt.Valid)
+	assert.False(t, campaignFields.deletedAt.Valid)
+	assert.False(t, campaignFields.updatedAt.Time.Before(campaignFields.createdAt.Time))
+
+	assert.True(t, playerFields.createdAt.Valid)
+	assert.True(t, playerFields.updatedAt.Valid)
+	assert.False(t, playerFields.deletedAt.Valid)
+	assert.False(t, playerFields.updatedAt.Time.Before(playerFields.createdAt.Time))
+
+	assert.True(t, characterFields.createdAt.Valid)
+	assert.True(t, characterFields.updatedAt.Valid)
+	assert.False(t, characterFields.deletedAt.Valid)
+	assert.False(t, characterFields.updatedAt.Time.Before(characterFields.createdAt.Time))
+}
+
+func TestEncounterStoreStoresCampaignStartDateAsDateTime(t *testing.T) {
+	store := newTestStore(t)
+	expected := testCampaignStartDate(t)
+
+	assert.Equal(t, "DATETIME", queryColumnType(t, store.db, "campaigns", "start_date"))
+
+	var stored time.Time
+	require.NoError(t, store.db.QueryRow(`SELECT start_date FROM campaigns WHERE id = ?`, "repo-test-campaign").Scan(&stored))
+	assert.Equal(t, expected, stored)
+
+	activeCampaign, err := store.GetActiveCampaign(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, expected, activeCampaign.StartDate)
+}
+
+func TestEncounterStoreCreateCampaignRejectsZeroStartDate(t *testing.T) {
+	store := newTestStore(t)
+
+	_, err := store.CreateCampaign(t.Context(), "zero-date", "Zero Date", time.Time{}, []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				Name:       "Scout",
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				MaxHP:      6,
+			},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "campaign start date is required")
 }
 
 func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
@@ -354,22 +530,22 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 	dropNormalizedSyncTriggers(t, store.db)
 
 	combatant := domain.Combatant{
-		ID:             "norm-c1",
-		Name:           "Sentry",
-		Side:           domain.SideNPC,
-		Initiative:     8,
-		HP:             10,
-		MaxHP:          10,
-		DefenseHead:    3,
-		DefenseTorso:   4,
-		DefenseLeftArm: 5,
-		DefenseRightArm: 6,
-		DefenseLeftLeg: 7,
-		DefenseRightLeg: 8,
-		ResistPhysical: 2,
-		ResistEnergy:   3,
-		ResistRadiation: 4,
-		ResistPoison:    5,
+		ID:                      "norm-c1",
+		Name:                    "Sentry",
+		Side:                    domain.SideNPC,
+		Initiative:              8,
+		HP:                      10,
+		MaxHP:                   10,
+		DefenseHead:             3,
+		DefenseTorso:            4,
+		DefenseLeftArm:          5,
+		DefenseRightArm:         6,
+		DefenseLeftLeg:          7,
+		DefenseRightLeg:         8,
+		ResistPhysical:          2,
+		ResistEnergy:            3,
+		ResistRadiation:         4,
+		ResistPoison:            5,
 		ResistPhysicalHead:      1,
 		ResistPhysicalTorso:     2,
 		ResistPhysicalLeftArm:   3,
@@ -390,7 +566,7 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		ResistRadiationRightLeg: 8,
 		ImmunePhysical:          true,
 	}
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "norm-enc-1",
 		Name:       "Normalized Save",
 		Round:      1,
@@ -416,7 +592,7 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 
 	store := NewEncounterStore(db)
 	characterID := "norm-char-1"
-	_, err = store.CreateCampaign("norm-campaign-1", "Normalized Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = store.CreateCampaign(t.Context(), "norm-campaign-1", "Normalized Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player A",
 			Character: domain.Combatant{
@@ -462,7 +638,7 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 
 func newTestStore(t *testing.T) *EncounterStore {
 	t.Helper()
-	return newTestStoreWithContext(t, context.Background())
+	return newTestStoreWithContext(t, t.Context())
 }
 
 func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore {
@@ -477,7 +653,7 @@ func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore 
 	})
 
 	store := NewEncounterStoreWithContext(db, ctx)
-	_, err = store.CreateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = store.CreateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
@@ -493,6 +669,13 @@ func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore 
 	})
 	require.NoError(t, err)
 	return store
+}
+
+func testCampaignStartDate(t *testing.T) time.Time {
+	t.Helper()
+	startDate, err := domain.ParseCampaignStartDate("2026-01-01")
+	require.NoError(t, err)
+	return startDate
 }
 
 func dropNormalizedSyncTriggers(t *testing.T, db *sql.DB) {
@@ -511,4 +694,102 @@ func queryInt64(t *testing.T, db *sql.DB, query string, args ...any) int64 {
 	var v int64
 	require.NoError(t, db.QueryRow(query, args...).Scan(&v))
 	return v
+}
+
+type auditFields struct {
+	createdAt auditTime
+	updatedAt auditTime
+	deletedAt auditTime
+}
+
+type auditTime struct {
+	Time  time.Time
+	Valid bool
+}
+
+func queryAuditFields(t *testing.T, db *sql.DB, table, id string) auditFields {
+	t.Helper()
+	return queryAuditFieldsBySQL(t, db, fmt.Sprintf(`SELECT created_at, updated_at, deleted_at FROM %s WHERE id = ?`, table), id)
+}
+
+func queryEncounterLogAuditFields(t *testing.T, db *sql.DB, encounterID, message string) auditFields {
+	t.Helper()
+	return queryAuditFieldsBySQL(
+		t,
+		db,
+		`SELECT created_at, updated_at, deleted_at FROM encounter_logs WHERE encounter_id = ? AND message = ?`,
+		encounterID,
+		message,
+	)
+}
+
+func queryAuditFieldsBySQL(t *testing.T, db *sql.DB, query string, args ...any) auditFields {
+	t.Helper()
+	var createdAt, updatedAt, deletedAt sql.NullString
+	require.NoError(t, db.QueryRow(query, args...).Scan(&createdAt, &updatedAt, &deletedAt))
+	return auditFields{
+		createdAt: parseAuditTime(t, createdAt),
+		updatedAt: parseAuditTime(t, updatedAt),
+		deletedAt: parseAuditTime(t, deletedAt),
+	}
+}
+
+func parseAuditTime(t *testing.T, raw sql.NullString) auditTime {
+	t.Helper()
+	if !raw.Valid {
+		return auditTime{}
+	}
+
+	value := strings.TrimSpace(raw.String)
+	if value == "" {
+		return auditTime{}
+	}
+
+	for _, layout := range []string{
+		"2006-01-02 15:04:05.000",
+		"2006-01-02 15:04:05",
+		time.RFC3339Nano,
+	} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return auditTime{Time: parsed, Valid: true}
+		}
+	}
+
+	require.Failf(t, "parse audit timestamp", "value %q did not match known layouts", value)
+	return auditTime{}
+}
+
+func queryString(t *testing.T, db *sql.DB, query string, args ...any) string {
+	t.Helper()
+	var v string
+	require.NoError(t, db.QueryRow(query, args...).Scan(&v))
+	return v
+}
+
+func queryColumnType(t *testing.T, db *sql.DB, table, column string) string {
+	t.Helper()
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, table))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, rows.Close())
+	}()
+
+	for rows.Next() {
+		var (
+			cid        int
+			name       string
+			columnType string
+			notNull    int
+			defaultVal sql.NullString
+			pk         int
+		)
+		require.NoError(t, rows.Scan(&cid, &name, &columnType, &notNull, &defaultVal, &pk))
+		if name == column {
+			return columnType
+		}
+	}
+	require.NoError(t, rows.Err())
+	require.Failf(t, "column not found", "%s.%s", table, column)
+	return ""
 }
