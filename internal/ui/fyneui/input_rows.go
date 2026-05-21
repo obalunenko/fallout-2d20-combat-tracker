@@ -22,12 +22,6 @@ type combatantInputRow struct {
 	hp            *widget.Entry
 	hpMax         *widget.Entry
 	defense       *widget.Entry
-	defenseHead   *widget.Entry
-	defenseTorso  *widget.Entry
-	defenseLA     *widget.Entry
-	defenseRA     *widget.Entry
-	defenseLL     *widget.Entry
-	defenseRL     *widget.Entry
 	drEnergyHead  *widget.Entry
 	drEnergyTorso *widget.Entry
 	drEnergyLA    *widget.Entry
@@ -62,12 +56,6 @@ type campaignPlayerInputRow struct {
 	hp            *widget.Entry
 	hpMax         *widget.Entry
 	defense       *widget.Entry
-	defenseHead   *widget.Entry
-	defenseTorso  *widget.Entry
-	defenseLA     *widget.Entry
-	defenseRA     *widget.Entry
-	defenseLL     *widget.Entry
-	defenseRL     *widget.Entry
 	drEnergyHead  *widget.Entry
 	drEnergyTorso *widget.Entry
 	drEnergyLA    *widget.Entry
@@ -146,12 +134,6 @@ func combatantInputRowIsEmpty(row *combatantInputRow) bool {
 		strings.TrimSpace(row.hp.Text) == "1" &&
 		strings.TrimSpace(row.hpMax.Text) == "1" &&
 		strings.TrimSpace(row.defense.Text) == "0" &&
-		strings.TrimSpace(row.defenseHead.Text) == "0" &&
-		strings.TrimSpace(row.defenseTorso.Text) == "0" &&
-		strings.TrimSpace(row.defenseLA.Text) == "0" &&
-		strings.TrimSpace(row.defenseRA.Text) == "0" &&
-		strings.TrimSpace(row.defenseLL.Text) == "0" &&
-		strings.TrimSpace(row.defenseRL.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyHead.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyTorso.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyLA.Text) == "0" &&
@@ -205,18 +187,6 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	}
 	row.hpMax.SetText(strconv.Itoa(maxHP))
 	row.defense.SetText(strconv.Itoa(template.Defense))
-	defenseHead := template.DefenseHead
-	defenseTorso := template.DefenseTorso
-	defenseLA := template.DefenseLeftArm
-	defenseRA := template.DefenseRightArm
-	defenseLL := template.DefenseLeftLeg
-	defenseRL := template.DefenseRightLeg
-	row.defenseHead.SetText(strconv.Itoa(defenseHead))
-	row.defenseTorso.SetText(strconv.Itoa(defenseTorso))
-	row.defenseLA.SetText(strconv.Itoa(defenseLA))
-	row.defenseRA.SetText(strconv.Itoa(defenseRA))
-	row.defenseLL.SetText(strconv.Itoa(defenseLL))
-	row.defenseRL.SetText(strconv.Itoa(defenseRL))
 	row.drEnergyHead.SetText(strconv.Itoa(template.ResistEnergyHead))
 	row.drEnergyTorso.SetText(strconv.Itoa(template.ResistEnergyTorso))
 	row.drEnergyLA.SetText(strconv.Itoa(template.ResistEnergyLeftArm))

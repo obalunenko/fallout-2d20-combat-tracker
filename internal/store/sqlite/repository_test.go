@@ -536,12 +536,6 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		Initiative:              8,
 		HP:                      10,
 		MaxHP:                   10,
-		DefenseHead:             3,
-		DefenseTorso:            4,
-		DefenseLeftArm:          5,
-		DefenseRightArm:         6,
-		DefenseLeftLeg:          7,
-		DefenseRightLeg:         8,
 		ResistPhysical:          2,
 		ResistEnergy:            3,
 		ResistRadiation:         4,
@@ -574,10 +568,8 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		Combatants: []domain.Combatant{combatant},
 	}))
 
-	assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_defense_by_location WHERE combatant_id = ?`, combatant.ID))
 	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, combatant.ID))
 	assert.Equal(t, int64(18), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, combatant.ID))
-	assert.Equal(t, int64(3), queryInt64(t, store.db, `SELECT defense FROM combatant_defense_by_location WHERE combatant_id = ? AND body_location_id = 1`, combatant.ID))
 	assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM combatant_resistance_global WHERE combatant_id = ? AND damage_type_id = 1`, combatant.ID))
 }
 
@@ -603,12 +595,6 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 				Initiative:              9,
 				HP:                      11,
 				MaxHP:                   11,
-				DefenseHead:             2,
-				DefenseTorso:            2,
-				DefenseLeftArm:          2,
-				DefenseRightArm:         2,
-				DefenseLeftLeg:          2,
-				DefenseRightLeg:         2,
 				ResistEnergy:            3,
 				ResistEnergyHead:        1,
 				ResistEnergyTorso:       2,
@@ -629,7 +615,6 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(6), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_defense_by_location WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_global WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_by_location WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 2`, characterID))

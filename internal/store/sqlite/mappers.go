@@ -19,12 +19,6 @@ type combatantDBFields struct {
 	HP                                int64
 	MaxHP                             int64
 	Defense                           int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
 	DamageResistancePhysicalHead      int64
 	DamageResistancePhysicalTorso     int64
 	DamageResistancePhysicalLeftArm   int64
@@ -67,12 +61,6 @@ func combatantFromFields(f combatantDBFields) domain.Combatant {
 		HP:                      int(f.HP),
 		MaxHP:                   int(f.MaxHP),
 		Defense:                 int(f.Defense),
-		DefenseHead:             int(f.DefenseHead),
-		DefenseTorso:            int(f.DefenseTorso),
-		DefenseLeftArm:          int(f.DefenseLeftArm),
-		DefenseRightArm:         int(f.DefenseRightArm),
-		DefenseLeftLeg:          int(f.DefenseLeftLeg),
-		DefenseRightLeg:         int(f.DefenseRightLeg),
 		ResistPhysicalHead:      int(f.DamageResistancePhysicalHead),
 		ResistPhysicalTorso:     int(f.DamageResistancePhysicalTorso),
 		ResistPhysicalLeftArm:   int(f.DamageResistancePhysicalLeftArm),
@@ -116,12 +104,6 @@ func combatantFromRow(r dbgen.ListCombatantsByEncounterIDRow) domain.Combatant {
 		HP:                                r.Hp,
 		MaxHP:                             r.MaxHp,
 		Defense:                           r.Defense,
-		DefenseHead:                       r.DefenseHead,
-		DefenseTorso:                      r.DefenseTorso,
-		DefenseLeftArm:                    r.DefenseLeftArm,
-		DefenseRightArm:                   r.DefenseRightArm,
-		DefenseLeftLeg:                    r.DefenseLeftLeg,
-		DefenseRightLeg:                   r.DefenseRightLeg,
 		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
 		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
 		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,
@@ -172,12 +154,6 @@ func partyCombatantFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 		HP:                                r.Hp,
 		MaxHP:                             r.MaxHp,
 		Defense:                           r.Defense,
-		DefenseHead:                       r.DefenseHead,
-		DefenseTorso:                      r.DefenseTorso,
-		DefenseLeftArm:                    r.DefenseLeftArm,
-		DefenseRightArm:                   r.DefenseRightArm,
-		DefenseLeftLeg:                    r.DefenseLeftLeg,
-		DefenseRightLeg:                   r.DefenseRightLeg,
 		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
 		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
 		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,

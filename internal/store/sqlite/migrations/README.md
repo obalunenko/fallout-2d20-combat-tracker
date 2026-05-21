@@ -1,6 +1,6 @@
 # SQLite Migrations Notes
 
-## Normalization Timeline (`00020`-`00023`)
+## Normalization Timeline (`00020`-`00025`)
 
 - `00020_add_normalized_defense_tables.sql`
   - Adds `body_locations` and normalized defense tables for combatants and player characters.
@@ -16,12 +16,14 @@
   - Removes legacy wide defense/resistance columns from:
     - `combatants`
     - `player_characters`
-  - After this migration, normalized tables are the single source of truth.
+- `00025_drop_body_location_defense_tables.sql`
+  - Drops per-body Defense tables after Defense became a global-only stat.
 
 ## Current Schema Contract
 
 - Base entities store shared scalar fields only (`hp`, `max_hp`, `defense`, etc.).
-- Per-body and per-damage stats are stored only in normalized tables.
+- Defense is stored only as a global scalar on combatants and player characters.
+- Per-body damage resistance is stored only in normalized resistance tables.
 - `sqlc/query.sql` must not reference removed legacy columns.
 
 ## Migration Authoring Guidance

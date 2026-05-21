@@ -118,23 +118,6 @@ SET campaign_id = sqlc.arg(campaign_id),
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(character_id);
 
--- name: UpsertPlayerCharacterDefenseByLocation :exec
-INSERT INTO player_character_defense_by_location (
-  player_character_id,
-  body_location_id,
-  defense,
-  updated_at
-)
-VALUES (
-  sqlc.arg(player_character_id),
-  sqlc.arg(body_location_id),
-  sqlc.arg(defense),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (player_character_id, body_location_id) DO UPDATE SET
-  defense = excluded.defense,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
-
 -- name: UpsertPlayerCharacterResistanceGlobal :exec
 INSERT INTO player_character_resistance_global (
   player_character_id,
@@ -175,20 +158,7 @@ ON CONFLICT (player_character_id, damage_type_id, body_location_id) DO UPDATE SE
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: ListActivePartyCharactersByCampaignID :many
-WITH player_character_defense AS (
-  SELECT
-    cdl.player_character_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM player_character_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.player_character_id
-),
-player_character_resistance_global_agg AS (
+WITH player_character_resistance_global_agg AS (
   SELECT
     crg.player_character_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -239,12 +209,6 @@ SELECT
   pc.max_hp,
   pc.defense,
   pc.torso_only,
-  CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-  CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-  CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-  CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-  CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-  CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -273,7 +237,6 @@ SELECT
   CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune
 FROM player_characters pc
 JOIN players p ON p.id = pc.player_id
-LEFT JOIN player_character_defense cdl ON cdl.player_character_id = pc.id
 LEFT JOIN player_character_resistance_global_agg crg ON crg.player_character_id = pc.id
 LEFT JOIN player_character_resistance_by_location_agg crl ON crl.player_character_id = pc.id
 WHERE pc.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
@@ -300,20 +263,7 @@ WHERE deleted_at IS NULL
   AND id = sqlc.arg(encounter_id);
 
 -- name: ListCombatantsByEncounterID :many
-WITH combatant_defense AS (
-  SELECT
-    cdl.combatant_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM combatant_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.combatant_id
-),
-combatant_resistance_global_agg AS (
+WITH combatant_resistance_global_agg AS (
   SELECT
     crg.combatant_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -365,12 +315,6 @@ SELECT
   c.max_hp,
   c.defense,
   c.torso_only,
-  CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-  CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-  CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-  CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-  CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-  CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -400,7 +344,6 @@ SELECT
   c.active,
   c.defeated
 FROM combatants c
-LEFT JOIN combatant_defense cdl ON cdl.combatant_id = c.id
 LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
 LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
 WHERE c.encounter_id = sqlc.arg(encounter_id)
@@ -478,23 +421,6 @@ VALUES (
 	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
 	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 	);
-
--- name: UpsertCombatantDefenseByLocation :exec
-INSERT INTO combatant_defense_by_location (
-  combatant_id,
-  body_location_id,
-  defense,
-  updated_at
-)
-VALUES (
-  sqlc.arg(combatant_id),
-  sqlc.arg(body_location_id),
-  sqlc.arg(defense),
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (combatant_id, body_location_id) DO UPDATE SET
-  defense = excluded.defense,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: UpsertCombatantResistanceGlobal :exec
 INSERT INTO combatant_resistance_global (
@@ -599,20 +525,7 @@ WHERE encounter_id = sqlc.arg(encounter_id)
 ORDER BY created_at DESC, rowid DESC;
 
 -- name: ListEncounterPartyTemplatesByCampaignID :many
-WITH combatant_defense AS (
-  SELECT
-    cdl.combatant_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM combatant_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.combatant_id
-),
-combatant_resistance_global_agg AS (
+WITH combatant_resistance_global_agg AS (
   SELECT
     crg.combatant_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -663,12 +576,6 @@ latest_party AS (
     c.max_hp,
     c.defense,
     c.torso_only,
-    CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-    CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-    CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-    CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-    CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-    CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
     CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
     CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
     CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -701,7 +608,6 @@ latest_party AS (
     ) AS rn
   FROM combatants c
   JOIN encounters e ON e.id = c.encounter_id
-  LEFT JOIN combatant_defense cdl ON cdl.combatant_id = c.id
   LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
   LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
   WHERE c.side = 'party'
@@ -717,12 +623,6 @@ SELECT
   max_hp,
   defense,
   torso_only,
-  defense_head,
-  defense_torso,
-  defense_left_arm,
-  defense_right_arm,
-  defense_left_leg,
-  defense_right_leg,
   damage_resistance_physical_head,
   damage_resistance_physical_torso,
   damage_resistance_physical_left_arm,

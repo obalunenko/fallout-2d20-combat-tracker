@@ -448,20 +448,7 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 }
 
 const listActivePartyCharactersByCampaignID = `-- name: ListActivePartyCharactersByCampaignID :many
-WITH player_character_defense AS (
-  SELECT
-    cdl.player_character_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM player_character_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.player_character_id
-),
-player_character_resistance_global_agg AS (
+WITH player_character_resistance_global_agg AS (
   SELECT
     crg.player_character_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -512,12 +499,6 @@ SELECT
   pc.max_hp,
   pc.defense,
   pc.torso_only,
-  CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-  CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-  CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-  CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-  CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-  CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -546,7 +527,6 @@ SELECT
   CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune
 FROM player_characters pc
 JOIN players p ON p.id = pc.player_id
-LEFT JOIN player_character_defense cdl ON cdl.player_character_id = pc.id
 LEFT JOIN player_character_resistance_global_agg crg ON crg.player_character_id = pc.id
 LEFT JOIN player_character_resistance_by_location_agg crl ON crl.player_character_id = pc.id
 WHERE pc.campaign_id = ?1 AND pc.active = 1
@@ -563,12 +543,6 @@ type ListActivePartyCharactersByCampaignIDRow struct {
 	MaxHp                             int64
 	Defense                           int64
 	TorsoOnly                         int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
 	DamageResistancePhysicalHead      int64
 	DamageResistancePhysicalTorso     int64
 	DamageResistancePhysicalLeftArm   int64
@@ -616,12 +590,6 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 			&i.MaxHp,
 			&i.Defense,
 			&i.TorsoOnly,
-			&i.DefenseHead,
-			&i.DefenseTorso,
-			&i.DefenseLeftArm,
-			&i.DefenseRightArm,
-			&i.DefenseLeftLeg,
-			&i.DefenseRightLeg,
 			&i.DamageResistancePhysicalHead,
 			&i.DamageResistancePhysicalTorso,
 			&i.DamageResistancePhysicalLeftArm,
@@ -704,20 +672,7 @@ func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error)
 }
 
 const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
-WITH combatant_defense AS (
-  SELECT
-    cdl.combatant_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM combatant_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.combatant_id
-),
-combatant_resistance_global_agg AS (
+WITH combatant_resistance_global_agg AS (
   SELECT
     crg.combatant_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -769,12 +724,6 @@ SELECT
   c.max_hp,
   c.defense,
   c.torso_only,
-  CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-  CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-  CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-  CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-  CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-  CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -804,7 +753,6 @@ SELECT
   c.active,
   c.defeated
 FROM combatants c
-LEFT JOIN combatant_defense cdl ON cdl.combatant_id = c.id
 LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
 LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
 WHERE c.encounter_id = ?1
@@ -822,12 +770,6 @@ type ListCombatantsByEncounterIDRow struct {
 	MaxHp                             int64
 	Defense                           int64
 	TorsoOnly                         int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
 	DamageResistancePhysicalHead      int64
 	DamageResistancePhysicalTorso     int64
 	DamageResistancePhysicalLeftArm   int64
@@ -878,12 +820,6 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 			&i.MaxHp,
 			&i.Defense,
 			&i.TorsoOnly,
-			&i.DefenseHead,
-			&i.DefenseTorso,
-			&i.DefenseLeftArm,
-			&i.DefenseRightArm,
-			&i.DefenseLeftLeg,
-			&i.DefenseRightLeg,
 			&i.DamageResistancePhysicalHead,
 			&i.DamageResistancePhysicalTorso,
 			&i.DamageResistancePhysicalLeftArm,
@@ -963,20 +899,7 @@ func (q *Queries) ListEncounterLogsByEncounterID(ctx context.Context, encounterI
 }
 
 const listEncounterPartyTemplatesByCampaignID = `-- name: ListEncounterPartyTemplatesByCampaignID :many
-WITH combatant_defense AS (
-  SELECT
-    cdl.combatant_id,
-    MAX(CASE WHEN bl.code = 'head' THEN cdl.defense END) AS defense_head,
-    MAX(CASE WHEN bl.code = 'torso' THEN cdl.defense END) AS defense_torso,
-    MAX(CASE WHEN bl.code = 'left_arm' THEN cdl.defense END) AS defense_left_arm,
-    MAX(CASE WHEN bl.code = 'right_arm' THEN cdl.defense END) AS defense_right_arm,
-    MAX(CASE WHEN bl.code = 'left_leg' THEN cdl.defense END) AS defense_left_leg,
-    MAX(CASE WHEN bl.code = 'right_leg' THEN cdl.defense END) AS defense_right_leg
-  FROM combatant_defense_by_location cdl
-  JOIN body_locations bl ON bl.id = cdl.body_location_id
-  GROUP BY cdl.combatant_id
-),
-combatant_resistance_global_agg AS (
+WITH combatant_resistance_global_agg AS (
   SELECT
     crg.combatant_id,
     MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
@@ -1027,12 +950,6 @@ latest_party AS (
     c.max_hp,
     c.defense,
     c.torso_only,
-    CAST(COALESCE(cdl.defense_head, 0) AS INTEGER) AS defense_head,
-    CAST(COALESCE(cdl.defense_torso, 0) AS INTEGER) AS defense_torso,
-    CAST(COALESCE(cdl.defense_left_arm, 0) AS INTEGER) AS defense_left_arm,
-    CAST(COALESCE(cdl.defense_right_arm, 0) AS INTEGER) AS defense_right_arm,
-    CAST(COALESCE(cdl.defense_left_leg, 0) AS INTEGER) AS defense_left_leg,
-    CAST(COALESCE(cdl.defense_right_leg, 0) AS INTEGER) AS defense_right_leg,
     CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
     CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
     CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -1065,7 +982,6 @@ latest_party AS (
     ) AS rn
   FROM combatants c
   JOIN encounters e ON e.id = c.encounter_id
-  LEFT JOIN combatant_defense cdl ON cdl.combatant_id = c.id
   LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
   LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
   WHERE c.side = 'party'
@@ -1081,12 +997,6 @@ SELECT
   max_hp,
   defense,
   torso_only,
-  defense_head,
-  defense_torso,
-  defense_left_arm,
-  defense_right_arm,
-  defense_left_leg,
-  defense_right_leg,
   damage_resistance_physical_head,
   damage_resistance_physical_torso,
   damage_resistance_physical_left_arm,
@@ -1127,12 +1037,6 @@ type ListEncounterPartyTemplatesByCampaignIDRow struct {
 	MaxHp                             int64
 	Defense                           int64
 	TorsoOnly                         int64
-	DefenseHead                       int64
-	DefenseTorso                      int64
-	DefenseLeftArm                    int64
-	DefenseRightArm                   int64
-	DefenseLeftLeg                    int64
-	DefenseRightLeg                   int64
 	DamageResistancePhysicalHead      int64
 	DamageResistancePhysicalTorso     int64
 	DamageResistancePhysicalLeftArm   int64
@@ -1179,12 +1083,6 @@ func (q *Queries) ListEncounterPartyTemplatesByCampaignID(ctx context.Context, c
 			&i.MaxHp,
 			&i.Defense,
 			&i.TorsoOnly,
-			&i.DefenseHead,
-			&i.DefenseTorso,
-			&i.DefenseLeftArm,
-			&i.DefenseRightArm,
-			&i.DefenseLeftLeg,
-			&i.DefenseRightLeg,
 			&i.DamageResistancePhysicalHead,
 			&i.DamageResistancePhysicalTorso,
 			&i.DamageResistancePhysicalLeftArm,
@@ -1456,35 +1354,6 @@ func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByID
 	return result.RowsAffected()
 }
 
-const upsertCombatantDefenseByLocation = `-- name: UpsertCombatantDefenseByLocation :exec
-INSERT INTO combatant_defense_by_location (
-  combatant_id,
-  body_location_id,
-  defense,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (combatant_id, body_location_id) DO UPDATE SET
-  defense = excluded.defense,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertCombatantDefenseByLocationParams struct {
-	CombatantID    string
-	BodyLocationID int64
-	Defense        int64
-}
-
-func (q *Queries) UpsertCombatantDefenseByLocation(ctx context.Context, arg UpsertCombatantDefenseByLocationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCombatantDefenseByLocation, arg.CombatantID, arg.BodyLocationID, arg.Defense)
-	return err
-}
-
 const upsertCombatantResistanceByLocation = `-- name: UpsertCombatantResistanceByLocation :exec
 INSERT INTO combatant_resistance_by_location (
   combatant_id,
@@ -1643,35 +1512,6 @@ func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams
 		arg.EnemyAvgLevel,
 		arg.EnemyTotalXp,
 	)
-	return err
-}
-
-const upsertPlayerCharacterDefenseByLocation = `-- name: UpsertPlayerCharacterDefenseByLocation :exec
-INSERT INTO player_character_defense_by_location (
-  player_character_id,
-  body_location_id,
-  defense,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (player_character_id, body_location_id) DO UPDATE SET
-  defense = excluded.defense,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertPlayerCharacterDefenseByLocationParams struct {
-	PlayerCharacterID string
-	BodyLocationID    int64
-	Defense           int64
-}
-
-func (q *Queries) UpsertPlayerCharacterDefenseByLocation(ctx context.Context, arg UpsertPlayerCharacterDefenseByLocationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPlayerCharacterDefenseByLocation, arg.PlayerCharacterID, arg.BodyLocationID, arg.Defense)
 	return err
 }
 

@@ -75,30 +75,6 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		if err != nil || defense < 0 {
 			return nil, fmt.Errorf("combatant %q: invalid defense %q", name, defenseText)
 		}
-		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "defense head", name)
-		if err != nil {
-			return nil, err
-		}
-		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "defense torso", name)
-		if err != nil {
-			return nil, err
-		}
-		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "defense left arm", name)
-		if err != nil {
-			return nil, err
-		}
-		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "defense right arm", name)
-		if err != nil {
-			return nil, err
-		}
-		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "defense left leg", name)
-		if err != nil {
-			return nil, err
-		}
-		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "defense right leg", name)
-		if err != nil {
-			return nil, err
-		}
 		drEnergyHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyHead.Text), "DR energy head", name)
 		if err != nil {
 			return nil, err
@@ -176,8 +152,6 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 			return nil, err
 		}
 		if row.torsoOnly != nil && row.torsoOnly.Checked {
-			defenseTorso = defense
-			defenseHead, defenseLA, defenseRA, defenseLL, defenseRL = 0, 0, 0, 0, 0
 			drPhysHead, drPhysLA, drPhysRA, drPhysLL, drPhysRL = 0, 0, 0, 0, 0
 			drEnergyHead, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL = 0, 0, 0, 0, 0
 			drRadHead, drRadLA, drRadRA, drRadLL, drRadRL = 0, 0, 0, 0, 0
@@ -201,12 +175,6 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 				MaxHP:                   hpMax,
 				Defense:                 defense,
 				TorsoOnly:               row.torsoOnly != nil && row.torsoOnly.Checked,
-				DefenseHead:             defenseHead,
-				DefenseTorso:            defenseTorso,
-				DefenseLeftArm:          defenseLA,
-				DefenseRightArm:         defenseRA,
-				DefenseLeftLeg:          defenseLL,
-				DefenseRightLeg:         defenseRL,
 				ResistPhysicalHead:      drPhysHead,
 				ResistPhysicalTorso:     drPhysTorso,
 				ResistPhysicalLeftArm:   drPhysLA,
@@ -276,30 +244,6 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 			return nil, fmt.Errorf("current HP cannot exceed max HP for %q", playerName)
 		}
 		defense, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defense.Text), "defense", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseHead.Text), "defense head", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseTorso.Text), "defense torso", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLA.Text), "defense left arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRA.Text), "defense right arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseLL.Text), "defense left leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		defenseRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.defenseRL.Text), "defense right leg", playerName)
 		if err != nil {
 			return nil, err
 		}
@@ -390,12 +334,6 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 				HP:                      hp,
 				MaxHP:                   hpMax,
 				Defense:                 defense,
-				DefenseHead:             defenseHead,
-				DefenseTorso:            defenseTorso,
-				DefenseLeftArm:          defenseLA,
-				DefenseRightArm:         defenseRA,
-				DefenseLeftLeg:          defenseLL,
-				DefenseRightLeg:         defenseRL,
 				ResistPhysicalHead:      drPhysHead,
 				ResistPhysicalTorso:     drPhysTorso,
 				ResistPhysicalLeftArm:   drPhysLA,

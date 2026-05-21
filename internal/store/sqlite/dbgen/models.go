@@ -48,14 +48,6 @@ type Combatant struct {
 	DeletedAt   interface{}
 }
 
-type CombatantDefenseByLocation struct {
-	CombatantID    string
-	BodyLocationID int64
-	Defense        int64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
 type CombatantResistanceByLocation struct {
 	CombatantID    string
 	DamageTypeID   int64
@@ -134,14 +126,6 @@ type PlayerCharacter struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	DeletedAt  interface{}
-}
-
-type PlayerCharacterDefenseByLocation struct {
-	PlayerCharacterID string
-	BodyLocationID    int64
-	Defense           int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
 }
 
 type PlayerCharacterResistanceByLocation struct {

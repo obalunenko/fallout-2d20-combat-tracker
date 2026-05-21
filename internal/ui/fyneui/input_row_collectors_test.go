@@ -21,7 +21,6 @@ func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 		HP:                      6,
 		MaxHP:                   8,
 		Defense:                 1,
-		DefenseHead:             2,
 		ResistPhysicalHead:      4,
 		ResistEnergyTorso:       5,
 		ResistRadiationRightLeg: 6,
@@ -41,7 +40,6 @@ func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 		assert.Equal(t, 6, combatant.HP)
 		assert.Equal(t, 8, combatant.MaxHP)
 		assert.Equal(t, 1, combatant.Defense)
-		assert.Equal(t, 2, combatant.DefenseHead)
 		assert.Equal(t, 4, combatant.ResistPhysicalHead)
 		assert.Equal(t, 5, combatant.ResistEnergyTorso)
 		assert.Equal(t, 6, combatant.ResistRadiationRightLeg)
@@ -82,7 +80,6 @@ func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 		HP:                     6,
 		MaxHP:                  6,
 		Defense:                3,
-		DefenseHead:            9,
 		ResistPhysicalHead:     4,
 		ResistPhysicalTorso:    5,
 		ResistEnergyLeftArm:    6,
@@ -97,8 +94,6 @@ func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 	require.Len(t, combatants, 1)
 	combatant := combatants[0]
 	assert.True(t, combatant.TorsoOnly)
-	assert.Equal(t, 0, combatant.DefenseHead)
-	assert.Equal(t, 3, combatant.DefenseTorso)
 	assert.Equal(t, 0, combatant.ResistPhysicalHead)
 	assert.Equal(t, 5, combatant.ResistPhysicalTorso)
 	assert.Equal(t, 0, combatant.ResistEnergyLeftArm)
@@ -128,7 +123,6 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	row.hp.SetText("9")
 	row.hpMax.SetText("12")
 	row.defense.SetText("2")
-	row.defenseHead.SetText("3")
 	row.drPhysHead.SetText("4")
 	row.drEnergyTorso.SetText("5")
 	row.drRadRL.SetText("6")
@@ -147,7 +141,6 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	assert.Equal(t, 9, character.HP)
 	assert.Equal(t, 12, character.MaxHP)
 	assert.Equal(t, 2, character.Defense)
-	assert.Equal(t, 3, character.DefenseHead)
 	assert.Equal(t, 4, character.ResistPhysicalHead)
 	assert.Equal(t, 5, character.ResistEnergyTorso)
 	assert.Equal(t, 6, character.ResistRadiationRightLeg)

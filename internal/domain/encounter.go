@@ -45,12 +45,6 @@ type Combatant struct {
 	HP                      int
 	MaxHP                   int
 	Defense                 int
-	DefenseHead             int
-	DefenseTorso            int
-	DefenseLeftArm          int
-	DefenseRightArm         int
-	DefenseLeftLeg          int
-	DefenseRightLeg         int
 	ResistPhysical          int
 	ResistEnergy            int
 	ResistRadiation         int
@@ -348,7 +342,6 @@ func (c *Combatant) normalizeHPState() {
 	if c.HP == 0 {
 		c.Defeated = true
 	}
-	c.normalizeLocationDefense()
 	c.normalizeLocationResistance()
 }
 
@@ -382,15 +375,6 @@ func (c *Combatant) normalizeLocationResistance() {
 	c.ResistRadiationRightArm = max(c.ResistRadiationRightArm, 0)
 	c.ResistRadiationLeftLeg = max(c.ResistRadiationLeftLeg, 0)
 	c.ResistRadiationRightLeg = max(c.ResistRadiationRightLeg, 0)
-}
-
-func (c *Combatant) normalizeLocationDefense() {
-	c.DefenseHead = max(c.DefenseHead, 0)
-	c.DefenseTorso = max(c.DefenseTorso, 0)
-	c.DefenseLeftArm = max(c.DefenseLeftArm, 0)
-	c.DefenseRightArm = max(c.DefenseRightArm, 0)
-	c.DefenseLeftLeg = max(c.DefenseLeftLeg, 0)
-	c.DefenseRightLeg = max(c.DefenseRightLeg, 0)
 }
 
 func (c *Combatant) physicalLocationResistance(location BodyLocation) (int, error) {
