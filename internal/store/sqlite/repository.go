@@ -54,55 +54,7 @@ func (s *EncounterStore) Get(ctx context.Context) (*domain.Encounter, error) {
 		return nil, fmt.Errorf("read combatants: %w", err)
 	}
 
-	combatants := make([]domain.Combatant, 0, len(combatantRows))
-	for _, c := range combatantRows {
-		combatants = append(combatants, domain.Combatant{
-			ID:                      c.ID,
-			Name:                    c.Name,
-			Side:                    domain.Side(c.Side),
-			TorsoOnly:               c.TorsoOnly == 1,
-			Level:                   int(c.Level),
-			XP:                      int(c.Xp),
-			Initiative:              int(c.Initiative),
-			HP:                      int(c.Hp),
-			MaxHP:                   int(c.MaxHp),
-			Defense:                 int(c.Defense),
-			DefenseHead:             int(c.DefenseHead),
-			DefenseTorso:            int(c.DefenseTorso),
-			DefenseLeftArm:          int(c.DefenseLeftArm),
-			DefenseRightArm:         int(c.DefenseRightArm),
-			DefenseLeftLeg:          int(c.DefenseLeftLeg),
-			DefenseRightLeg:         int(c.DefenseRightLeg),
-			ResistPhysicalHead:      int(c.DamageResistancePhysicalHead),
-			ResistPhysicalTorso:     int(c.DamageResistancePhysicalTorso),
-			ResistPhysicalLeftArm:   int(c.DamageResistancePhysicalLeftArm),
-			ResistPhysicalRightArm:  int(c.DamageResistancePhysicalRightArm),
-			ResistPhysicalLeftLeg:   int(c.DamageResistancePhysicalLeftLeg),
-			ResistPhysicalRightLeg:  int(c.DamageResistancePhysicalRightLeg),
-			ResistEnergyHead:        int(c.DamageResistanceEnergyHead),
-			ResistEnergyTorso:       int(c.DamageResistanceEnergyTorso),
-			ResistEnergyLeftArm:     int(c.DamageResistanceEnergyLeftArm),
-			ResistEnergyRightArm:    int(c.DamageResistanceEnergyRightArm),
-			ResistEnergyLeftLeg:     int(c.DamageResistanceEnergyLeftLeg),
-			ResistEnergyRightLeg:    int(c.DamageResistanceEnergyRightLeg),
-			ResistRadiationHead:     int(c.DamageResistanceRadiationHead),
-			ResistRadiationTorso:    int(c.DamageResistanceRadiationTorso),
-			ResistRadiationLeftArm:  int(c.DamageResistanceRadiationLeftArm),
-			ResistRadiationRightArm: int(c.DamageResistanceRadiationRightArm),
-			ResistRadiationLeftLeg:  int(c.DamageResistanceRadiationLeftLeg),
-			ResistRadiationRightLeg: int(c.DamageResistanceRadiationRightLeg),
-			ResistPhysical:          int(c.DamageResistancePhysical),
-			ResistEnergy:            int(c.DamageResistanceEnergy),
-			ResistRadiation:         int(c.DamageResistanceRadiation),
-			ResistPoison:            int(c.DamageResistancePoison),
-			ImmunePhysical:          c.DamageResistancePhysicalImmune == 1,
-			ImmuneEnergy:            c.DamageResistanceEnergyImmune == 1,
-			ImmuneRadiation:         c.DamageResistanceRadiationImmune == 1,
-			ImmunePoison:            c.DamageResistancePoisonImmune == 1,
-			Active:                  c.Active == 1,
-			Defeated:                c.Defeated == 1,
-		})
-	}
+	combatants := combatantsFromRows(combatantRows)
 
 	return &domain.Encounter{
 		ID:         encRow.ID,
@@ -259,55 +211,7 @@ func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID strin
 	if err != nil {
 		return nil, fmt.Errorf("read combatants: %w", err)
 	}
-	combatants := make([]domain.Combatant, 0, len(combatantRows))
-	for _, c := range combatantRows {
-		combatants = append(combatants, domain.Combatant{
-			ID:                      c.ID,
-			Name:                    c.Name,
-			Side:                    domain.Side(c.Side),
-			TorsoOnly:               c.TorsoOnly == 1,
-			Level:                   int(c.Level),
-			XP:                      int(c.Xp),
-			Initiative:              int(c.Initiative),
-			HP:                      int(c.Hp),
-			MaxHP:                   int(c.MaxHp),
-			Defense:                 int(c.Defense),
-			DefenseHead:             int(c.DefenseHead),
-			DefenseTorso:            int(c.DefenseTorso),
-			DefenseLeftArm:          int(c.DefenseLeftArm),
-			DefenseRightArm:         int(c.DefenseRightArm),
-			DefenseLeftLeg:          int(c.DefenseLeftLeg),
-			DefenseRightLeg:         int(c.DefenseRightLeg),
-			ResistPhysicalHead:      int(c.DamageResistancePhysicalHead),
-			ResistPhysicalTorso:     int(c.DamageResistancePhysicalTorso),
-			ResistPhysicalLeftArm:   int(c.DamageResistancePhysicalLeftArm),
-			ResistPhysicalRightArm:  int(c.DamageResistancePhysicalRightArm),
-			ResistPhysicalLeftLeg:   int(c.DamageResistancePhysicalLeftLeg),
-			ResistPhysicalRightLeg:  int(c.DamageResistancePhysicalRightLeg),
-			ResistEnergyHead:        int(c.DamageResistanceEnergyHead),
-			ResistEnergyTorso:       int(c.DamageResistanceEnergyTorso),
-			ResistEnergyLeftArm:     int(c.DamageResistanceEnergyLeftArm),
-			ResistEnergyRightArm:    int(c.DamageResistanceEnergyRightArm),
-			ResistEnergyLeftLeg:     int(c.DamageResistanceEnergyLeftLeg),
-			ResistEnergyRightLeg:    int(c.DamageResistanceEnergyRightLeg),
-			ResistRadiationHead:     int(c.DamageResistanceRadiationHead),
-			ResistRadiationTorso:    int(c.DamageResistanceRadiationTorso),
-			ResistRadiationLeftArm:  int(c.DamageResistanceRadiationLeftArm),
-			ResistRadiationRightArm: int(c.DamageResistanceRadiationRightArm),
-			ResistRadiationLeftLeg:  int(c.DamageResistanceRadiationLeftLeg),
-			ResistRadiationRightLeg: int(c.DamageResistanceRadiationRightLeg),
-			ResistPhysical:          int(c.DamageResistancePhysical),
-			ResistEnergy:            int(c.DamageResistanceEnergy),
-			ResistRadiation:         int(c.DamageResistanceRadiation),
-			ResistPoison:            int(c.DamageResistancePoison),
-			ImmunePhysical:          c.DamageResistancePhysicalImmune == 1,
-			ImmuneEnergy:            c.DamageResistanceEnergyImmune == 1,
-			ImmuneRadiation:         c.DamageResistanceRadiationImmune == 1,
-			ImmunePoison:            c.DamageResistancePoisonImmune == 1,
-			Active:                  c.Active == 1,
-			Defeated:                c.Defeated == 1,
-		})
-	}
+	combatants := combatantsFromRows(combatantRows)
 	return &domain.Encounter{
 		ID:         row.ID,
 		CampaignID: interfaceToString(row.CampaignID),
@@ -382,57 +286,7 @@ func (s *EncounterStore) ListPartyMembers(ctx context.Context) ([]domain.Combata
 	if err != nil {
 		return nil, fmt.Errorf("list campaign characters: %w", err)
 	}
-	if len(activeCharacters) > 0 {
-		party := make([]domain.Combatant, 0, len(activeCharacters))
-		for _, r := range activeCharacters {
-			party = append(party, domain.Combatant{
-				ID:                      r.ID,
-				Name:                    r.CharacterName,
-				Side:                    domain.SideParty,
-				TorsoOnly:               r.TorsoOnly == 1,
-				Level:                   int(r.Level),
-				XP:                      0,
-				Initiative:              int(r.Initiative),
-				HP:                      int(r.Hp),
-				MaxHP:                   int(r.MaxHp),
-				Defense:                 int(r.Defense),
-				DefenseHead:             int(r.DefenseHead),
-				DefenseTorso:            int(r.DefenseTorso),
-				DefenseLeftArm:          int(r.DefenseLeftArm),
-				DefenseRightArm:         int(r.DefenseRightArm),
-				DefenseLeftLeg:          int(r.DefenseLeftLeg),
-				DefenseRightLeg:         int(r.DefenseRightLeg),
-				ResistPhysicalHead:      int(r.DamageResistancePhysicalHead),
-				ResistPhysicalTorso:     int(r.DamageResistancePhysicalTorso),
-				ResistPhysicalLeftArm:   int(r.DamageResistancePhysicalLeftArm),
-				ResistPhysicalRightArm:  int(r.DamageResistancePhysicalRightArm),
-				ResistPhysicalLeftLeg:   int(r.DamageResistancePhysicalLeftLeg),
-				ResistPhysicalRightLeg:  int(r.DamageResistancePhysicalRightLeg),
-				ResistEnergyHead:        int(r.DamageResistanceEnergyHead),
-				ResistEnergyTorso:       int(r.DamageResistanceEnergyTorso),
-				ResistEnergyLeftArm:     int(r.DamageResistanceEnergyLeftArm),
-				ResistEnergyRightArm:    int(r.DamageResistanceEnergyRightArm),
-				ResistEnergyLeftLeg:     int(r.DamageResistanceEnergyLeftLeg),
-				ResistEnergyRightLeg:    int(r.DamageResistanceEnergyRightLeg),
-				ResistRadiationHead:     int(r.DamageResistanceRadiationHead),
-				ResistRadiationTorso:    int(r.DamageResistanceRadiationTorso),
-				ResistRadiationLeftArm:  int(r.DamageResistanceRadiationLeftArm),
-				ResistRadiationRightArm: int(r.DamageResistanceRadiationRightArm),
-				ResistRadiationLeftLeg:  int(r.DamageResistanceRadiationLeftLeg),
-				ResistRadiationRightLeg: int(r.DamageResistanceRadiationRightLeg),
-				ResistPhysical:          int(r.DamageResistancePhysical),
-				ResistEnergy:            int(r.DamageResistanceEnergy),
-				ResistRadiation:         int(r.DamageResistanceRadiation),
-				ResistPoison:            int(r.DamageResistancePoison),
-				ImmunePhysical:          r.DamageResistancePhysicalImmune == 1,
-				ImmuneEnergy:            r.DamageResistanceEnergyImmune == 1,
-				ImmuneRadiation:         r.DamageResistanceRadiationImmune == 1,
-				ImmunePoison:            r.DamageResistancePoisonImmune == 1,
-			})
-		}
-		return party, nil
-	}
-	return []domain.Combatant{}, nil
+	return partyCombatantsFromRows(activeCharacters), nil
 }
 
 func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error) {
@@ -446,52 +300,7 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 	}
 	players := make([]domain.NewCampaignPlayer, 0, len(rows))
 	for _, r := range rows {
-		players = append(players, domain.NewCampaignPlayer{
-			PlayerName: r.PlayerName,
-			Character: domain.Combatant{
-				ID:                      r.ID,
-				Name:                    r.CharacterName,
-				Side:                    domain.SideParty,
-				TorsoOnly:               r.TorsoOnly == 1,
-				Level:                   int(r.Level),
-				Initiative:              int(r.Initiative),
-				HP:                      int(r.Hp),
-				MaxHP:                   int(r.MaxHp),
-				Defense:                 int(r.Defense),
-				DefenseHead:             int(r.DefenseHead),
-				DefenseTorso:            int(r.DefenseTorso),
-				DefenseLeftArm:          int(r.DefenseLeftArm),
-				DefenseRightArm:         int(r.DefenseRightArm),
-				DefenseLeftLeg:          int(r.DefenseLeftLeg),
-				DefenseRightLeg:         int(r.DefenseRightLeg),
-				ResistPhysicalHead:      int(r.DamageResistancePhysicalHead),
-				ResistPhysicalTorso:     int(r.DamageResistancePhysicalTorso),
-				ResistPhysicalLeftArm:   int(r.DamageResistancePhysicalLeftArm),
-				ResistPhysicalRightArm:  int(r.DamageResistancePhysicalRightArm),
-				ResistPhysicalLeftLeg:   int(r.DamageResistancePhysicalLeftLeg),
-				ResistPhysicalRightLeg:  int(r.DamageResistancePhysicalRightLeg),
-				ResistEnergyHead:        int(r.DamageResistanceEnergyHead),
-				ResistEnergyTorso:       int(r.DamageResistanceEnergyTorso),
-				ResistEnergyLeftArm:     int(r.DamageResistanceEnergyLeftArm),
-				ResistEnergyRightArm:    int(r.DamageResistanceEnergyRightArm),
-				ResistEnergyLeftLeg:     int(r.DamageResistanceEnergyLeftLeg),
-				ResistEnergyRightLeg:    int(r.DamageResistanceEnergyRightLeg),
-				ResistRadiationHead:     int(r.DamageResistanceRadiationHead),
-				ResistRadiationTorso:    int(r.DamageResistanceRadiationTorso),
-				ResistRadiationLeftArm:  int(r.DamageResistanceRadiationLeftArm),
-				ResistRadiationRightArm: int(r.DamageResistanceRadiationRightArm),
-				ResistRadiationLeftLeg:  int(r.DamageResistanceRadiationLeftLeg),
-				ResistRadiationRightLeg: int(r.DamageResistanceRadiationRightLeg),
-				ResistPhysical:          int(r.DamageResistancePhysical),
-				ResistEnergy:            int(r.DamageResistanceEnergy),
-				ResistRadiation:         int(r.DamageResistanceRadiation),
-				ResistPoison:            int(r.DamageResistancePoison),
-				ImmunePhysical:          r.DamageResistancePhysicalImmune == 1,
-				ImmuneEnergy:            r.DamageResistanceEnergyImmune == 1,
-				ImmuneRadiation:         r.DamageResistanceRadiationImmune == 1,
-				ImmunePoison:            r.DamageResistancePoisonImmune == 1,
-			},
-		})
+		players = append(players, campaignPlayerFromRow(r))
 	}
 	return players, nil
 }
@@ -761,12 +570,8 @@ func (s *EncounterStore) GetActiveCampaign(ctx context.Context) (*domain.Campaig
 		}
 		return nil, fmt.Errorf("get active campaign: %w", err)
 	}
-	return &domain.Campaign{
-		ID:        row.ID,
-		Name:      row.Name,
-		StartDate: row.StartDate,
-		UpdatedAt: row.UpdatedAt.Format("2006-01-02 15:04:05.000"),
-	}, nil
+	campaign := campaignFromRow(row)
+	return &campaign, nil
 }
 
 func (s *EncounterStore) ListCampaigns(ctx context.Context) ([]domain.Campaign, error) {
@@ -777,12 +582,7 @@ func (s *EncounterStore) ListCampaigns(ctx context.Context) ([]domain.Campaign, 
 	}
 	result := make([]domain.Campaign, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, domain.Campaign{
-			ID:        row.ID,
-			Name:      row.Name,
-			StartDate: row.StartDate,
-			UpdatedAt: row.UpdatedAt.Format("2006-01-02 15:04:05.000"),
-		})
+		result = append(result, campaignFromListRow(row))
 	}
 	return result, nil
 }
@@ -873,11 +673,7 @@ func (s *EncounterStore) ListEncounterLogs(ctx context.Context, encounterID stri
 
 	logs := make([]domain.EncounterLog, 0, len(rows))
 	for _, r := range rows {
-		logs = append(logs, domain.EncounterLog{
-			Round:     int(r.Round),
-			Message:   r.Message,
-			CreatedAt: r.CreatedAt.Format("2006-01-02 15:04:05.000"),
-		})
+		logs = append(logs, encounterLogFromRow(r))
 	}
 	return logs, nil
 }
