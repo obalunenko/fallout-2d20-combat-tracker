@@ -134,6 +134,43 @@ func TestListAndActivateEncounter(t *testing.T) {
 	assert.Equal(t, "enc-1", active.ID)
 }
 
+func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
+	svc := newSQLiteService(t)
+	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+		{ID: "c1", Name: "One", Initiative: 10, Side: domain.SideParty, HP: 10, MaxHP: 10},
+		{ID: "c2", Name: "Two", Initiative: 8, Side: domain.SideNPC, HP: 10, MaxHP: 10},
+		{ID: "c3", Name: "Three", Initiative: 6, Side: domain.SideNPC, HP: 10, MaxHP: 10},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.AdvanceTurn()
+	require.NoError(t, err)
+	_, err = svc.AddPartyAP(2)
+	require.NoError(t, err)
+
+	beforeUpdate, err := svc.GetEncounter()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, beforeUpdate.TurnIndex, 0)
+	require.Less(t, beforeUpdate.TurnIndex, len(beforeUpdate.Combatants))
+	beforeActiveID := beforeUpdate.Combatants[beforeUpdate.TurnIndex].ID
+	beforeCombatants := append([]domain.Combatant(nil), beforeUpdate.Combatants...)
+
+	updated, err := svc.UpdateEncounter(beforeUpdate.ID, "Alpha Updated", beforeCombatants)
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.Round, updated.Round)
+	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
+	require.GreaterOrEqual(t, updated.TurnIndex, 0)
+	require.Less(t, updated.TurnIndex, len(updated.Combatants))
+	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
+
+	persisted, err := svc.GetEncounter()
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
+	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
+	require.Less(t, persisted.TurnIndex, len(persisted.Combatants))
+	assert.Equal(t, beforeActiveID, persisted.Combatants[persisted.TurnIndex].ID)
+}
+
 func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter("enc-1", "Difficulty Check", []domain.Combatant{

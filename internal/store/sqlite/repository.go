@@ -328,6 +328,12 @@ func (s *EncounterStore) UpdateEncounter(encounterID, name string, combatants []
 	if err != nil {
 		return nil, err
 	}
+
+	activeCombatantID := ""
+	if active := existing.ActiveCombatant(); active != nil {
+		activeCombatantID = active.ID
+	}
+
 	updated := domain.NewEncounter(encounterID, name, combatants)
 	updated.CampaignID = existing.CampaignID
 	updated.Round = existing.Round
@@ -335,6 +341,27 @@ func (s *EncounterStore) UpdateEncounter(encounterID, name string, combatants []
 		updated.Round = 1
 	}
 	updated.Resources = existing.Resources
+	if len(updated.Combatants) > 0 {
+		nextTurnIndex := existing.TurnIndex
+		if nextTurnIndex < 0 {
+			nextTurnIndex = 0
+		}
+		if nextTurnIndex >= len(updated.Combatants) {
+			nextTurnIndex = len(updated.Combatants) - 1
+		}
+		if activeCombatantID != "" {
+			for i := range updated.Combatants {
+				if updated.Combatants[i].ID == activeCombatantID {
+					nextTurnIndex = i
+					break
+				}
+			}
+		}
+		updated.TurnIndex = nextTurnIndex
+		for i := range updated.Combatants {
+			updated.Combatants[i].Active = i == updated.TurnIndex
+		}
+	}
 	if err := s.Save(updated); err != nil {
 		return nil, err
 	}

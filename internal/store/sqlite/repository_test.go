@@ -173,6 +173,46 @@ func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 	assert.Equal(t, 120, summary.EnemyTotalXP)
 }
 
+func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(&domain.Encounter{
+		ID:        "enc-update-1",
+		Name:      "Before Update",
+		Round:     3,
+		TurnIndex: 1,
+		Resources: domain.Resources{
+			PartyAP:  2,
+			GMThreat: 1,
+		},
+		Combatants: []domain.Combatant{
+			{ID: "c1", Name: "One", Side: domain.SideParty, Initiative: 10, HP: 9, MaxHP: 9, Active: false},
+			{ID: "c2", Name: "Two", Side: domain.SideNPC, Initiative: 8, HP: 7, MaxHP: 7, Active: true},
+		},
+	}))
+
+	beforeUpdate, err := store.Get()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, beforeUpdate.TurnIndex, 0)
+	require.Less(t, beforeUpdate.TurnIndex, len(beforeUpdate.Combatants))
+	beforeActiveID := beforeUpdate.Combatants[beforeUpdate.TurnIndex].ID
+	beforeCombatants := append([]domain.Combatant(nil), beforeUpdate.Combatants...)
+
+	updated, err := store.UpdateEncounter(beforeUpdate.ID, "After Update", beforeCombatants)
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.Round, updated.Round)
+	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
+	require.GreaterOrEqual(t, updated.TurnIndex, 0)
+	require.Less(t, updated.TurnIndex, len(updated.Combatants))
+	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
+
+	persisted, err := store.Get()
+	require.NoError(t, err)
+	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
+	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
+	require.Less(t, persisted.TurnIndex, len(persisted.Combatants))
+	assert.Equal(t, beforeActiveID, persisted.Combatants[persisted.TurnIndex].ID)
+}
+
 func TestEncounterStoreNotFoundOperations(t *testing.T) {
 	store := newTestStore(t)
 
@@ -354,22 +394,22 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 	dropNormalizedSyncTriggers(t, store.db)
 
 	combatant := domain.Combatant{
-		ID:             "norm-c1",
-		Name:           "Sentry",
-		Side:           domain.SideNPC,
-		Initiative:     8,
-		HP:             10,
-		MaxHP:          10,
-		DefenseHead:    3,
-		DefenseTorso:   4,
-		DefenseLeftArm: 5,
-		DefenseRightArm: 6,
-		DefenseLeftLeg: 7,
-		DefenseRightLeg: 8,
-		ResistPhysical: 2,
-		ResistEnergy:   3,
-		ResistRadiation: 4,
-		ResistPoison:    5,
+		ID:                      "norm-c1",
+		Name:                    "Sentry",
+		Side:                    domain.SideNPC,
+		Initiative:              8,
+		HP:                      10,
+		MaxHP:                   10,
+		DefenseHead:             3,
+		DefenseTorso:            4,
+		DefenseLeftArm:          5,
+		DefenseRightArm:         6,
+		DefenseLeftLeg:          7,
+		DefenseRightLeg:         8,
+		ResistPhysical:          2,
+		ResistEnergy:            3,
+		ResistRadiation:         4,
+		ResistPoison:            5,
 		ResistPhysicalHead:      1,
 		ResistPhysicalTorso:     2,
 		ResistPhysicalLeftArm:   3,
