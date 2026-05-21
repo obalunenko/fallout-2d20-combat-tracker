@@ -217,3 +217,23 @@ func showEncounterEditorDialog(
 	editorDialog.Resize(dialogSize)
 	editorDialog.Show()
 }
+
+func showCreateEncounterDialogWindow(ctx context.Context, w fyne.Window, svc *appsvc.Service, refresh func()) {
+	showEncounterEditorDialog(
+		ctx,
+		w,
+		svc,
+		"Create Encounter",
+		"Create",
+		"",
+		nil,
+		func(name string, combatants []domain.Combatant) error {
+			_, err := svc.ExecuteCreateEncounter(ctx, appsvc.CreateEncounterCommand{
+				Name:       name,
+				Combatants: combatants,
+			})
+			return err
+		},
+		refresh,
+	)
+}

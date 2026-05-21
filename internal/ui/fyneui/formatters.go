@@ -178,6 +178,19 @@ func formatEncounterDifficultySummary(s domain.EncounterSummary) string {
 	)
 }
 
+func formatCampaignOverview(c *domain.Campaign) string {
+	if c == nil {
+		return "No active campaign"
+	}
+	return fmt.Sprintf(
+		"Name: %s\nID: %s\nStart Date: %s\nUpdated: %s",
+		c.Name,
+		c.ID,
+		c.StartDate,
+		formatEncounterUpdatedAt(c.UpdatedAt),
+	)
+}
+
 func encounterDisplayNameByID(enc *domain.Encounter, combatantID string) string {
 	if enc == nil {
 		return ""

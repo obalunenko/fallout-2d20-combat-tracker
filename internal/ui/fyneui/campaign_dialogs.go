@@ -224,6 +224,26 @@ func showCampaignEditorDialog(
 	editorDialog.Show()
 }
 
+func showCreateCampaignDialogWindow(ctx context.Context, w fyne.Window, svc *appsvc.Service, refresh func()) {
+	showCampaignEditorDialog(
+		w,
+		"Create Campaign",
+		"Create",
+		"",
+		time.Now().Format("2006-01-02"),
+		nil,
+		func(name, startDate string, players []domain.NewCampaignPlayer) error {
+			_, err := svc.ExecuteCreateCampaign(ctx, appsvc.CreateCampaignCommand{
+				Name:      name,
+				StartDate: startDate,
+				Players:   players,
+			})
+			return err
+		},
+		refresh,
+	)
+}
+
 func showCampaignListDialogWindow(
 	ctx context.Context,
 	w fyne.Window,
