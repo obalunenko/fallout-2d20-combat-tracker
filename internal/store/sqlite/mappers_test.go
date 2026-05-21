@@ -144,6 +144,172 @@ func TestCampaignPlayerFromRowMapsPartyCharacter(t *testing.T) {
 	}, actual.Character)
 }
 
+func TestEncounterFromLatestRowMapsEncounterFields(t *testing.T) {
+	combatants := []domain.Combatant{{ID: "c1", Name: "Alpha", Active: true}}
+
+	actual := encounterFromLatestRow(dbgen.GetLatestEncounterByCampaignIDRow{
+		ID:         "enc-1",
+		CampaignID: []byte("camp-1"),
+		Name:       "Vault Ambush",
+		Round:      3,
+		TurnIndex:  1,
+		PartyAp:    4,
+		GmThreat:   5,
+	}, combatants)
+
+	assert.Equal(t, &domain.Encounter{
+		ID:         "enc-1",
+		CampaignID: "camp-1",
+		Name:       "Vault Ambush",
+		Round:      3,
+		TurnIndex:  1,
+		Combatants: combatants,
+		Resources: domain.Resources{
+			PartyAP:  4,
+			GMThreat: 5,
+		},
+	}, actual)
+}
+
+func TestEncounterFromByIDRowMapsEncounterFields(t *testing.T) {
+	combatants := []domain.Combatant{{ID: "npc-1", Name: "Raider", Active: true}}
+
+	actual := encounterFromByIDRow(dbgen.GetEncounterByIDByCampaignIDRow{
+		ID:         "enc-2",
+		CampaignID: "camp-2",
+		Name:       "Road Fight",
+		Round:      6,
+		TurnIndex:  2,
+		PartyAp:    1,
+		GmThreat:   9,
+	}, combatants)
+
+	assert.Equal(t, &domain.Encounter{
+		ID:         "enc-2",
+		CampaignID: "camp-2",
+		Name:       "Road Fight",
+		Round:      6,
+		TurnIndex:  2,
+		Combatants: combatants,
+		Resources: domain.Resources{
+			PartyAP:  1,
+			GMThreat: 9,
+		},
+	}, actual)
+}
+
+func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
+	updatedAt := time.Date(2026, 5, 22, 12, 13, 14, 123000000, time.UTC)
+
+	actual := encounterSummaryFromRow(dbgen.ListEncounterSummariesByCampaignIDRow{
+		ID:              "enc-1",
+		CampaignID:      []byte("camp-1"),
+		Name:            "Vault Ambush",
+		Round:           7,
+		Combatants:      4,
+		DifficultyLabel: "challenging",
+		DifficultyScore: 1.25,
+		PartyCount:      2,
+		PartyAvgLevel:   3.5,
+		PartyXpBudget:   120,
+		EnemyCount:      2,
+		EnemyAvgLevel:   4.5,
+		EnemyTotalXp:    150,
+		UpdatedAt:       updatedAt,
+	})
+
+	assert.Equal(t, domain.EncounterSummary{
+		ID:              "enc-1",
+		CampaignID:      "camp-1",
+		Name:            "Vault Ambush",
+		Round:           7,
+		Combatants:      4,
+		Difficulty:      "challenging",
+		DifficultyScore: 1.25,
+		PartyCount:      2,
+		PartyAvgLevel:   3.5,
+		PartyXPBudget:   120,
+		EnemyCount:      2,
+		EnemyAvgLevel:   4.5,
+		EnemyTotalXP:    150,
+		UpdatedAt:       "2026-05-22 12:13:14.123",
+	}, actual)
+}
+
+func TestInsertCombatantParamsMapsDomainCombatant(t *testing.T) {
+	actual := insertCombatantParams("enc-1", 2, domain.Combatant{
+		ID:         "c1",
+		Name:       "Raider",
+		Side:       domain.SideNPC,
+		TorsoOnly:  true,
+		Level:      4,
+		XP:         80,
+		Initiative: 12,
+		HP:         17,
+		MaxHP:      22,
+		Defense:    1,
+		Active:     true,
+		Defeated:   true,
+	})
+
+	assert.Equal(t, dbgen.InsertCombatantParams{
+		ID:          "c1",
+		EncounterID: "enc-1",
+		Name:        "Raider",
+		Side:        string(domain.SideNPC),
+		TorsoOnly:   1,
+		Level:       4,
+		Xp:          80,
+		Initiative:  12,
+		Hp:          17,
+		MaxHp:       22,
+		Defense:     1,
+		Active:      1,
+		Defeated:    1,
+		Position:    2,
+	}, actual)
+}
+
+func TestPlayerCharacterParamsMapAndTrimDomainCombatant(t *testing.T) {
+	combatant := domain.Combatant{
+		Name:       "  Vault Dweller  ",
+		Level:      3,
+		Initiative: 9,
+		HP:         18,
+		MaxHP:      21,
+		Defense:    2,
+		TorsoOnly:  true,
+	}
+
+	insertParams := insertPlayerCharacterParams("pc-1", "player-1", "camp-1", combatant)
+	assert.Equal(t, dbgen.InsertPlayerCharacterParams{
+		ID:         "pc-1",
+		PlayerID:   "player-1",
+		CampaignID: "camp-1",
+		Name:       "Vault Dweller",
+		Level:      3,
+		Initiative: 9,
+		Hp:         18,
+		MaxHp:      21,
+		Defense:    2,
+		TorsoOnly:  1,
+		Active:     1,
+	}, insertParams)
+
+	updateParams := updateActivePlayerCharacterParams("pc-1", "camp-1", combatant)
+	assert.Equal(t, dbgen.UpdateActivePlayerCharacterByIDParams{
+		CharacterID: "pc-1",
+		CampaignID:  "camp-1",
+		Name:        "Vault Dweller",
+		Level:       3,
+		Initiative:  9,
+		Hp:          18,
+		MaxHp:       21,
+		Defense:     2,
+		TorsoOnly:   1,
+	}, updateParams)
+}
+
 func TestCampaignFromListRowFormatsUpdatedAt(t *testing.T) {
 	updatedAt := time.Date(2026, 5, 22, 11, 12, 13, 456000000, time.UTC)
 

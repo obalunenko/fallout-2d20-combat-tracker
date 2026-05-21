@@ -54,20 +54,7 @@ func (s *EncounterStore) Get(ctx context.Context) (*domain.Encounter, error) {
 		return nil, fmt.Errorf("read combatants: %w", err)
 	}
 
-	combatants := combatantsFromRows(combatantRows)
-
-	return &domain.Encounter{
-		ID:         encRow.ID,
-		CampaignID: interfaceToString(encRow.CampaignID),
-		Name:       encRow.Name,
-		Round:      int(encRow.Round),
-		TurnIndex:  int(encRow.TurnIndex),
-		Combatants: combatants,
-		Resources: domain.Resources{
-			PartyAP:  int(encRow.PartyAp),
-			GMThreat: int(encRow.GmThreat),
-		},
-	}, nil
+	return encounterFromLatestRow(encRow, combatantsFromRows(combatantRows)), nil
 }
 
 func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error {
@@ -122,22 +109,7 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 
 	for i, c := range enc.Combatants {
 		domain.NormalizeCombatantHP(&c)
-		if err = qtx.InsertCombatant(ctx, dbgen.InsertCombatantParams{
-			ID:          c.ID,
-			EncounterID: enc.ID,
-			Name:        c.Name,
-			Side:        string(c.Side),
-			TorsoOnly:   boolToInt64(c.TorsoOnly),
-			Level:       int64(c.Level),
-			Xp:          int64(c.XP),
-			Initiative:  int64(c.Initiative),
-			Hp:          int64(c.HP),
-			MaxHp:       int64(c.MaxHP),
-			Defense:     int64(c.Defense),
-			Active:      boolToInt64(c.Active),
-			Defeated:    boolToInt64(c.Defeated),
-			Position:    int64(i),
-		}); err != nil {
+		if err = qtx.InsertCombatant(ctx, insertCombatantParams(enc.ID, i, c)); err != nil {
 			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
 		}
 		if err = upsertCombatantNormalizedStats(ctx, qtx, c.ID, c); err != nil {
@@ -168,22 +140,7 @@ func (s *EncounterStore) List(ctx context.Context) ([]domain.EncounterSummary, e
 
 	summaries := make([]domain.EncounterSummary, 0, len(rows))
 	for _, r := range rows {
-		summaries = append(summaries, domain.EncounterSummary{
-			ID:              r.ID,
-			CampaignID:      interfaceToString(r.CampaignID),
-			Name:            r.Name,
-			Round:           int(r.Round),
-			Combatants:      int(r.Combatants),
-			Difficulty:      r.DifficultyLabel,
-			DifficultyScore: r.DifficultyScore,
-			PartyCount:      int(r.PartyCount),
-			PartyAvgLevel:   r.PartyAvgLevel,
-			PartyXPBudget:   int(r.PartyXpBudget),
-			EnemyCount:      int(r.EnemyCount),
-			EnemyAvgLevel:   r.EnemyAvgLevel,
-			EnemyTotalXP:    int(r.EnemyTotalXp),
-			UpdatedAt:       r.UpdatedAt.Format("2006-01-02 15:04:05.000"),
-		})
+		summaries = append(summaries, encounterSummaryFromRow(r))
 	}
 	return summaries, nil
 }
@@ -211,19 +168,7 @@ func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID strin
 	if err != nil {
 		return nil, fmt.Errorf("read combatants: %w", err)
 	}
-	combatants := combatantsFromRows(combatantRows)
-	return &domain.Encounter{
-		ID:         row.ID,
-		CampaignID: interfaceToString(row.CampaignID),
-		Name:       row.Name,
-		Round:      int(row.Round),
-		TurnIndex:  int(row.TurnIndex),
-		Combatants: combatants,
-		Resources: domain.Resources{
-			PartyAP:  int(row.PartyAp),
-			GMThreat: int(row.GmThreat),
-		},
-	}, nil
+	return encounterFromByIDRow(row, combatantsFromRows(combatantRows)), nil
 }
 
 func (s *EncounterStore) UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
@@ -347,19 +292,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, s
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-		if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-			ID:         charID,
-			PlayerID:   playerID,
-			CampaignID: campaignID,
-			Name:       strings.TrimSpace(p.Character.Name),
-			Level:      int64(p.Character.Level),
-			Initiative: int64(p.Character.Initiative),
-			Hp:         int64(p.Character.HP),
-			MaxHp:      int64(p.Character.MaxHP),
-			Defense:    int64(p.Character.Defense),
-			TorsoOnly:  boolToInt64(p.Character.TorsoOnly),
-			Active:     1,
-		}); err != nil {
+		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character)); err != nil {
 			return nil, fmt.Errorf("insert player character: %w", err)
 		}
 		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
@@ -463,19 +396,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, s
 			if charID == "" {
 				charID = uuid.NewString()
 			}
-			if err = qtx.InsertPlayerCharacter(ctx, dbgen.InsertPlayerCharacterParams{
-				ID:         charID,
-				PlayerID:   playerID,
-				CampaignID: campaignID,
-				Name:       targetCharacterName,
-				Level:      int64(p.Character.Level),
-				Initiative: int64(p.Character.Initiative),
-				Hp:         int64(p.Character.HP),
-				MaxHp:      int64(p.Character.MaxHP),
-				Defense:    int64(p.Character.Defense),
-				TorsoOnly:  boolToInt64(p.Character.TorsoOnly),
-				Active:     1,
-			}); err != nil {
+			if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character)); err != nil {
 				return nil, fmt.Errorf("insert player character: %w", err)
 			}
 		} else {
@@ -541,17 +462,7 @@ func deactivateActiveCharactersByPlayerID(ctx context.Context, qtx *dbgen.Querie
 }
 
 func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID, campaignID string, c domain.Combatant) error {
-	return qtx.UpdateActivePlayerCharacterByID(ctx, dbgen.UpdateActivePlayerCharacterByIDParams{
-		CharacterID: characterID,
-		CampaignID:  campaignID,
-		Name:        strings.TrimSpace(c.Name),
-		Level:       int64(c.Level),
-		Initiative:  int64(c.Initiative),
-		Hp:          int64(c.HP),
-		MaxHp:       int64(c.MaxHP),
-		Defense:     int64(c.Defense),
-		TorsoOnly:   boolToInt64(c.TorsoOnly),
-	})
+	return qtx.UpdateActivePlayerCharacterByID(ctx, updateActivePlayerCharacterParams(characterID, campaignID, c))
 }
 
 func normalizeNameKey(value string) string {

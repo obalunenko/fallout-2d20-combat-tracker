@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"strings"
 	"time"
 
 	"github.com/obalunenko/fallout/internal/domain"
@@ -220,6 +221,123 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 	return domain.NewCampaignPlayer{
 		PlayerName: r.PlayerName,
 		Character:  partyCombatantFromRow(r),
+	}
+}
+
+type encounterDBFields struct {
+	ID         string
+	CampaignID any
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAP    int64
+	GMThreat   int64
+}
+
+func encounterFromFields(f encounterDBFields, combatants []domain.Combatant) *domain.Encounter {
+	return &domain.Encounter{
+		ID:         f.ID,
+		CampaignID: interfaceToString(f.CampaignID),
+		Name:       f.Name,
+		Round:      int(f.Round),
+		TurnIndex:  int(f.TurnIndex),
+		Combatants: combatants,
+		Resources: domain.Resources{
+			PartyAP:  int(f.PartyAP),
+			GMThreat: int(f.GMThreat),
+		},
+	}
+}
+
+func encounterFromLatestRow(r dbgen.GetLatestEncounterByCampaignIDRow, combatants []domain.Combatant) *domain.Encounter {
+	return encounterFromFields(encounterDBFields{
+		ID:         r.ID,
+		CampaignID: r.CampaignID,
+		Name:       r.Name,
+		Round:      r.Round,
+		TurnIndex:  r.TurnIndex,
+		PartyAP:    r.PartyAp,
+		GMThreat:   r.GmThreat,
+	}, combatants)
+}
+
+func encounterFromByIDRow(r dbgen.GetEncounterByIDByCampaignIDRow, combatants []domain.Combatant) *domain.Encounter {
+	return encounterFromFields(encounterDBFields{
+		ID:         r.ID,
+		CampaignID: r.CampaignID,
+		Name:       r.Name,
+		Round:      r.Round,
+		TurnIndex:  r.TurnIndex,
+		PartyAP:    r.PartyAp,
+		GMThreat:   r.GmThreat,
+	}, combatants)
+}
+
+func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow) domain.EncounterSummary {
+	return domain.EncounterSummary{
+		ID:              r.ID,
+		CampaignID:      interfaceToString(r.CampaignID),
+		Name:            r.Name,
+		Round:           int(r.Round),
+		Combatants:      int(r.Combatants),
+		Difficulty:      r.DifficultyLabel,
+		DifficultyScore: r.DifficultyScore,
+		PartyCount:      int(r.PartyCount),
+		PartyAvgLevel:   r.PartyAvgLevel,
+		PartyXPBudget:   int(r.PartyXpBudget),
+		EnemyCount:      int(r.EnemyCount),
+		EnemyAvgLevel:   r.EnemyAvgLevel,
+		EnemyTotalXP:    int(r.EnemyTotalXp),
+		UpdatedAt:       r.UpdatedAt.Format(sqliteTimestampLayout),
+	}
+}
+
+func insertCombatantParams(encounterID string, position int, c domain.Combatant) dbgen.InsertCombatantParams {
+	return dbgen.InsertCombatantParams{
+		ID:          c.ID,
+		EncounterID: encounterID,
+		Name:        c.Name,
+		Side:        string(c.Side),
+		TorsoOnly:   boolToInt64(c.TorsoOnly),
+		Level:       int64(c.Level),
+		Xp:          int64(c.XP),
+		Initiative:  int64(c.Initiative),
+		Hp:          int64(c.HP),
+		MaxHp:       int64(c.MaxHP),
+		Defense:     int64(c.Defense),
+		Active:      boolToInt64(c.Active),
+		Defeated:    boolToInt64(c.Defeated),
+		Position:    int64(position),
+	}
+}
+
+func insertPlayerCharacterParams(characterID, playerID, campaignID string, c domain.Combatant) dbgen.InsertPlayerCharacterParams {
+	return dbgen.InsertPlayerCharacterParams{
+		ID:         characterID,
+		PlayerID:   playerID,
+		CampaignID: campaignID,
+		Name:       strings.TrimSpace(c.Name),
+		Level:      int64(c.Level),
+		Initiative: int64(c.Initiative),
+		Hp:         int64(c.HP),
+		MaxHp:      int64(c.MaxHP),
+		Defense:    int64(c.Defense),
+		TorsoOnly:  boolToInt64(c.TorsoOnly),
+		Active:     1,
+	}
+}
+
+func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.Combatant) dbgen.UpdateActivePlayerCharacterByIDParams {
+	return dbgen.UpdateActivePlayerCharacterByIDParams{
+		CharacterID: characterID,
+		CampaignID:  campaignID,
+		Name:        strings.TrimSpace(c.Name),
+		Level:       int64(c.Level),
+		Initiative:  int64(c.Initiative),
+		Hp:          int64(c.HP),
+		MaxHp:       int64(c.MaxHP),
+		Defense:     int64(c.Defense),
+		TorsoOnly:   boolToInt64(c.TorsoOnly),
 	}
 }
 
