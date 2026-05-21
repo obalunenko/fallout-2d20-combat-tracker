@@ -12,28 +12,30 @@ import (
 )
 
 type EncounterStore struct {
-	db  *sql.DB
-	q   *dbgen.Queries
-	ctx context.Context
+	db *sql.DB
+	q  *dbgen.Queries
 }
 
 func NewEncounterStore(db *sql.DB) *EncounterStore {
-	return NewEncounterStoreWithContext(db, context.Background())
-}
-
-func NewEncounterStoreWithContext(db *sql.DB, ctx context.Context) *EncounterStore {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	return &EncounterStore{
-		db:  db,
-		q:   dbgen.New(db),
-		ctx: ctx,
+		db: db,
+		q:  dbgen.New(db),
 	}
 }
 
-func (s *EncounterStore) Get() (*domain.Encounter, error) {
-	ctx := s.ctx
+func NewEncounterStoreWithContext(db *sql.DB, _ context.Context) *EncounterStore {
+	return NewEncounterStore(db)
+}
+
+func normalizeContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
+
+func (s *EncounterStore) Get(ctx context.Context) (*domain.Encounter, error) {
+	ctx = normalizeContext(ctx)
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return nil, err
@@ -116,12 +118,12 @@ func (s *EncounterStore) Get() (*domain.Encounter, error) {
 	}, nil
 }
 
-func (s *EncounterStore) Save(enc *domain.Encounter) error {
+func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error {
+	ctx = normalizeContext(ctx)
 	if enc == nil {
 		return fmt.Errorf("encounter cannot be nil")
 	}
 
-	ctx := s.ctx
 	if strings.TrimSpace(enc.CampaignID) == "" {
 		campaignID, err := s.activeCampaignID(ctx)
 		if err != nil {
@@ -201,8 +203,8 @@ func (s *EncounterStore) Save(enc *domain.Encounter) error {
 	return nil
 }
 
-func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
-	ctx := s.ctx
+func (s *EncounterStore) List(ctx context.Context) ([]domain.EncounterSummary, error) {
+	ctx = normalizeContext(ctx)
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return nil, err
@@ -234,11 +236,11 @@ func (s *EncounterStore) List() ([]domain.EncounterSummary, error) {
 	return summaries, nil
 }
 
-func (s *EncounterStore) GetEncounterByID(encounterID string) (*domain.Encounter, error) {
+func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error) {
+	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(encounterID) == "" {
 		return nil, fmt.Errorf("encounter id is required")
 	}
-	ctx := s.ctx
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return nil, err
@@ -320,11 +322,12 @@ func (s *EncounterStore) GetEncounterByID(encounterID string) (*domain.Encounter
 	}, nil
 }
 
-func (s *EncounterStore) UpdateEncounter(encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+func (s *EncounterStore) UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(encounterID) == "" {
 		return nil, fmt.Errorf("encounter id is required")
 	}
-	existing, err := s.GetEncounterByID(encounterID)
+	existing, err := s.GetEncounterByID(ctx, encounterID)
 	if err != nil {
 		return nil, err
 	}
@@ -362,14 +365,14 @@ func (s *EncounterStore) UpdateEncounter(encounterID, name string, combatants []
 			updated.Combatants[i].Active = i == updated.TurnIndex
 		}
 	}
-	if err := s.Save(updated); err != nil {
+	if err := s.Save(ctx, updated); err != nil {
 		return nil, err
 	}
 	return updated, nil
 }
 
-func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
-	ctx := s.ctx
+func (s *EncounterStore) ListPartyMembers(ctx context.Context) ([]domain.Combatant, error) {
+	ctx = normalizeContext(ctx)
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return nil, err
@@ -432,11 +435,12 @@ func (s *EncounterStore) ListPartyMembers() ([]domain.Combatant, error) {
 	return []domain.Combatant{}, nil
 }
 
-func (s *EncounterStore) ListCampaignPlayers(campaignID string) ([]domain.NewCampaignPlayer, error) {
+func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error) {
+	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
 	}
-	rows, err := s.q.ListActivePartyCharactersByCampaignID(s.ctx, campaignID)
+	rows, err := s.q.ListActivePartyCharactersByCampaignID(ctx, campaignID)
 	if err != nil {
 		return nil, fmt.Errorf("list campaign players: %w", err)
 	}
@@ -492,8 +496,8 @@ func (s *EncounterStore) ListCampaignPlayers(campaignID string) ([]domain.NewCam
 	return players, nil
 }
 
-func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
-	ctx := s.ctx
+func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
 	}
@@ -577,11 +581,11 @@ func (s *EncounterStore) CreateCampaign(campaignID, name, startDate string, play
 	}, nil
 }
 
-func (s *EncounterStore) UpdateCampaign(campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
 	}
-	ctx := s.ctx
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
@@ -745,8 +749,8 @@ func normalizeNameKey(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
 }
 
-func (s *EncounterStore) GetActiveCampaign() (*domain.Campaign, error) {
-	ctx := s.ctx
+func (s *EncounterStore) GetActiveCampaign(ctx context.Context) (*domain.Campaign, error) {
+	ctx = normalizeContext(ctx)
 	if err := s.q.EnsureAppStateRow(ctx); err != nil {
 		return nil, fmt.Errorf("ensure app state: %w", err)
 	}
@@ -765,8 +769,8 @@ func (s *EncounterStore) GetActiveCampaign() (*domain.Campaign, error) {
 	}, nil
 }
 
-func (s *EncounterStore) ListCampaigns() ([]domain.Campaign, error) {
-	ctx := s.ctx
+func (s *EncounterStore) ListCampaigns(ctx context.Context) ([]domain.Campaign, error) {
+	ctx = normalizeContext(ctx)
 	rows, err := s.q.ListCampaigns(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list campaigns: %w", err)
@@ -783,8 +787,8 @@ func (s *EncounterStore) ListCampaigns() ([]domain.Campaign, error) {
 	return result, nil
 }
 
-func (s *EncounterStore) ActivateCampaign(campaignID string) error {
-	ctx := s.ctx
+func (s *EncounterStore) ActivateCampaign(ctx context.Context, campaignID string) error {
+	ctx = normalizeContext(ctx)
 	if err := s.q.EnsureAppStateRow(ctx); err != nil {
 		return fmt.Errorf("ensure app state: %w", err)
 	}
@@ -798,8 +802,8 @@ func (s *EncounterStore) ActivateCampaign(campaignID string) error {
 	return nil
 }
 
-func (s *EncounterStore) Activate(encounterID string) error {
-	ctx := s.ctx
+func (s *EncounterStore) Activate(ctx context.Context, encounterID string) error {
+	ctx = normalizeContext(ctx)
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return err
@@ -817,8 +821,8 @@ func (s *EncounterStore) Activate(encounterID string) error {
 	return nil
 }
 
-func (s *EncounterStore) SoftDelete(encounterID string) error {
-	ctx := s.ctx
+func (s *EncounterStore) SoftDelete(ctx context.Context, encounterID string) error {
+	ctx = normalizeContext(ctx)
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
 		return err
@@ -836,7 +840,8 @@ func (s *EncounterStore) SoftDelete(encounterID string) error {
 	return nil
 }
 
-func (s *EncounterStore) AppendEncounterLog(encounterID string, round int, message string) error {
+func (s *EncounterStore) AppendEncounterLog(ctx context.Context, encounterID string, round int, message string) error {
+	ctx = normalizeContext(ctx)
 	if encounterID == "" {
 		return fmt.Errorf("encounter id is required")
 	}
@@ -844,7 +849,6 @@ func (s *EncounterStore) AppendEncounterLog(encounterID string, round int, messa
 		return fmt.Errorf("log message is required")
 	}
 
-	ctx := s.ctx
 	if err := s.q.InsertEncounterLog(ctx, dbgen.InsertEncounterLogParams{
 		ID:          uuid.NewString(),
 		EncounterID: encounterID,
@@ -856,12 +860,12 @@ func (s *EncounterStore) AppendEncounterLog(encounterID string, round int, messa
 	return nil
 }
 
-func (s *EncounterStore) ListEncounterLogs(encounterID string) ([]domain.EncounterLog, error) {
+func (s *EncounterStore) ListEncounterLogs(ctx context.Context, encounterID string) ([]domain.EncounterLog, error) {
+	ctx = normalizeContext(ctx)
 	if encounterID == "" {
 		return nil, fmt.Errorf("encounter id is required")
 	}
 
-	ctx := s.ctx
 	rows, err := s.q.ListEncounterLogsByEncounterID(ctx, encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list encounter logs: %w", err)

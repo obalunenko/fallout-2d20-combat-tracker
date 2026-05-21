@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -16,13 +18,13 @@ import (
 
 func TestCreateEncounterRejectsEmptyCombatants(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "test", nil)
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", nil)
 	require.Error(t, err)
 }
 
 func TestCreateEncounterPersistsAndGetReturnsSorted(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "test", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", []domain.Combatant{
 		{
 			ID: "c2", Name: "Beta", Level: 4, XP: 0, Initiative: 7, Side: domain.SideParty, HP: 12, Defense: 1,
 			ResistPhysical: 0, ResistEnergy: 1, ResistRadiation: 2, ResistPoison: 3,
@@ -36,7 +38,7 @@ func TestCreateEncounterPersistsAndGetReturnsSorted(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 
 	require.Len(t, enc.Combatants, 2)
@@ -57,7 +59,7 @@ func TestCreateEncounterPersistsAndGetReturnsSorted(t *testing.T) {
 
 func TestCreateEncounterGeneratesUUIDsWhenIDsAreMissing(t *testing.T) {
 	svc := newSQLiteService(t)
-	created, err := svc.CreateEncounter("", "test", []domain.Combatant{
+	created, err := svc.CreateEncounter(t.Context(), "", "test", []domain.Combatant{
 		{Name: "Alpha", Initiative: 10, Side: domain.SideParty, HP: 10},
 		{Name: "Beta", Initiative: 8, Side: domain.SideNPC, HP: 8},
 	})
@@ -74,16 +76,16 @@ func TestCreateEncounterGeneratesUUIDsWhenIDsAreMissing(t *testing.T) {
 
 func TestAdvanceTurnPersistsState(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "test", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", []domain.Combatant{
 		{ID: "c1", Name: "Alpha", Initiative: 10},
 		{ID: "c2", Name: "Beta", Initiative: 8},
 	})
 	require.NoError(t, err)
 
-	_, err = svc.AdvanceTurn()
+	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, enc.TurnIndex)
@@ -92,24 +94,24 @@ func TestAdvanceTurnPersistsState(t *testing.T) {
 
 func TestResourceCommands(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "test", []domain.Combatant{{ID: "c1", Name: "Alpha", Initiative: 10}})
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", []domain.Combatant{{ID: "c1", Name: "Alpha", Initiative: 10}})
 	require.NoError(t, err)
 
-	_, err = svc.AddPartyAP(2)
+	_, err = svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
-	_, err = svc.SpendPartyAP(1)
+	_, err = svc.SpendPartyAP(t.Context(), 1)
 	require.NoError(t, err)
-	_, err = svc.SpendPartyAP(10)
+	_, err = svc.SpendPartyAP(t.Context(), 10)
 	require.Error(t, err)
 
-	_, err = svc.AddThreat(2)
+	_, err = svc.AddThreat(t.Context(), 2)
 	require.NoError(t, err)
-	_, err = svc.SpendThreat(1)
+	_, err = svc.SpendThreat(t.Context(), 1)
 	require.NoError(t, err)
-	_, err = svc.SpendThreat(10)
+	_, err = svc.SpendThreat(t.Context(), 10)
 	require.Error(t, err)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 1, enc.Resources.PartyAP)
 	assert.Equal(t, 1, enc.Resources.GMThreat)
@@ -117,47 +119,47 @@ func TestResourceCommands(t *testing.T) {
 
 func TestListAndActivateEncounter(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
 	require.NoError(t, err)
-	_, err = svc.CreateEncounter("enc-2", "Bravo", []domain.Combatant{{ID: "c2", Name: "Two", Initiative: 8}})
+	_, err = svc.CreateEncounter(t.Context(), "enc-2", "Bravo", []domain.Combatant{{ID: "c2", Name: "Two", Initiative: 8}})
 	require.NoError(t, err)
 
-	summaries, err := svc.ListEncounters()
+	summaries, err := svc.ListEncounters(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "enc-2", summaries[0].ID)
 
-	active, err := svc.GetEncounter()
+	active, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-2", active.ID)
 
-	active, err = svc.ActivateEncounter("enc-1")
+	active, err = svc.ActivateEncounter(t.Context(), "enc-1")
 	require.NoError(t, err)
 	assert.Equal(t, "enc-1", active.ID)
 }
 
 func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "c1", Name: "One", Initiative: 10, Side: domain.SideParty, HP: 10, MaxHP: 10},
 		{ID: "c2", Name: "Two", Initiative: 8, Side: domain.SideNPC, HP: 10, MaxHP: 10},
 		{ID: "c3", Name: "Three", Initiative: 6, Side: domain.SideNPC, HP: 10, MaxHP: 10},
 	})
 	require.NoError(t, err)
 
-	_, err = svc.AdvanceTurn()
+	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	_, err = svc.AddPartyAP(2)
+	_, err = svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
 
-	beforeUpdate, err := svc.GetEncounter()
+	beforeUpdate, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, beforeUpdate.TurnIndex, 0)
 	require.Less(t, beforeUpdate.TurnIndex, len(beforeUpdate.Combatants))
 	beforeActiveID := beforeUpdate.Combatants[beforeUpdate.TurnIndex].ID
 	beforeCombatants := append([]domain.Combatant(nil), beforeUpdate.Combatants...)
 
-	updated, err := svc.UpdateEncounter(beforeUpdate.ID, "Alpha Updated", beforeCombatants)
+	updated, err := svc.UpdateEncounter(t.Context(), beforeUpdate.ID, "Alpha Updated", beforeCombatants)
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.Round, updated.Round)
 	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
@@ -165,7 +167,7 @@ func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 	require.Less(t, updated.TurnIndex, len(updated.Combatants))
 	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
 
-	persisted, err := svc.GetEncounter()
+	persisted, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
 	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
@@ -175,7 +177,7 @@ func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 
 func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Difficulty Check", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Difficulty Check", []domain.Combatant{
 		{ID: "p1", Name: "Vault Dweller", Side: domain.SideParty, Level: 2, Initiative: 10, HP: 8, Defense: 1},
 		{ID: "p2", Name: "Companion", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 7, Defense: 1},
 		{ID: "n1", Name: "Raider", Side: domain.SideNPC, Level: 2, XP: 60, Initiative: 8, HP: 6, Defense: 0},
@@ -183,7 +185,7 @@ func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	summaries, err := svc.ListEncounters()
+	summaries, err := svc.ListEncounters(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 1)
 
@@ -200,29 +202,29 @@ func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 
 func TestActivateEncounterNotFound(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
 	require.NoError(t, err)
 
-	_, err = svc.ActivateEncounter("enc-missing")
+	_, err = svc.ActivateEncounter(t.Context(), "enc-missing")
 	require.ErrorIs(t, err, domain.ErrEncounterNotFound)
 }
 
 func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "c1", Name: "One", Initiative: 10},
 		{ID: "c2", Name: "Two", Initiative: 8},
 	})
 	require.NoError(t, err)
 
-	_, err = svc.AdvanceTurn()
+	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	_, err = svc.AddPartyAP(3)
+	_, err = svc.AddPartyAP(t.Context(), 3)
 	require.NoError(t, err)
-	_, err = svc.AddThreat(2)
+	_, err = svc.AddThreat(t.Context(), 2)
 	require.NoError(t, err)
 
-	restarted, err := svc.RestartEncounter("enc-1")
+	restarted, err := svc.RestartEncounter(t.Context(), "enc-1")
 	require.NoError(t, err)
 
 	assert.Equal(t, "enc-1", restarted.ID)
@@ -239,39 +241,39 @@ func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
 
 func TestSoftDeleteEncounterHidesFromListAndActivation(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{{ID: "c1", Name: "One", Initiative: 10}})
 	require.NoError(t, err)
-	_, err = svc.CreateEncounter("enc-2", "Bravo", []domain.Combatant{{ID: "c2", Name: "Two", Initiative: 8}})
+	_, err = svc.CreateEncounter(t.Context(), "enc-2", "Bravo", []domain.Combatant{{ID: "c2", Name: "Two", Initiative: 8}})
 	require.NoError(t, err)
 
-	require.NoError(t, svc.DeleteEncounter("enc-2"))
+	require.NoError(t, svc.DeleteEncounter(t.Context(), "enc-2"))
 
-	summaries, err := svc.ListEncounters()
+	summaries, err := svc.ListEncounters(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 1)
 	assert.Equal(t, "enc-1", summaries[0].ID)
 
-	active, err := svc.GetEncounter()
+	active, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-1", active.ID)
 
-	_, err = svc.ActivateEncounter("enc-2")
+	_, err = svc.ActivateEncounter(t.Context(), "enc-2")
 	require.ErrorIs(t, err, domain.ErrEncounterNotFound)
 }
 
 func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "p1", Name: "Player", Initiative: 10, Side: domain.SideParty, HP: 12},
 		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 5},
 	})
 	require.NoError(t, err)
 
-	_, applied, err := svc.ApplyDamage("n1", domain.DamageEnergy, domain.BodyTorso, 9)
+	_, applied, err := svc.ApplyDamage(t.Context(), "n1", domain.DamageEnergy, domain.BodyTorso, 9)
 	require.NoError(t, err)
 	assert.Equal(t, 9, applied)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	require.Len(t, enc.Combatants, 2)
 	assert.Equal(t, 0, enc.Combatants[1].HP)
@@ -280,16 +282,16 @@ func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 
 func TestApplyDamageRespectsImmunity(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "n1", Name: "Ghoul", Initiative: 8, Side: domain.SideNPC, HP: 9, ImmunePoison: true},
 	})
 	require.NoError(t, err)
 
-	_, applied, err := svc.ApplyDamage("n1", domain.DamagePoison, domain.BodyHead, 99)
+	_, applied, err := svc.ApplyDamage(t.Context(), "n1", domain.DamagePoison, domain.BodyHead, 99)
 	require.NoError(t, err)
 	assert.Equal(t, 0, applied)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 9, enc.Combatants[0].HP)
 	assert.False(t, enc.Combatants[0].Defeated)
@@ -297,19 +299,19 @@ func TestApplyDamageRespectsImmunity(t *testing.T) {
 
 func TestHealPersistsAndCanRevive(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 2, MaxHP: 8},
 	})
 	require.NoError(t, err)
 
-	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, domain.BodyTorso, 6)
+	_, _, err = svc.ApplyDamage(t.Context(), "n1", domain.DamagePhysical, domain.BodyTorso, 6)
 	require.NoError(t, err)
 
-	_, healed, err := svc.Heal("n1", 5)
+	_, healed, err := svc.Heal(t.Context(), "n1", 5)
 	require.NoError(t, err)
 	assert.Equal(t, 5, healed)
 
-	enc, err := svc.GetEncounter()
+	enc, err := svc.GetEncounter(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 5, enc.Combatants[0].HP)
 	assert.False(t, enc.Combatants[0].Defeated)
@@ -317,20 +319,20 @@ func TestHealPersistsAndCanRevive(t *testing.T) {
 
 func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 	svc := newSQLiteService(t)
-	created, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	created, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "p1", Name: "Player", Initiative: 10, Side: domain.SideParty, HP: 10},
 		{ID: "n1", Name: "Raider", Initiative: 8, Side: domain.SideNPC, HP: 6},
 	})
 	require.NoError(t, err)
 
-	_, err = svc.AdvanceTurn()
+	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	_, _, err = svc.ApplyDamage("n1", domain.DamagePhysical, domain.BodyLeftArm, 3)
+	_, _, err = svc.ApplyDamage(t.Context(), "n1", domain.DamagePhysical, domain.BodyLeftArm, 3)
 	require.NoError(t, err)
-	_, _, err = svc.Heal("n1", 2)
+	_, _, err = svc.Heal(t.Context(), "n1", 2)
 	require.NoError(t, err)
 
-	logs, err := svc.ListEncounterLogs(created.ID)
+	logs, err := svc.ListEncounterLogs(t.Context(), created.ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, logs)
 	assert.Contains(t, logs[0].Message, "Heal")
@@ -348,18 +350,18 @@ func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 
 func TestListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	svc := newSQLiteService(t)
-	_, err := svc.CreateEncounter("enc-1", "Alpha", []domain.Combatant{
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "p1", Name: "Roland", Initiative: 9, Side: domain.SideParty, Level: 1, HP: 7, Defense: 2},
 		{ID: "n1", Name: "Raider", Initiative: 7, Side: domain.SideNPC, Level: 1, XP: 30, HP: 6, Defense: 1},
 	})
 	require.NoError(t, err)
-	_, err = svc.CreateEncounter("enc-2", "Bravo", []domain.Combatant{
+	_, err = svc.CreateEncounter(t.Context(), "enc-2", "Bravo", []domain.Combatant{
 		{ID: "p2", Name: "Piper", Initiative: 8, Side: domain.SideParty, Level: 2, HP: 8, Defense: 3},
 		{ID: "p3", Name: "Roland", Initiative: 11, Side: domain.SideParty, Level: 3, HP: 9, Defense: 4},
 	})
 	require.NoError(t, err)
 
-	party, err := svc.ListPartyMembers()
+	party, err := svc.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)
 	assert.Equal(t, "Vault Dweller", party[0].Name)
@@ -385,14 +387,14 @@ func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	}
 	svc := NewService(repo)
 
-	updated, err := svc.AddPartyAP(2)
+	updated, err := svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	assert.Equal(t, 2, updated.Resources.PartyAP)
 	assert.Equal(t, 1, repo.saveCalls)
 	assert.Equal(t, 1, repo.appendCalls)
 
-	persisted, getErr := repo.Get()
+	persisted, getErr := repo.Get(t.Context())
 	require.NoError(t, getErr)
 	assert.Equal(t, 2, persisted.Resources.PartyAP, "state change is persisted even when log write fails")
 }
@@ -419,7 +421,7 @@ func TestAddPartyAPLogsWhenLogWriteFails(t *testing.T) {
 		logEntries = append(logEntries, fmt.Sprintf(format, args...))
 	})
 
-	updated, err := svc.AddPartyAP(1)
+	updated, err := svc.AddPartyAP(t.Context(), 1)
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	require.NotEmpty(t, logEntries)
@@ -479,14 +481,14 @@ func TestAdvanceTurnSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	}
 	svc := NewService(repo)
 
-	updated, err := svc.AdvanceTurn()
+	updated, err := svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	assert.Equal(t, 1, updated.TurnIndex)
 	assert.Equal(t, 1, repo.saveCalls)
 	assert.Equal(t, 1, repo.appendCalls)
 
-	persisted, getErr := repo.Get()
+	persisted, getErr := repo.Get(t.Context())
 	require.NoError(t, getErr)
 	assert.Equal(t, 1, persisted.TurnIndex)
 }
@@ -506,7 +508,7 @@ func TestApplyDamageSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	}
 	svc := NewService(repo)
 
-	updated, applied, err := svc.ApplyDamage("n1", domain.DamagePoison, domain.BodyHead, 3)
+	updated, applied, err := svc.ApplyDamage(t.Context(), "n1", domain.DamagePoison, domain.BodyHead, 3)
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	assert.Equal(t, 3, applied)
@@ -514,9 +516,41 @@ func TestApplyDamageSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	assert.Equal(t, 1, repo.saveCalls)
 	assert.Equal(t, 1, repo.appendCalls)
 
-	persisted, getErr := repo.Get()
+	persisted, getErr := repo.Get(t.Context())
 	require.NoError(t, getErr)
 	assert.Equal(t, 7, persisted.Combatants[0].HP)
+}
+
+func TestServiceAppliesDefaultOperationTimeoutWhenDeadlineIsMissing(t *testing.T) {
+	repo := &contextCaptureRepo{
+		logFailingRepo: &logFailingRepo{
+			encounter: &domain.Encounter{ID: "enc-1", Round: 1},
+		},
+	}
+	svc := NewServiceWithLogfAndTimeout(repo, func(string, ...any) {}, 200*time.Millisecond)
+
+	_, err := svc.GetEncounter(t.Context())
+	require.NoError(t, err)
+	require.True(t, repo.gotHasDeadline, "service should apply operation timeout when caller has no deadline")
+}
+
+func TestServiceKeepsCallerDeadlineWhenAlreadySet(t *testing.T) {
+	repo := &contextCaptureRepo{
+		logFailingRepo: &logFailingRepo{
+			encounter: &domain.Encounter{ID: "enc-1", Round: 1},
+		},
+	}
+	svc := NewServiceWithLogfAndTimeout(repo, func(string, ...any) {}, 5*time.Second)
+
+	parentCtx, cancel := context.WithTimeout(t.Context(), 120*time.Millisecond)
+	defer cancel()
+	parentDeadline, ok := parentCtx.Deadline()
+	require.True(t, ok)
+
+	_, err := svc.GetEncounter(parentCtx)
+	require.NoError(t, err)
+	require.True(t, repo.gotHasDeadline)
+	require.False(t, repo.gotDeadline.After(parentDeadline), "service should not extend caller deadline")
 }
 
 func newSQLiteService(t *testing.T) *Service {
@@ -530,7 +564,7 @@ func newSQLiteService(t *testing.T) *Service {
 	})
 
 	svc := NewService(sqlite.NewEncounterStore(db))
-	_, err = svc.CreateCampaign("test-campaign", "Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = svc.CreateCampaign(t.Context(), "test-campaign", "Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
@@ -555,56 +589,62 @@ type logFailingRepo struct {
 	appendCalls int
 }
 
-func (r *logFailingRepo) Get() (*domain.Encounter, error) {
+func (r *logFailingRepo) Get(_ context.Context) (*domain.Encounter, error) {
 	return cloneEncounter(r.encounter), nil
 }
 
-func (r *logFailingRepo) Save(encounter *domain.Encounter) error {
+func (r *logFailingRepo) Save(_ context.Context, encounter *domain.Encounter) error {
 	r.saveCalls++
 	r.encounter = cloneEncounter(encounter)
 	return nil
 }
 
-func (r *logFailingRepo) List() ([]domain.EncounterSummary, error) { return nil, nil }
+func (r *logFailingRepo) List(_ context.Context) ([]domain.EncounterSummary, error) { return nil, nil }
 
-func (r *logFailingRepo) GetEncounterByID(string) (*domain.Encounter, error) {
+func (r *logFailingRepo) GetEncounterByID(_ context.Context, _ string) (*domain.Encounter, error) {
 	return cloneEncounter(r.encounter), nil
 }
 
-func (r *logFailingRepo) UpdateEncounter(_, _ string, _ []domain.Combatant) (*domain.Encounter, error) {
+func (r *logFailingRepo) UpdateEncounter(_ context.Context, _, _ string, _ []domain.Combatant) (*domain.Encounter, error) {
 	return nil, nil
 }
 
-func (r *logFailingRepo) ListPartyMembers() ([]domain.Combatant, error) { return nil, nil }
-
-func (r *logFailingRepo) CreateCampaign(_, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *logFailingRepo) ListPartyMembers(_ context.Context) ([]domain.Combatant, error) {
 	return nil, nil
 }
 
-func (r *logFailingRepo) UpdateCampaign(_, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+func (r *logFailingRepo) CreateCampaign(_ context.Context, _, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, nil
 }
 
-func (r *logFailingRepo) GetActiveCampaign() (*domain.Campaign, error) { return nil, nil }
-
-func (r *logFailingRepo) ListCampaigns() ([]domain.Campaign, error) { return nil, nil }
-
-func (r *logFailingRepo) ListCampaignPlayers(string) ([]domain.NewCampaignPlayer, error) {
+func (r *logFailingRepo) UpdateCampaign(_ context.Context, _, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, nil
 }
 
-func (r *logFailingRepo) ActivateCampaign(string) error { return nil }
+func (r *logFailingRepo) GetActiveCampaign(_ context.Context) (*domain.Campaign, error) {
+	return nil, nil
+}
 
-func (r *logFailingRepo) Activate(string) error { return nil }
+func (r *logFailingRepo) ListCampaigns(_ context.Context) ([]domain.Campaign, error) { return nil, nil }
 
-func (r *logFailingRepo) SoftDelete(string) error { return nil }
+func (r *logFailingRepo) ListCampaignPlayers(_ context.Context, _ string) ([]domain.NewCampaignPlayer, error) {
+	return nil, nil
+}
 
-func (r *logFailingRepo) AppendEncounterLog(string, int, string) error {
+func (r *logFailingRepo) ActivateCampaign(_ context.Context, _ string) error { return nil }
+
+func (r *logFailingRepo) Activate(_ context.Context, _ string) error { return nil }
+
+func (r *logFailingRepo) SoftDelete(_ context.Context, _ string) error { return nil }
+
+func (r *logFailingRepo) AppendEncounterLog(_ context.Context, _ string, _ int, _ string) error {
 	r.appendCalls++
 	return r.appendErr
 }
 
-func (r *logFailingRepo) ListEncounterLogs(string) ([]domain.EncounterLog, error) { return nil, nil }
+func (r *logFailingRepo) ListEncounterLogs(_ context.Context, _ string) ([]domain.EncounterLog, error) {
+	return nil, nil
+}
 
 func cloneEncounter(src *domain.Encounter) *domain.Encounter {
 	if src == nil {
@@ -613,4 +653,15 @@ func cloneEncounter(src *domain.Encounter) *domain.Encounter {
 	cp := *src
 	cp.Combatants = append([]domain.Combatant(nil), src.Combatants...)
 	return &cp
+}
+
+type contextCaptureRepo struct {
+	*logFailingRepo
+	gotHasDeadline bool
+	gotDeadline    time.Time
+}
+
+func (r *contextCaptureRepo) Get(ctx context.Context) (*domain.Encounter, error) {
+	r.gotDeadline, r.gotHasDeadline = ctx.Deadline()
+	return cloneEncounter(r.encounter), nil
 }

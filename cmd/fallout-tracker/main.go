@@ -28,10 +28,10 @@ func main() {
 		}
 	}()
 
-	repo := sqlite.NewEncounterStoreWithContext(db, lifecycleCtx)
+	repo := sqlite.NewEncounterStore(db)
 	svc := app.NewService(repo)
 
-	if err := fyneui.Run(svc, cancel); err != nil {
+	if err := fyneui.Run(lifecycleCtx, svc, cancel); err != nil {
 		log.Fatalf("application failed: %v", err)
 	}
 }

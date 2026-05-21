@@ -1,6 +1,7 @@
 package fyneui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"image/color"
@@ -25,7 +26,10 @@ import (
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
-func Run(svc *appsvc.Service, onShutdown func()) error {
+func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	a := fyneapp.New()
 	a.Settings().SetTheme(newPipBoyTheme())
 	shutdown := shutdownOnce(onShutdown)
@@ -263,7 +267,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 
 	nextTurnBtn := widget.NewButton("Next Turn", func() {
 		collapseEncounterDetails()
-		_, err := svc.AdvanceTurn()
+		_, err := svc.AdvanceTurn(ctx)
 		handleErr(err)
 		if err != nil {
 			return
@@ -272,7 +276,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	})
 	partyAddBtn := widget.NewButton("+ AP", func() {
 		collapseEncounterDetails()
-		_, err := svc.AddPartyAP(1)
+		_, err := svc.AddPartyAP(ctx, 1)
 		handleErr(err)
 		if err != nil {
 			return
@@ -281,7 +285,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	})
 	partySpendBtn := widget.NewButton("- AP", func() {
 		collapseEncounterDetails()
-		_, err := svc.SpendPartyAP(1)
+		_, err := svc.SpendPartyAP(ctx, 1)
 		handleErr(err)
 		if err != nil {
 			return
@@ -290,7 +294,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	})
 	threatAddBtn := widget.NewButton("+ Threat", func() {
 		collapseEncounterDetails()
-		_, err := svc.AddThreat(1)
+		_, err := svc.AddThreat(ctx, 1)
 		handleErr(err)
 		if err != nil {
 			return
@@ -299,7 +303,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	})
 	threatSpendBtn := widget.NewButton("- Threat", func() {
 		collapseEncounterDetails()
-		_, err := svc.SpendThreat(1)
+		_, err := svc.SpendThreat(ctx, 1)
 		handleErr(err)
 		if err != nil {
 			return
@@ -451,7 +455,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			return
 		}
 
-		logs, err := svc.ListEncounterLogs(enc.ID)
+		logs, err := svc.ListEncounterLogs(ctx, enc.ID)
 		if err != nil {
 			handleErr(err)
 			return
@@ -555,7 +559,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 
 	refresh = func() {
 		var err error
-		activeCampaign, err = svc.GetActiveCampaign()
+		activeCampaign, err = svc.GetActiveCampaign(ctx)
 		if err != nil {
 			if errors.Is(err, domain.ErrCampaignNotInitialized) {
 				activeCampaign = nil
@@ -590,14 +594,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			formatEncounterUpdatedAt(activeCampaign.UpdatedAt),
 		))
 		setupHint.SetText(fmt.Sprintf("Campaign: %s\nNo active encounter.\nCreate one from scratch to begin tracking combat.", activeCampaign.Name))
-		players, rosterErr := svc.ListCampaignPlayers(activeCampaign.ID)
+		players, rosterErr := svc.ListCampaignPlayers(ctx, activeCampaign.ID)
 		if rosterErr != nil {
 			handleErr(rosterErr)
 			campRosterOutput.SetText("Failed to load campaign players")
 		} else {
 			campRosterOutput.SetText(formatCampaignRoster(players))
 		}
-		partyMembers, partyErr := svc.ListPartyMembers()
+		partyMembers, partyErr := svc.ListPartyMembers(ctx)
 		if partyErr != nil {
 			handleErr(partyErr)
 			partyLibraryOutput.SetText("Failed to load party library")
@@ -605,7 +609,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			partyLibraryOutput.SetText(formatPartyLibrary(partyMembers))
 		}
 
-		enc, err = svc.GetEncounter()
+		enc, err = svc.GetEncounter(ctx)
 		if err != nil {
 			if errors.Is(err, domain.ErrEncounterNotInitialized) {
 				enc = nil
@@ -866,14 +870,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			time.Now().Format("2006-01-02"),
 			nil,
 			func(name, startDate string, players []domain.NewCampaignPlayer) error {
-				_, err := svc.CreateCampaign(uuid.NewString(), name, startDate, players)
+				_, err := svc.CreateCampaign(ctx, uuid.NewString(), name, startDate, players)
 				return err
 			},
 		)
 	}
 
 	showCampaignListDialog = func() {
-		campaigns, err := svc.ListCampaigns()
+		campaigns, err := svc.ListCampaigns(ctx)
 		if err != nil {
 			handleErr(err)
 			return
@@ -934,7 +938,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if selectedID == "" {
 				return
 			}
-			if _, err := svc.ActivateCampaign(selectedID); err != nil {
+			if _, err := svc.ActivateCampaign(ctx, selectedID); err != nil {
 				dialog.ShowError(err, w)
 				return
 			}
@@ -949,7 +953,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if selectedID == "" || selectedIdx < 0 || selectedIdx >= len(campaigns) {
 				return
 			}
-			players, err := svc.ListCampaignPlayers(selectedID)
+			players, err := svc.ListCampaignPlayers(ctx, selectedID)
 			if err != nil {
 				dialog.ShowError(err, w)
 				return
@@ -963,14 +967,14 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				current.StartDate,
 				players,
 				func(name, startDate string, editedPlayers []domain.NewCampaignPlayer) error {
-					_, updateErr := svc.UpdateCampaign(current.ID, name, startDate, editedPlayers)
+					_, updateErr := svc.UpdateCampaign(ctx, current.ID, name, startDate, editedPlayers)
 					return updateErr
 				},
 			)
 		})
 		infoBtn := widget.NewButton("Use Selected", func() {
 			if selectedIdx >= 0 && selectedIdx < len(campaigns) {
-				if _, err := svc.ActivateCampaign(campaigns[selectedIdx].ID); err != nil {
+				if _, err := svc.ActivateCampaign(ctx, campaigns[selectedIdx].ID); err != nil {
 					dialog.ShowError(err, w)
 					return
 				}
@@ -1122,7 +1126,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		loadPartyBtn := widget.NewButton("Load Party From DB", func() {
 			validationError.SetText("")
 
-			partyMembers, err := svc.ListPartyMembers()
+			partyMembers, err := svc.ListPartyMembers(ctx)
 			if err != nil {
 				validationError.SetText(err.Error())
 				return
@@ -1202,7 +1206,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			nil,
 			func(name string, combatants []domain.Combatant) error {
 				encounterID := uuid.NewString()
-				_, err := svc.CreateEncounter(encounterID, name, combatants)
+				_, err := svc.CreateEncounter(ctx, encounterID, name, combatants)
 				return err
 			},
 		)
@@ -1265,7 +1269,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					return
 				}
 
-				_, _, err = svc.ApplyDamage(target.ID, damageType, location, amount)
+				_, _, err = svc.ApplyDamage(ctx, target.ID, damageType, location, amount)
 				if err != nil {
 					dialog.ShowError(err, w)
 					return
@@ -1314,7 +1318,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 					return
 				}
 
-				_, _, err = svc.Heal(target.ID, amount)
+				_, _, err = svc.Heal(ctx, target.ID, amount)
 				if err != nil {
 					dialog.ShowError(err, w)
 					return
@@ -1329,7 +1333,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 	}
 
 	showEncounterListDialog = func() {
-		summaries, err := svc.ListEncounters()
+		summaries, err := svc.ListEncounters(ctx)
 		if err != nil {
 			handleErr(err)
 			return
@@ -1409,7 +1413,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 		scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.45))
 
 		refreshSummaries := func(keepID string) error {
-			updated, err := svc.ListEncounters()
+			updated, err := svc.ListEncounters(ctx)
 			if err != nil {
 				return err
 			}
@@ -1444,7 +1448,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if selectedID == "" {
 				return
 			}
-			_, err := svc.ActivateEncounter(selectedID)
+			_, err := svc.ActivateEncounter(ctx, selectedID)
 			if err != nil {
 				dialog.ShowError(err, w)
 				return
@@ -1457,7 +1461,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			if selectedID == "" {
 				return
 			}
-			_, err := svc.RestartEncounter(selectedID)
+			_, err := svc.RestartEncounter(ctx, selectedID)
 			if err != nil {
 				dialog.ShowError(err, w)
 				return
@@ -1480,7 +1484,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 						return
 					}
 
-					if err := svc.DeleteEncounter(targetID); err != nil {
+					if err := svc.DeleteEncounter(ctx, targetID); err != nil {
 						dialog.ShowError(err, w)
 						return
 					}
@@ -1503,7 +1507,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 			}
 			targetID := selectedID
 			targetName := summaries[selectedIdx].Name
-			encForEdit, err := svc.GetEncounterByID(targetID)
+			encForEdit, err := svc.GetEncounterByID(ctx, targetID)
 			if err != nil {
 				dialog.ShowError(err, w)
 				return
@@ -1515,7 +1519,7 @@ func Run(svc *appsvc.Service, onShutdown func()) error {
 				encForEdit.Name,
 				encForEdit.Combatants,
 				func(name string, combatants []domain.Combatant) error {
-					_, updateErr := svc.UpdateEncounter(targetID, name, combatants)
+					_, updateErr := svc.UpdateEncounter(ctx, targetID, name, combatants)
 					return updateErr
 				},
 			)

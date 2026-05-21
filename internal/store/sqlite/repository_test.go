@@ -14,7 +14,7 @@ import (
 func TestEncounterStoreGetWhenEmpty(t *testing.T) {
 	store := newTestStore(t)
 
-	enc, err := store.Get()
+	enc, err := store.Get(t.Context())
 	require.ErrorIs(t, err, domain.ErrEncounterNotInitialized)
 	assert.Nil(t, enc)
 }
@@ -49,9 +49,9 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, store.Save(expected))
+	require.NoError(t, store.Save(t.Context(), expected))
 
-	actual, err := store.Get()
+	actual, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, actual)
 
@@ -75,7 +75,7 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 			{ID: "c2", Name: "Two", Side: domain.SideNPC, Initiative: 8, Active: false},
 		},
 	}
-	require.NoError(t, store.Save(first))
+	require.NoError(t, store.Save(t.Context(), first))
 
 	updated := &domain.Encounter{
 		ID:        "enc-1",
@@ -86,9 +86,9 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 			{ID: "c3", Name: "Three", Side: domain.SideNPC, Initiative: 12, Active: true},
 		},
 	}
-	require.NoError(t, store.Save(updated))
+	require.NoError(t, store.Save(t.Context(), updated))
 
-	actual, err := store.Get()
+	actual, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.Len(t, actual.Combatants, 1)
 	assert.Equal(t, "c3", actual.Combatants[0].ID)
@@ -98,14 +98,14 @@ func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
 func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "c1", Name: "A", Side: domain.SideParty, Initiative: 10, Active: true}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-2",
 		Name:       "Bravo",
 		Round:      1,
@@ -113,23 +113,23 @@ func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c2", Name: "B", Side: domain.SideNPC, Initiative: 8, Active: true}},
 	}))
 
-	summaries, err := store.List()
+	summaries, err := store.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 2)
 	assert.Equal(t, "enc-2", summaries[0].ID)
 
-	require.NoError(t, store.Activate("enc-1"))
+	require.NoError(t, store.Activate(t.Context(), "enc-1"))
 
-	active, err := store.Get()
+	active, err := store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-1", active.ID)
 
-	require.NoError(t, store.SoftDelete("enc-1"))
-	active, err = store.Get()
+	require.NoError(t, store.SoftDelete(t.Context(), "enc-1"))
+	active, err = store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "enc-2", active.ID)
 
-	summaries, err = store.List()
+	summaries, err = store.List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, summaries, 1)
 	assert.Equal(t, "enc-2", summaries[0].ID)
@@ -138,7 +138,7 @@ func TestEncounterStoreListActivateSoftDelete(t *testing.T) {
 func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:        "enc-diff-1",
 		Name:      "Difficulty Persist",
 		Round:     1,
@@ -151,7 +151,7 @@ func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 		},
 	}))
 
-	summaries, err := store.List()
+	summaries, err := store.List(t.Context())
 	require.NoError(t, err)
 	require.NotEmpty(t, summaries)
 
@@ -175,7 +175,7 @@ func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 
 func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 	store := newTestStore(t)
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:        "enc-update-1",
 		Name:      "Before Update",
 		Round:     3,
@@ -190,14 +190,14 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 		},
 	}))
 
-	beforeUpdate, err := store.Get()
+	beforeUpdate, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, beforeUpdate.TurnIndex, 0)
 	require.Less(t, beforeUpdate.TurnIndex, len(beforeUpdate.Combatants))
 	beforeActiveID := beforeUpdate.Combatants[beforeUpdate.TurnIndex].ID
 	beforeCombatants := append([]domain.Combatant(nil), beforeUpdate.Combatants...)
 
-	updated, err := store.UpdateEncounter(beforeUpdate.ID, "After Update", beforeCombatants)
+	updated, err := store.UpdateEncounter(t.Context(), beforeUpdate.ID, "After Update", beforeCombatants)
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.Round, updated.Round)
 	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
@@ -205,7 +205,7 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 	require.Less(t, updated.TurnIndex, len(updated.Combatants))
 	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
 
-	persisted, err := store.Get()
+	persisted, err := store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
 	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
@@ -216,25 +216,25 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 func TestEncounterStoreNotFoundOperations(t *testing.T) {
 	store := newTestStore(t)
 
-	require.ErrorIs(t, store.Activate("missing"), domain.ErrEncounterNotFound)
-	require.ErrorIs(t, store.SoftDelete("missing"), domain.ErrEncounterNotFound)
+	require.ErrorIs(t, store.Activate(t.Context(), "missing"), domain.ErrEncounterNotFound)
+	require.ErrorIs(t, store.SoftDelete(t.Context(), "missing"), domain.ErrEncounterNotFound)
 }
 
 func TestEncounterStoreSaveNilEncounter(t *testing.T) {
 	store := newTestStore(t)
-	require.Error(t, store.Save(nil))
+	require.Error(t, store.Save(t.Context(), nil))
 }
 
 func TestEncounterStoreStopsQueriesWhenContextCanceled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	store := newTestStoreWithContext(t, ctx)
+	ctx, cancel := context.WithCancel(t.Context())
+	store := newTestStore(t)
 
 	cancel()
 
-	_, err := store.Get()
+	_, err := store.Get(ctx)
 	require.ErrorIs(t, err, context.Canceled)
 
-	err = store.Save(&domain.Encounter{
+	err = store.Save(ctx, &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Canceled",
 		Round:      1,
@@ -246,7 +246,7 @@ func TestEncounterStoreStopsQueriesWhenContextCanceled(t *testing.T) {
 
 func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 	store := newTestStore(t)
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
@@ -254,10 +254,10 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c1", Name: "A", Side: domain.SideParty, Initiative: 10, Active: true}},
 	}))
 
-	require.NoError(t, store.AppendEncounterLog("enc-1", 1, "Encounter created"))
-	require.NoError(t, store.AppendEncounterLog("enc-1", 2, "Turn advanced -> A"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 1, "Encounter created"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 2, "Turn advanced -> A"))
 
-	logs, err := store.ListEncounterLogs("enc-1")
+	logs, err := store.ListEncounterLogs(t.Context(), "enc-1")
 	require.NoError(t, err)
 	require.Len(t, logs, 2)
 	assert.Equal(t, 2, logs[0].Round)
@@ -269,14 +269,14 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	store := newTestStore(t)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Old",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 1, Initiative: 8, HP: 7, Defense: 2}, {ID: "n1", Name: "Raider", Side: domain.SideNPC, XP: 30, Initiative: 7, HP: 6}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:        "enc-2",
 		Name:      "New",
 		Round:     1,
@@ -288,7 +288,7 @@ func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *test
 		},
 	}))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)
 	assert.Equal(t, "Scout", party[0].Name)
@@ -301,23 +301,23 @@ func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *tes
 	_, err := store.db.Exec(`UPDATE player_characters SET active = 0 WHERE campaign_id = ?`, "repo-test-campaign")
 	require.NoError(t, err)
 
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-1",
 		Name:       "Alpha",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p1", Name: "Roland", Side: domain.SideParty, Level: 2, Initiative: 9, HP: 7, Defense: 2}},
 	}))
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "enc-2",
 		Name:       "Bravo",
 		Round:      1,
 		TurnIndex:  0,
 		Combatants: []domain.Combatant{{ID: "p2", Name: "Roland", Side: domain.SideParty, Level: 4, Initiative: 12, HP: 10, Defense: 5}},
 	}))
-	require.NoError(t, store.SoftDelete("enc-2"))
+	require.NoError(t, store.SoftDelete(t.Context(), "enc-2"))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Empty(t, party)
 }
@@ -325,7 +325,7 @@ func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *tes
 func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T) {
 	store := newTestStore(t)
 
-	_, err := store.UpdateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err := store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
@@ -383,7 +383,7 @@ func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T)
 		"Ranger",
 	))
 
-	party, err := store.ListPartyMembers()
+	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)
 	assert.Equal(t, "Ranger", party[0].Name)
@@ -430,7 +430,7 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		ResistRadiationRightLeg: 8,
 		ImmunePhysical:          true,
 	}
-	require.NoError(t, store.Save(&domain.Encounter{
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:         "norm-enc-1",
 		Name:       "Normalized Save",
 		Round:      1,
@@ -456,7 +456,7 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 
 	store := NewEncounterStore(db)
 	characterID := "norm-char-1"
-	_, err = store.CreateCampaign("norm-campaign-1", "Normalized Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = store.CreateCampaign(t.Context(), "norm-campaign-1", "Normalized Campaign", "2026-01-01", []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player A",
 			Character: domain.Combatant{
@@ -502,7 +502,7 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 
 func newTestStore(t *testing.T) *EncounterStore {
 	t.Helper()
-	return newTestStoreWithContext(t, context.Background())
+	return newTestStoreWithContext(t, t.Context())
 }
 
 func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore {
@@ -517,7 +517,7 @@ func newTestStoreWithContext(t *testing.T, ctx context.Context) *EncounterStore 
 	})
 
 	store := NewEncounterStoreWithContext(db, ctx)
-	_, err = store.CreateCampaign("repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
+	_, err = store.CreateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", "2026-01-01", []domain.NewCampaignPlayer{
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
