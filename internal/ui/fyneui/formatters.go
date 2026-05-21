@@ -129,34 +129,18 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 	)
 }
 
-func formatEncounterUpdatedAt(raw string) string {
-	layouts := []string{
-		time.RFC3339Nano,
-		"2006-01-02 15:04:05.000",
-		"2006-01-02 15:04:05",
+func formatCampaignStartDate(value time.Time) string {
+	if value.IsZero() {
+		return "-"
 	}
-	for _, layout := range layouts {
-		t, err := time.Parse(layout, raw)
-		if err == nil {
-			return t.Local().Format("2006-01-02 15:04:05")
-		}
-	}
-	return raw
+	return value.Format(domain.CampaignDateLayout)
 }
 
-func formatLogTimestamp(raw string) string {
-	layouts := []string{
-		time.RFC3339Nano,
-		"2006-01-02 15:04:05.000",
-		"2006-01-02 15:04:05",
+func formatTimestamp(value time.Time) string {
+	if value.IsZero() {
+		return "-"
 	}
-	for _, layout := range layouts {
-		t, err := time.Parse(layout, raw)
-		if err == nil {
-			return t.Local().Format("2006-01-02 15:04:05")
-		}
-	}
-	return raw
+	return value.Local().Format("2006-01-02 15:04:05")
 }
 
 func formatEncounterDifficultySummary(s domain.EncounterSummary) string {
@@ -186,8 +170,8 @@ func formatCampaignOverview(c *domain.Campaign) string {
 		"Name: %s\nID: %s\nStart Date: %s\nUpdated: %s",
 		c.Name,
 		c.ID,
-		c.StartDate,
-		formatEncounterUpdatedAt(c.UpdatedAt),
+		formatCampaignStartDate(c.StartDate),
+		formatTimestamp(c.UpdatedAt),
 	)
 }
 

@@ -2,6 +2,7 @@ package fyneui
 
 import (
 	"testing"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -17,7 +18,7 @@ import (
 func TestMainViewPresenterShowNoCampaignResetsStateAndShowsCampaignGate(t *testing.T) {
 	state := &uiState{
 		enc:                 testEncounter(),
-		activeCampaign:      &domain.Campaign{ID: "camp-1", Name: "Old campaign", StartDate: "2026-01-01"},
+		activeCampaign:      &domain.Campaign{ID: "camp-1", Name: "Old campaign", StartDate: testCampaignDate()},
 		selectedIndex:       1,
 		expandedCombatantID: "pc-1",
 	}
@@ -43,7 +44,7 @@ func TestMainViewPresenterShowNoCampaignResetsStateAndShowsCampaignGate(t *testi
 }
 
 func TestMainViewPresenterShowNoEncounterKeepsCampaignAndShowsEncounterGate(t *testing.T) {
-	activeCampaign := &domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: "2026-01-01"}
+	activeCampaign := &domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: testCampaignDate()}
 	state := &uiState{
 		enc:                 testEncounter(),
 		activeCampaign:      activeCampaign,
@@ -73,7 +74,7 @@ func TestMainViewPresenterShowActiveEncounterRefreshesEncounterWidgets(t *testin
 	enc.Round = 4
 	state := &uiState{
 		enc:                 enc,
-		activeCampaign:      &domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: "2026-01-01"},
+		activeCampaign:      &domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: testCampaignDate()},
 		selectedIndex:       99,
 		expandedCombatantID: "missing",
 	}
@@ -98,7 +99,7 @@ func TestMainViewPresenterShowActiveCampaignUpdatesCampaignCopy(t *testing.T) {
 	state := &uiState{}
 	presenter, screen := newTestMainViewPresenter(t, state)
 
-	presenter.showActiveCampaign(&domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: "2026-01-01"})
+	presenter.showActiveCampaign(&domain.Campaign{ID: "camp-1", Name: "Vault 13", StartDate: testCampaignDate()})
 
 	assert.Equal(t, "Campaign: Vault 13 (2026-01-01)", screen.campaignStatusLabel.Text)
 	assert.Contains(t, screen.campOverviewLabel.Text, "Name: Vault 13")
@@ -151,4 +152,8 @@ func testEncounter() *domain.Encounter {
 		{ID: "pc-1", Name: "Alpha", Side: domain.SideParty, Initiative: 12, HP: 8, MaxHP: 8},
 		{ID: "npc-1", Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 6, MaxHP: 6},
 	})
+}
+
+func testCampaignDate() time.Time {
+	return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 }

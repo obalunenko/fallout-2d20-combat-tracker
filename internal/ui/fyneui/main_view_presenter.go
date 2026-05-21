@@ -40,7 +40,7 @@ func (p *mainViewPresenter) showNoCampaign() {
 }
 
 func (p *mainViewPresenter) showActiveCampaign(campaign *domain.Campaign) {
-	p.screen.campaignStatusLabel.SetText(fmt.Sprintf("Campaign: %s (%s)", campaign.Name, campaign.StartDate))
+	p.screen.campaignStatusLabel.SetText(fmt.Sprintf("Campaign: %s (%s)", campaign.Name, formatCampaignStartDate(campaign.StartDate)))
 	p.screen.campOverviewLabel.SetText(formatCampaignOverview(campaign))
 	p.screen.setupHint.SetText(fmt.Sprintf("Campaign: %s\nNo active encounter.\nCreate one from scratch to begin tracking combat.", campaign.Name))
 }

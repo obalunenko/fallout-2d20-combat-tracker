@@ -232,7 +232,7 @@ func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
 		EnemyCount:      2,
 		EnemyAvgLevel:   4.5,
 		EnemyTotalXP:    150,
-		UpdatedAt:       "2026-05-22 12:13:14.123",
+		UpdatedAt:       updatedAt,
 	}, actual)
 }
 
@@ -311,6 +311,7 @@ func TestPlayerCharacterParamsMapAndTrimDomainCombatant(t *testing.T) {
 }
 
 func TestCampaignFromListRowFormatsUpdatedAt(t *testing.T) {
+	startDate := time.Date(2287, 10, 23, 0, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2026, 5, 22, 11, 12, 13, 456000000, time.UTC)
 
 	actual := campaignFromListRow(dbgen.ListCampaignsRow{
@@ -323,8 +324,8 @@ func TestCampaignFromListRowFormatsUpdatedAt(t *testing.T) {
 	assert.Equal(t, domain.Campaign{
 		ID:        "camp-1",
 		Name:      "Capital Wasteland",
-		StartDate: "2287-10-23",
-		UpdatedAt: "2026-05-22 11:12:13.456",
+		StartDate: startDate,
+		UpdatedAt: updatedAt,
 	}, actual)
 }
 
@@ -340,6 +341,6 @@ func TestEncounterLogFromRowFormatsCreatedAt(t *testing.T) {
 	assert.Equal(t, domain.EncounterLog{
 		Round:     3,
 		Message:   "Turn advanced",
-		CreatedAt: "2026-05-22 14:15:16.789",
+		CreatedAt: createdAt,
 	}, actual)
 }

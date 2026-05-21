@@ -336,7 +336,7 @@ func TestEncounterLogsArePersistentAndIncludeRound(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, logs)
 	assert.Contains(t, logs[0].Message, "Heal")
-	assert.NotEmpty(t, logs[0].CreatedAt)
+	assert.False(t, logs[0].CreatedAt.IsZero())
 
 	hasTurnAdvanced := false
 	for _, l := range logs {
@@ -367,6 +367,25 @@ func TestListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	assert.Equal(t, "Vault Dweller", party[0].Name)
 	assert.Equal(t, 1, party[0].Level)
 	assert.Equal(t, 9, party[0].Initiative)
+}
+
+func TestCreateCampaignRejectsInvalidStartDate(t *testing.T) {
+	svc := newSQLiteService(t)
+
+	_, err := svc.CreateCampaign(t.Context(), "camp-1", "Bad Date", "2026/05/22", []domain.NewCampaignPlayer{
+		{
+			PlayerName: "June",
+			Character: domain.Combatant{
+				Name:       "Vault Dweller",
+				Level:      1,
+				Initiative: 5,
+				HP:         8,
+			},
+		},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "YYYY-MM-DD")
 }
 
 func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {

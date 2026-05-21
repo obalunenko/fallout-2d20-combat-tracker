@@ -319,7 +319,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name, s
 	return &domain.Campaign{
 		ID:        campaignID,
 		Name:      name,
-		StartDate: startDate,
+		StartDate: parseCampaignStartDate(startDate),
 	}, nil
 }
 
@@ -424,7 +424,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name, s
 	return &domain.Campaign{
 		ID:        campaignID,
 		Name:      name,
-		StartDate: startDate,
+		StartDate: parseCampaignStartDate(startDate),
 	}, nil
 }
 

@@ -233,11 +233,7 @@ func showCreateCampaignDialogWindow(ctx context.Context, w fyne.Window, svc *app
 		time.Now().Format("2006-01-02"),
 		nil,
 		func(name, startDate string, players []domain.NewCampaignPlayer) error {
-			_, err := svc.ExecuteCreateCampaign(ctx, appsvc.CreateCampaignCommand{
-				Name:      name,
-				StartDate: startDate,
-				Players:   players,
-			})
+			_, err := svc.CreateCampaign(ctx, "", name, startDate, players)
 			return err
 		},
 		refresh,
@@ -283,7 +279,7 @@ func showCampaignListDialogWindow(
 		}
 		selectedInfo.SetText(fmt.Sprintf(
 			"Name: %s%s\nID: %s\nStart Date: %s\nUpdated: %s",
-			campaigns[idx].Name, current, campaigns[idx].ID, campaigns[idx].StartDate, formatEncounterUpdatedAt(campaigns[idx].UpdatedAt),
+			campaigns[idx].Name, current, campaigns[idx].ID, formatCampaignStartDate(campaigns[idx].StartDate), formatTimestamp(campaigns[idx].UpdatedAt),
 		))
 	}
 
@@ -300,7 +296,7 @@ func showCampaignListDialogWindow(
 			if activeCampaign != nil && activeCampaign.ID == c.ID {
 				activeMark = " [active]"
 			}
-			o.(*widget.Label).SetText(fmt.Sprintf("%s%s | Start:%s | Updated:%s", c.Name, activeMark, c.StartDate, formatEncounterUpdatedAt(c.UpdatedAt)))
+			o.(*widget.Label).SetText(fmt.Sprintf("%s%s | Start:%s | Updated:%s", c.Name, activeMark, formatCampaignStartDate(c.StartDate), formatTimestamp(c.UpdatedAt)))
 		},
 	)
 	list.OnSelected = func(id widget.ListItemID) { renderSelected(id) }
@@ -343,15 +339,10 @@ func showCampaignListDialogWindow(
 			"Edit Campaign",
 			"Save",
 			current.Name,
-			current.StartDate,
+			formatCampaignStartDate(current.StartDate),
 			players,
 			func(name, startDate string, editedPlayers []domain.NewCampaignPlayer) error {
-				_, updateErr := svc.ExecuteUpdateCampaign(ctx, appsvc.UpdateCampaignCommand{
-					CampaignID: current.ID,
-					Name:       name,
-					StartDate:  startDate,
-					Players:    editedPlayers,
-				})
+				_, updateErr := svc.UpdateCampaign(ctx, current.ID, name, startDate, editedPlayers)
 				return updateErr
 			},
 			refresh,

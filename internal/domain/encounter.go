@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 )
 
 type Side string
@@ -101,7 +102,7 @@ type EncounterSummary struct {
 	Name            string
 	Round           int
 	Combatants      int
-	UpdatedAt       string
+	UpdatedAt       time.Time
 	Difficulty      string
 	DifficultyScore float64
 	PartyCount      int
@@ -115,7 +116,7 @@ type EncounterSummary struct {
 type EncounterLog struct {
 	Round     int
 	Message   string
-	CreatedAt string
+	CreatedAt time.Time
 }
 
 func NewEncounter(id, name string, combatants []Combatant) *Encounter {

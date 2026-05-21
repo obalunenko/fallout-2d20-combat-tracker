@@ -54,7 +54,7 @@ func showEncounterListDialogWindow(
 		selectedInfo.SetText(
 			fmt.Sprintf(
 				"Name: %s\nID: %s\nRound: %d\nCombatants: %d\nDifficulty: %s\nUpdated: %s",
-				s.Name, s.ID, s.Round, s.Combatants, formatEncounterDifficultySummary(s), formatEncounterUpdatedAt(s.UpdatedAt),
+				s.Name, s.ID, s.Round, s.Combatants, formatEncounterDifficultySummary(s), formatTimestamp(s.UpdatedAt),
 			),
 		)
 	}
@@ -85,7 +85,7 @@ func showEncounterListDialogWindow(
 			o.(*widget.Label).SetText(
 				fmt.Sprintf(
 					"%s | %s | Round:%d | Combatants:%d | Updated:%s",
-					s.Name, formatEncounterDifficultySummary(s), s.Round, s.Combatants, formatEncounterUpdatedAt(s.UpdatedAt),
+					s.Name, formatEncounterDifficultySummary(s), s.Round, s.Combatants, formatTimestamp(s.UpdatedAt),
 				),
 			)
 		},

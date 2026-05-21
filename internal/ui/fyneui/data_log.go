@@ -37,7 +37,7 @@ func refreshEncounterDataLog(
 	lines := make([]string, 0, len(logs))
 	for _, logEntry := range logs {
 		lines = append(lines, fmt.Sprintf("[%s] [R%d] %s",
-			formatLogTimestamp(logEntry.CreatedAt), logEntry.Round, logEntry.Message))
+			formatTimestamp(logEntry.CreatedAt), logEntry.Round, logEntry.Message))
 	}
 	output.SetText(strings.Join(lines, "\n"))
 }

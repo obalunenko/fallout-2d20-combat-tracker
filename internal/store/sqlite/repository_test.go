@@ -262,7 +262,7 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 	require.Len(t, logs, 2)
 	assert.Equal(t, 2, logs[0].Round)
 	assert.Contains(t, logs[0].Message, "Turn advanced")
-	assert.NotEmpty(t, logs[0].CreatedAt)
+	assert.False(t, logs[0].CreatedAt.IsZero())
 	assert.Equal(t, 1, logs[1].Round)
 }
 

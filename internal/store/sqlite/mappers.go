@@ -8,8 +8,6 @@ import (
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
 
-const sqliteTimestampLayout = "2006-01-02 15:04:05.000"
-
 type combatantDBFields struct {
 	ID                                string
 	Name                              string
@@ -288,7 +286,7 @@ func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow) doma
 		EnemyCount:      int(r.EnemyCount),
 		EnemyAvgLevel:   r.EnemyAvgLevel,
 		EnemyTotalXP:    int(r.EnemyTotalXp),
-		UpdatedAt:       r.UpdatedAt.Format(sqliteTimestampLayout),
+		UpdatedAt:       r.UpdatedAt,
 	}
 }
 
@@ -344,7 +342,7 @@ func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.
 type campaignDBFields struct {
 	ID        string
 	Name      string
-	StartDate string
+	StartDate time.Time
 	UpdatedAt time.Time
 }
 
@@ -353,7 +351,7 @@ func campaignFromFields(f campaignDBFields) domain.Campaign {
 		ID:        f.ID,
 		Name:      f.Name,
 		StartDate: f.StartDate,
-		UpdatedAt: f.UpdatedAt.Format(sqliteTimestampLayout),
+		UpdatedAt: f.UpdatedAt,
 	}
 }
 
@@ -361,7 +359,7 @@ func campaignFromRow(r dbgen.GetActiveCampaignRow) domain.Campaign {
 	return campaignFromFields(campaignDBFields{
 		ID:        r.ID,
 		Name:      r.Name,
-		StartDate: r.StartDate,
+		StartDate: parseCampaignStartDate(r.StartDate),
 		UpdatedAt: r.UpdatedAt,
 	})
 }
@@ -370,7 +368,7 @@ func campaignFromListRow(r dbgen.ListCampaignsRow) domain.Campaign {
 	return campaignFromFields(campaignDBFields{
 		ID:        r.ID,
 		Name:      r.Name,
-		StartDate: r.StartDate,
+		StartDate: parseCampaignStartDate(r.StartDate),
 		UpdatedAt: r.UpdatedAt,
 	})
 }
@@ -379,6 +377,14 @@ func encounterLogFromRow(r dbgen.ListEncounterLogsByEncounterIDRow) domain.Encou
 	return domain.EncounterLog{
 		Round:     int(r.Round),
 		Message:   r.Message,
-		CreatedAt: r.CreatedAt.Format(sqliteTimestampLayout),
+		CreatedAt: r.CreatedAt,
 	}
+}
+
+func parseCampaignStartDate(value string) time.Time {
+	parsed, err := domain.ParseCampaignStartDate(value)
+	if err != nil {
+		return time.Time{}
+	}
+	return parsed
 }
