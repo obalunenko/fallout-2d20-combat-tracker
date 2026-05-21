@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -194,7 +192,6 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 
 		for i := 0; i < count; i++ {
 			combatants = append(combatants, domain.Combatant{
-				ID:                      uuid.NewString(),
 				Name:                    name,
 				Side:                    side,
 				Level:                   level,
@@ -386,7 +383,6 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		players = append(players, domain.NewCampaignPlayer{
 			PlayerName: playerName,
 			Character: domain.Combatant{
-				ID:                      uuid.NewString(),
 				Name:                    characterName,
 				Side:                    domain.SideParty,
 				Level:                   level,

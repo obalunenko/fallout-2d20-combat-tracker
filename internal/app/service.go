@@ -31,6 +31,44 @@ type EncounterRepository interface {
 	ListEncounterLogs(ctx context.Context, encounterID string) ([]domain.EncounterLog, error)
 }
 
+type CreateCampaignCommand struct {
+	ID        string
+	Name      string
+	StartDate string
+	Players   []domain.NewCampaignPlayer
+}
+
+type UpdateCampaignCommand struct {
+	CampaignID string
+	Name       string
+	StartDate  string
+	Players    []domain.NewCampaignPlayer
+}
+
+type CreateEncounterCommand struct {
+	ID         string
+	Name       string
+	Combatants []domain.Combatant
+}
+
+type UpdateEncounterCommand struct {
+	EncounterID string
+	Name        string
+	Combatants  []domain.Combatant
+}
+
+type ApplyDamageCommand struct {
+	CombatantID string
+	DamageType  domain.DamageType
+	Location    domain.BodyLocation
+	Amount      int
+}
+
+type HealCommand struct {
+	CombatantID string
+	Amount      int
+}
+
 type Service struct {
 	repo EncounterRepository
 	logf func(string, ...any)
@@ -121,57 +159,66 @@ func (s *Service) GetEncounterByID(ctx context.Context, encounterID string) (*do
 }
 
 func (s *Service) CreateCampaign(ctx context.Context, id, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	return s.ExecuteCreateCampaign(ctx, CreateCampaignCommand{
+		ID:        id,
+		Name:      name,
+		StartDate: startDate,
+		Players:   players,
+	})
+}
+
+func (s *Service) ExecuteCreateCampaign(ctx context.Context, cmd CreateCampaignCommand) (*domain.Campaign, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if strings.TrimSpace(name) == "" {
+	if strings.TrimSpace(cmd.Name) == "" {
 		return nil, fmt.Errorf("campaign name is required")
 	}
-	if strings.TrimSpace(startDate) == "" {
+	if strings.TrimSpace(cmd.StartDate) == "" {
 		return nil, fmt.Errorf("campaign start date is required")
 	}
-	if len(players) == 0 {
+	if len(cmd.Players) == 0 {
 		return nil, fmt.Errorf("add at least one player")
 	}
-	if strings.TrimSpace(id) == "" {
-		id = uuid.NewString()
+	if strings.TrimSpace(cmd.ID) == "" {
+		cmd.ID = uuid.NewString()
 	}
-	for i := range players {
-		if strings.TrimSpace(players[i].PlayerName) == "" {
+	for i := range cmd.Players {
+		if strings.TrimSpace(cmd.Players[i].PlayerName) == "" {
 			return nil, fmt.Errorf("player name is required")
 		}
-		if strings.TrimSpace(players[i].Character.Name) == "" {
-			return nil, fmt.Errorf("character name is required for player %q", players[i].PlayerName)
+		if strings.TrimSpace(cmd.Players[i].Character.Name) == "" {
+			return nil, fmt.Errorf("character name is required for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Level < 1 {
-			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Level < 1 {
+			return nil, fmt.Errorf("invalid level for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.HP < 0 {
-			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.HP < 0 {
+			return nil, fmt.Errorf("invalid HP for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.MaxHP <= 0 {
-			if players[i].Character.HP > 0 {
-				players[i].Character.MaxHP = players[i].Character.HP
+		if cmd.Players[i].Character.MaxHP <= 0 {
+			if cmd.Players[i].Character.HP > 0 {
+				cmd.Players[i].Character.MaxHP = cmd.Players[i].Character.HP
 			} else {
-				players[i].Character.MaxHP = 1
+				cmd.Players[i].Character.MaxHP = 1
 			}
 		}
-		if players[i].Character.HP > players[i].Character.MaxHP {
-			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.HP > cmd.Players[i].Character.MaxHP {
+			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Initiative < 0 {
-			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Initiative < 0 {
+			return nil, fmt.Errorf("invalid initiative for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Defense < 0 {
-			return nil, fmt.Errorf("invalid defense for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Defense < 0 {
+			return nil, fmt.Errorf("invalid defense for player %q", cmd.Players[i].PlayerName)
 		}
-		if strings.TrimSpace(players[i].Character.ID) == "" {
-			players[i].Character.ID = uuid.NewString()
+		if strings.TrimSpace(cmd.Players[i].Character.ID) == "" {
+			cmd.Players[i].Character.ID = uuid.NewString()
 		}
-		domain.NormalizeCombatantHP(&players[i].Character)
-		players[i].Character.Side = domain.SideParty
-		players[i].Character.XP = 0
+		domain.NormalizeCombatantHP(&cmd.Players[i].Character)
+		cmd.Players[i].Character.Side = domain.SideParty
+		cmd.Players[i].Character.XP = 0
 	}
-	return s.repo.CreateCampaign(ctx, id, name, startDate, players)
+	return s.repo.CreateCampaign(ctx, cmd.ID, cmd.Name, cmd.StartDate, cmd.Players)
 }
 
 func (s *Service) GetActiveCampaign(ctx context.Context) (*domain.Campaign, error) {
@@ -208,57 +255,66 @@ func (s *Service) ActivateCampaign(ctx context.Context, campaignID string) (*dom
 }
 
 func (s *Service) UpdateCampaign(ctx context.Context, campaignID, name, startDate string, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	return s.ExecuteUpdateCampaign(ctx, UpdateCampaignCommand{
+		CampaignID: campaignID,
+		Name:       name,
+		StartDate:  startDate,
+		Players:    players,
+	})
+}
+
+func (s *Service) ExecuteUpdateCampaign(ctx context.Context, cmd UpdateCampaignCommand) (*domain.Campaign, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if strings.TrimSpace(campaignID) == "" {
+	if strings.TrimSpace(cmd.CampaignID) == "" {
 		return nil, fmt.Errorf("campaign id is required")
 	}
-	if strings.TrimSpace(name) == "" {
+	if strings.TrimSpace(cmd.Name) == "" {
 		return nil, fmt.Errorf("campaign name is required")
 	}
-	if strings.TrimSpace(startDate) == "" {
+	if strings.TrimSpace(cmd.StartDate) == "" {
 		return nil, fmt.Errorf("campaign start date is required")
 	}
-	if len(players) == 0 {
+	if len(cmd.Players) == 0 {
 		return nil, fmt.Errorf("add at least one player")
 	}
-	for i := range players {
-		if strings.TrimSpace(players[i].PlayerName) == "" {
+	for i := range cmd.Players {
+		if strings.TrimSpace(cmd.Players[i].PlayerName) == "" {
 			return nil, fmt.Errorf("player name is required")
 		}
-		if strings.TrimSpace(players[i].Character.Name) == "" {
-			return nil, fmt.Errorf("character name is required for player %q", players[i].PlayerName)
+		if strings.TrimSpace(cmd.Players[i].Character.Name) == "" {
+			return nil, fmt.Errorf("character name is required for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Level < 1 {
-			return nil, fmt.Errorf("invalid level for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Level < 1 {
+			return nil, fmt.Errorf("invalid level for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.HP < 0 {
-			return nil, fmt.Errorf("invalid HP for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.HP < 0 {
+			return nil, fmt.Errorf("invalid HP for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.MaxHP <= 0 {
-			if players[i].Character.HP > 0 {
-				players[i].Character.MaxHP = players[i].Character.HP
+		if cmd.Players[i].Character.MaxHP <= 0 {
+			if cmd.Players[i].Character.HP > 0 {
+				cmd.Players[i].Character.MaxHP = cmd.Players[i].Character.HP
 			} else {
-				players[i].Character.MaxHP = 1
+				cmd.Players[i].Character.MaxHP = 1
 			}
 		}
-		if players[i].Character.HP > players[i].Character.MaxHP {
-			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.HP > cmd.Players[i].Character.MaxHP {
+			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Initiative < 0 {
-			return nil, fmt.Errorf("invalid initiative for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Initiative < 0 {
+			return nil, fmt.Errorf("invalid initiative for player %q", cmd.Players[i].PlayerName)
 		}
-		if players[i].Character.Defense < 0 {
-			return nil, fmt.Errorf("invalid defense for player %q", players[i].PlayerName)
+		if cmd.Players[i].Character.Defense < 0 {
+			return nil, fmt.Errorf("invalid defense for player %q", cmd.Players[i].PlayerName)
 		}
-		if strings.TrimSpace(players[i].Character.ID) == "" {
-			players[i].Character.ID = uuid.NewString()
+		if strings.TrimSpace(cmd.Players[i].Character.ID) == "" {
+			cmd.Players[i].Character.ID = uuid.NewString()
 		}
-		domain.NormalizeCombatantHP(&players[i].Character)
-		players[i].Character.Side = domain.SideParty
-		players[i].Character.XP = 0
+		domain.NormalizeCombatantHP(&cmd.Players[i].Character)
+		cmd.Players[i].Character.Side = domain.SideParty
+		cmd.Players[i].Character.XP = 0
 	}
-	return s.repo.UpdateCampaign(ctx, campaignID, name, startDate, players)
+	return s.repo.UpdateCampaign(ctx, cmd.CampaignID, cmd.Name, cmd.StartDate, cmd.Players)
 }
 
 func (s *Service) ActivateEncounter(ctx context.Context, encounterID string) (*domain.Encounter, error) {
@@ -311,56 +367,72 @@ func (s *Service) DeleteEncounter(ctx context.Context, encounterID string) error
 }
 
 func (s *Service) CreateEncounter(ctx context.Context, id, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+	return s.ExecuteCreateEncounter(ctx, CreateEncounterCommand{
+		ID:         id,
+		Name:       name,
+		Combatants: combatants,
+	})
+}
+
+func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounterCommand) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if len(combatants) == 0 {
+	if len(cmd.Combatants) == 0 {
 		return nil, fmt.Errorf("cannot create encounter without combatants")
 	}
 	activeCampaign, err := s.repo.GetActiveCampaign(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(id) == "" {
-		id = uuid.NewString()
+	if strings.TrimSpace(cmd.ID) == "" {
+		cmd.ID = uuid.NewString()
 	}
-	for i := range combatants {
-		if strings.TrimSpace(combatants[i].ID) == "" {
-			combatants[i].ID = uuid.NewString()
+	for i := range cmd.Combatants {
+		if strings.TrimSpace(cmd.Combatants[i].ID) == "" {
+			cmd.Combatants[i].ID = uuid.NewString()
 		}
-		domain.NormalizeCombatantHP(&combatants[i])
+		domain.NormalizeCombatantHP(&cmd.Combatants[i])
 	}
-	enc := domain.NewEncounter(id, name, combatants)
+	enc := domain.NewEncounter(cmd.ID, cmd.Name, cmd.Combatants)
 	enc.CampaignID = activeCampaign.ID
 	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
 	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter created (%s)", name))
+	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter created (%s)", cmd.Name))
 	return enc, nil
 }
 
 func (s *Service) UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
+	return s.ExecuteUpdateEncounter(ctx, UpdateEncounterCommand{
+		EncounterID: encounterID,
+		Name:        name,
+		Combatants:  combatants,
+	})
+}
+
+func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounterCommand) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if strings.TrimSpace(encounterID) == "" {
+	if strings.TrimSpace(cmd.EncounterID) == "" {
 		return nil, fmt.Errorf("encounter id is required")
 	}
-	if strings.TrimSpace(name) == "" {
+	if strings.TrimSpace(cmd.Name) == "" {
 		return nil, fmt.Errorf("encounter name is required")
 	}
-	if len(combatants) == 0 {
+	if len(cmd.Combatants) == 0 {
 		return nil, fmt.Errorf("cannot update encounter without combatants")
 	}
-	for i := range combatants {
-		if strings.TrimSpace(combatants[i].ID) == "" {
-			combatants[i].ID = uuid.NewString()
+	for i := range cmd.Combatants {
+		if strings.TrimSpace(cmd.Combatants[i].ID) == "" {
+			cmd.Combatants[i].ID = uuid.NewString()
 		}
-		domain.NormalizeCombatantHP(&combatants[i])
+		domain.NormalizeCombatantHP(&cmd.Combatants[i])
 	}
-	enc, err := s.repo.UpdateEncounter(ctx, encounterID, name, combatants)
+	enc, err := s.repo.UpdateEncounter(ctx, cmd.EncounterID, cmd.Name, cmd.Combatants)
 	if err != nil {
 		return nil, err
 	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter updated (%s)", name))
+	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter updated (%s)", cmd.Name))
 	return enc, nil
 }
 
@@ -448,9 +520,18 @@ func (s *Service) SpendThreat(ctx context.Context, v int) (*domain.Encounter, er
 }
 
 func (s *Service) ApplyDamage(ctx context.Context, combatantID string, damageType domain.DamageType, location domain.BodyLocation, amount int) (*domain.Encounter, int, error) {
+	return s.ExecuteApplyDamage(ctx, ApplyDamageCommand{
+		CombatantID: combatantID,
+		DamageType:  damageType,
+		Location:    location,
+		Amount:      amount,
+	})
+}
+
+func (s *Service) ExecuteApplyDamage(ctx context.Context, cmd ApplyDamageCommand) (*domain.Encounter, int, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if combatantID == "" {
+	if cmd.CombatantID == "" {
 		return nil, 0, fmt.Errorf("combatant id is required")
 	}
 	enc, err := s.repo.Get(ctx)
@@ -458,7 +539,7 @@ func (s *Service) ApplyDamage(ctx context.Context, combatantID string, damageTyp
 		return nil, 0, err
 	}
 
-	applied, err := enc.ApplyDamage(combatantID, damageType, location, amount)
+	applied, err := enc.ApplyDamage(cmd.CombatantID, cmd.DamageType, cmd.Location, cmd.Amount)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -466,18 +547,25 @@ func (s *Service) ApplyDamage(ctx context.Context, combatantID string, damageTyp
 	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, 0, err
 	}
-	targetLabel := combatantID
-	if combatant := findCombatantByID(enc, combatantID); combatant != nil {
+	targetLabel := cmd.CombatantID
+	if combatant := findCombatantByID(enc, cmd.CombatantID); combatant != nil {
 		targetLabel = combatant.Name
 	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, damageType, location, amount, applied))
+	s.appendOperationLog(ctx, enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, cmd.DamageType, cmd.Location, cmd.Amount, applied))
 	return enc, applied, nil
 }
 
 func (s *Service) Heal(ctx context.Context, combatantID string, amount int) (*domain.Encounter, int, error) {
+	return s.ExecuteHeal(ctx, HealCommand{
+		CombatantID: combatantID,
+		Amount:      amount,
+	})
+}
+
+func (s *Service) ExecuteHeal(ctx context.Context, cmd HealCommand) (*domain.Encounter, int, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	if combatantID == "" {
+	if cmd.CombatantID == "" {
 		return nil, 0, fmt.Errorf("combatant id is required")
 	}
 	enc, err := s.repo.Get(ctx)
@@ -485,7 +573,7 @@ func (s *Service) Heal(ctx context.Context, combatantID string, amount int) (*do
 		return nil, 0, err
 	}
 
-	healed, err := enc.Heal(combatantID, amount)
+	healed, err := enc.Heal(cmd.CombatantID, cmd.Amount)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -493,8 +581,8 @@ func (s *Service) Heal(ctx context.Context, combatantID string, amount int) (*do
 	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, 0, err
 	}
-	targetLabel := combatantID
-	if combatant := findCombatantByID(enc, combatantID); combatant != nil {
+	targetLabel := cmd.CombatantID
+	if combatant := findCombatantByID(enc, cmd.CombatantID); combatant != nil {
 		targetLabel = combatant.Name
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Heal -> %s value:%d", targetLabel, healed))

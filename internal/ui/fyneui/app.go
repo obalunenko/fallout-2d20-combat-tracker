@@ -16,7 +16,6 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"github.com/google/uuid"
 
 	appsvc "github.com/obalunenko/fallout/internal/app"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -866,7 +865,11 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 			time.Now().Format("2006-01-02"),
 			nil,
 			func(name, startDate string, players []domain.NewCampaignPlayer) error {
-				_, err := svc.CreateCampaign(ctx, uuid.NewString(), name, startDate, players)
+				_, err := svc.ExecuteCreateCampaign(ctx, appsvc.CreateCampaignCommand{
+					Name:      name,
+					StartDate: startDate,
+					Players:   players,
+				})
 				return err
 			},
 		)
@@ -963,7 +966,12 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 				current.StartDate,
 				players,
 				func(name, startDate string, editedPlayers []domain.NewCampaignPlayer) error {
-					_, updateErr := svc.UpdateCampaign(ctx, current.ID, name, startDate, editedPlayers)
+					_, updateErr := svc.ExecuteUpdateCampaign(ctx, appsvc.UpdateCampaignCommand{
+						CampaignID: current.ID,
+						Name:       name,
+						StartDate:  startDate,
+						Players:    editedPlayers,
+					})
 					return updateErr
 				},
 			)
@@ -1201,8 +1209,10 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 			"",
 			nil,
 			func(name string, combatants []domain.Combatant) error {
-				encounterID := uuid.NewString()
-				_, err := svc.CreateEncounter(ctx, encounterID, name, combatants)
+				_, err := svc.ExecuteCreateEncounter(ctx, appsvc.CreateEncounterCommand{
+					Name:       name,
+					Combatants: combatants,
+				})
 				return err
 			},
 		)
@@ -1265,7 +1275,12 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 					return
 				}
 
-				_, _, err = svc.ApplyDamage(ctx, target.ID, damageType, location, amount)
+				_, _, err = svc.ExecuteApplyDamage(ctx, appsvc.ApplyDamageCommand{
+					CombatantID: target.ID,
+					DamageType:  damageType,
+					Location:    location,
+					Amount:      amount,
+				})
 				if err != nil {
 					dialog.ShowError(err, w)
 					return
@@ -1314,7 +1329,10 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 					return
 				}
 
-				_, _, err = svc.Heal(ctx, target.ID, amount)
+				_, _, err = svc.ExecuteHeal(ctx, appsvc.HealCommand{
+					CombatantID: target.ID,
+					Amount:      amount,
+				})
 				if err != nil {
 					dialog.ShowError(err, w)
 					return
@@ -1515,7 +1533,11 @@ func Run(ctx context.Context, svc *appsvc.Service, onShutdown func()) error {
 				encForEdit.Name,
 				encForEdit.Combatants,
 				func(name string, combatants []domain.Combatant) error {
-					_, updateErr := svc.UpdateEncounter(ctx, targetID, name, combatants)
+					_, updateErr := svc.ExecuteUpdateEncounter(ctx, appsvc.UpdateEncounterCommand{
+						EncounterID: targetID,
+						Name:        name,
+						Combatants:  combatants,
+					})
 					return updateErr
 				},
 			)
