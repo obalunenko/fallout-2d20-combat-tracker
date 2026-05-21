@@ -423,8 +423,100 @@ func TestAddPartyAPLogsWhenLogWriteFails(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	require.NotEmpty(t, logEntries)
-	assert.Contains(t, logEntries[0], "append encounter log failed")
+	assert.Contains(t, logEntries[0], "non-critical side effect failed")
+	assert.Contains(t, logEntries[0], "side_effect=audit.append_encounter_log")
+	assert.Contains(t, logEntries[0], "failures=1")
 	assert.Contains(t, logEntries[0], "encounter_id=enc-1")
+	assert.Equal(t, uint64(1), svc.sideEffectFailureCount("audit.append_encounter_log"))
+}
+
+func TestRunNonCriticalSideEffectLogsErrorAndDoesNotBubbleUp(t *testing.T) {
+	logEntries := make([]string, 0, 1)
+	svc := NewServiceWithLogf(nil, func(format string, args ...any) {
+		logEntries = append(logEntries, fmt.Sprintf(format, args...))
+	})
+
+	svc.runNonCriticalSideEffect(sideEffectCategoryTelemetry, "demo_side_effect", func() error {
+		return errors.New("boom")
+	})
+
+	require.Len(t, logEntries, 1)
+	assert.Contains(t, logEntries[0], "non-critical side effect failed")
+	assert.Contains(t, logEntries[0], "side_effect=telemetry.demo_side_effect")
+	assert.Contains(t, logEntries[0], "failures=1")
+	assert.Contains(t, logEntries[0], "boom")
+	assert.Equal(t, uint64(1), svc.sideEffectFailureCount("telemetry.demo_side_effect"))
+}
+
+func TestRunNonCriticalSideEffectCountsFailuresPerType(t *testing.T) {
+	svc := NewServiceWithLogf(nil, func(string, ...any) {})
+	for range 2 {
+		svc.runNonCriticalSideEffect(sideEffectCategoryNotifications, "dispatch_update", func() error {
+			return errors.New("network timeout")
+		})
+	}
+	svc.runNonCriticalSideEffect(sideEffectCategoryAudit, "append_encounter_log", func() error {
+		return errors.New("write failed")
+	})
+
+	assert.Equal(t, uint64(2), svc.sideEffectFailureCount("notifications.dispatch_update"))
+	assert.Equal(t, uint64(1), svc.sideEffectFailureCount("audit.append_encounter_log"))
+}
+
+func TestAdvanceTurnSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
+	repo := &logFailingRepo{
+		encounter: &domain.Encounter{
+			ID:    "enc-1",
+			Name:  "Alpha",
+			Round: 1,
+			Combatants: []domain.Combatant{
+				{ID: "c1", Name: "One", Initiative: 10, Active: true},
+				{ID: "c2", Name: "Two", Initiative: 8, Active: false},
+			},
+			TurnIndex: 0,
+		},
+		appendErr: errors.New("append log failed"),
+	}
+	svc := NewService(repo)
+
+	updated, err := svc.AdvanceTurn()
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.Equal(t, 1, updated.TurnIndex)
+	assert.Equal(t, 1, repo.saveCalls)
+	assert.Equal(t, 1, repo.appendCalls)
+
+	persisted, getErr := repo.Get()
+	require.NoError(t, getErr)
+	assert.Equal(t, 1, persisted.TurnIndex)
+}
+
+func TestApplyDamageSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
+	repo := &logFailingRepo{
+		encounter: &domain.Encounter{
+			ID:    "enc-1",
+			Name:  "Alpha",
+			Round: 1,
+			Combatants: []domain.Combatant{
+				{ID: "n1", Name: "Raider", Initiative: 8, HP: 10, MaxHP: 10, Side: domain.SideNPC},
+			},
+			TurnIndex: 0,
+		},
+		appendErr: errors.New("append log failed"),
+	}
+	svc := NewService(repo)
+
+	updated, applied, err := svc.ApplyDamage("n1", domain.DamagePoison, domain.BodyHead, 3)
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.Equal(t, 3, applied)
+	assert.Equal(t, 7, updated.Combatants[0].HP)
+	assert.Equal(t, 1, repo.saveCalls)
+	assert.Equal(t, 1, repo.appendCalls)
+
+	persisted, getErr := repo.Get()
+	require.NoError(t, getErr)
+	assert.Equal(t, 7, persisted.Combatants[0].HP)
 }
 
 func newSQLiteService(t *testing.T) *Service {

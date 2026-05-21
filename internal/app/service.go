@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
@@ -31,7 +32,20 @@ type EncounterRepository interface {
 type Service struct {
 	repo EncounterRepository
 	logf func(string, ...any)
+
+	sideEffectFailuresMu sync.Mutex
+	sideEffectFailures   map[string]uint64
 }
+
+type sideEffectCategory string
+
+const (
+	sideEffectCategoryAudit         sideEffectCategory = "audit"
+	sideEffectCategoryTelemetry     sideEffectCategory = "telemetry"
+	sideEffectCategoryNotifications sideEffectCategory = "notifications"
+
+	sideEffectNameAppendEncounterLog = "append_encounter_log"
+)
 
 func NewService(repo EncounterRepository) *Service {
 	return NewServiceWithLogf(repo, log.Printf)
@@ -42,8 +56,9 @@ func NewServiceWithLogf(repo EncounterRepository, logf func(string, ...any)) *Se
 		logf = func(string, ...any) {}
 	}
 	return &Service{
-		repo: repo,
-		logf: logf,
+		repo:               repo,
+		logf:               logf,
+		sideEffectFailures: make(map[string]uint64),
 	}
 }
 
@@ -213,9 +228,7 @@ func (s *Service) ActivateEncounter(encounterID string) (*domain.Encounter, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, "Encounter activated"); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, "Encounter activated")
 	return enc, nil
 }
 
@@ -236,9 +249,7 @@ func (s *Service) RestartEncounter(encounterID string) (*domain.Encounter, error
 	if err := s.repo.Save(restarted); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(restarted, "Encounter restarted"); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(restarted, "Encounter restarted")
 	return restarted, nil
 }
 
@@ -271,9 +282,7 @@ func (s *Service) CreateEncounter(id, name string, combatants []domain.Combatant
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Encounter created (%s)", name)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Encounter created (%s)", name))
 	return enc, nil
 }
 
@@ -297,9 +306,7 @@ func (s *Service) UpdateEncounter(encounterID, name string, combatants []domain.
 	if err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Encounter updated (%s)", name)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Encounter updated (%s)", name))
 	return enc, nil
 }
 
@@ -315,9 +322,7 @@ func (s *Service) AdvanceTurn() (*domain.Encounter, error) {
 		return nil, err
 	}
 	if active := enc.ActiveCombatant(); active != nil {
-		if err := s.appendOperationLog(enc, fmt.Sprintf("Turn advanced -> %s", active.Name)); err != nil {
-			return nil, err
-		}
+		s.appendOperationLog(enc, fmt.Sprintf("Turn advanced -> %s", active.Name))
 	}
 	return enc, nil
 }
@@ -331,9 +336,7 @@ func (s *Service) AddPartyAP(v int) (*domain.Encounter, error) {
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Party AP %+d (total: %d)", v, enc.Resources.PartyAP)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Party AP %+d (total: %d)", v, enc.Resources.PartyAP))
 	return enc, nil
 }
 
@@ -348,9 +351,7 @@ func (s *Service) SpendPartyAP(v int) (*domain.Encounter, error) {
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Party AP -%d (total: %d)", v, enc.Resources.PartyAP)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Party AP -%d (total: %d)", v, enc.Resources.PartyAP))
 	return enc, nil
 }
 
@@ -363,9 +364,7 @@ func (s *Service) AddThreat(v int) (*domain.Encounter, error) {
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("GM Threat %+d (total: %d)", v, enc.Resources.GMThreat)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("GM Threat %+d (total: %d)", v, enc.Resources.GMThreat))
 	return enc, nil
 }
 
@@ -380,9 +379,7 @@ func (s *Service) SpendThreat(v int) (*domain.Encounter, error) {
 	if err := s.repo.Save(enc); err != nil {
 		return nil, err
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat)); err != nil {
-		return nil, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat))
 	return enc, nil
 }
 
@@ -407,9 +404,7 @@ func (s *Service) ApplyDamage(combatantID string, damageType domain.DamageType, 
 	if combatant := findCombatantByID(enc, combatantID); combatant != nil {
 		targetLabel = combatant.Name
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, damageType, location, amount, applied)); err != nil {
-		return nil, 0, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, damageType, location, amount, applied))
 	return enc, applied, nil
 }
 
@@ -434,21 +429,53 @@ func (s *Service) Heal(combatantID string, amount int) (*domain.Encounter, int, 
 	if combatant := findCombatantByID(enc, combatantID); combatant != nil {
 		targetLabel = combatant.Name
 	}
-	if err := s.appendOperationLog(enc, fmt.Sprintf("Heal -> %s value:%d", targetLabel, healed)); err != nil {
-		return nil, 0, err
-	}
+	s.appendOperationLog(enc, fmt.Sprintf("Heal -> %s value:%d", targetLabel, healed))
 	return enc, healed, nil
 }
 
-func (s *Service) appendOperationLog(enc *domain.Encounter, message string) error {
+func (s *Service) appendOperationLog(enc *domain.Encounter, message string) {
 	if enc == nil || enc.ID == "" || message == "" {
-		return nil
+		return
 	}
-	if err := s.repo.AppendEncounterLog(enc.ID, enc.Round, message); err != nil {
-		s.logf("append encounter log failed: encounter_id=%s round=%d message=%q err=%v", enc.ID, enc.Round, message, err)
+	s.runNonCriticalSideEffect(sideEffectCategoryAudit, sideEffectNameAppendEncounterLog, func() error {
+		if err := s.repo.AppendEncounterLog(enc.ID, enc.Round, message); err != nil {
+			return fmt.Errorf("encounter_id=%s round=%d message=%q: %w", enc.ID, enc.Round, message, err)
+		}
 		return nil
+	})
+}
+
+func (s *Service) runNonCriticalSideEffect(category sideEffectCategory, name string, run func() error) {
+	if strings.TrimSpace(string(category)) == "" || strings.TrimSpace(name) == "" || run == nil {
+		return
 	}
-	return nil
+
+	sideEffectID := fmt.Sprintf("%s.%s", category, name)
+	if err := run(); err != nil {
+		failures := s.recordSideEffectFailure(sideEffectID)
+		s.logf("non-critical side effect failed: side_effect=%s failures=%d err=%v", sideEffectID, failures, err)
+	}
+}
+
+func (s *Service) recordSideEffectFailure(sideEffectID string) uint64 {
+	if strings.TrimSpace(sideEffectID) == "" {
+		return 0
+	}
+	s.sideEffectFailuresMu.Lock()
+	defer s.sideEffectFailuresMu.Unlock()
+
+	s.sideEffectFailures[sideEffectID]++
+	return s.sideEffectFailures[sideEffectID]
+}
+
+func (s *Service) sideEffectFailureCount(sideEffectID string) uint64 {
+	if strings.TrimSpace(sideEffectID) == "" {
+		return 0
+	}
+	s.sideEffectFailuresMu.Lock()
+	defer s.sideEffectFailuresMu.Unlock()
+
+	return s.sideEffectFailures[sideEffectID]
 }
 
 func findCombatantByID(enc *domain.Encounter, combatantID string) *domain.Combatant {
