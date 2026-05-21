@@ -102,9 +102,10 @@ make goreleaser-check
 Tag push `v*` triggers GitHub Actions workflow:
 
 - file: `.github/workflows/release.yml`
-- targets: `linux/amd64`, `windows/amd64`, `darwin/arm64`
+- targets: `linux/amd64`, `windows/amd64`, `darwin/universal`
 - behavior:
-  - build binaries with GoReleaser (single target per matrix job)
+  - build Linux and Windows binaries with GoReleaser
+  - build macOS universal binary with GoReleaser `universal_binaries` from `.goreleaser.darwin.yaml`
   - upload them as workflow artifacts
   - attach binaries to GitHub Release assets for that tag
 

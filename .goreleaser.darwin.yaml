@@ -1,0 +1,36 @@
+version: 2
+
+project_name: fallout-2d20-combat-tracker
+
+builds:
+  - id: fallout-tracker
+    main: ./cmd/fallout-tracker
+    binary: fallout-tracker
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+universal_binaries:
+  - id: fallout-tracker
+    ids:
+      - fallout-tracker
+    name_template: fallout-tracker
+    replace: true
+
+archives:
+  - id: binaries
+    ids:
+      - fallout-tracker
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  disable: true

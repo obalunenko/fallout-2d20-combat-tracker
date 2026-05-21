@@ -105,6 +105,7 @@ goreleaser-install:
 
 goreleaser-check:
 	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser check
+	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser check --config .goreleaser.darwin.yaml
 
 goreleaser-local:
 	mkdir -p $(BIN_DIR)

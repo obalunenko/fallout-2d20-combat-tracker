@@ -27,13 +27,16 @@ jobs:
         run: go mod download
 
       - name: Download goose tool dependencies
-        run: go mod download -modfile=tools/goose/go.tool.mod
+        working-directory: tools/goose
+        run: go mod download
 
       - name: Download sqlc tool dependencies
-        run: go mod download -modfile=tools/sqlc/go.tool.mod
+        working-directory: tools/sqlc
+        run: go mod download
 
       - name: Download golangci-lint tool dependencies
-        run: go mod download -modfile=tools/golangci-lint/go.tool.mod
+        working-directory: tools/golangci-lint
+        run: go mod download
 
       - name: Install Linux GUI build dependencies (Fyne/GLFW)
         run: |

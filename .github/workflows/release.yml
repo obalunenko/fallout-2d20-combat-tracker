@@ -27,7 +27,7 @@ jobs:
             ext: ".exe"
           - runner: macos-14
             goos: darwin
-            goarch: arm64
+            goarch: universal
             ext: ""
 
     steps:
@@ -45,7 +45,7 @@ jobs:
       - name: Download dependencies
         run: |
           go mod download
-          go mod download -modfile=tools/goreleaser/go.tool.mod
+          go -C tools/goreleaser mod download
 
       - name: Install Linux GUI build dependencies (Fyne/GLFW)
         if: matrix.goos == 'linux'
@@ -67,6 +67,7 @@ jobs:
             mingw-w64-ucrt-x86_64-pkgconf
 
       - name: Build with GoReleaser (single target)
+        if: matrix.goos != 'darwin'
         shell: bash
         env:
           GOOS: ${{ matrix.goos }}
@@ -82,11 +83,27 @@ jobs:
             --id fallout-tracker \
             --output "${OUT_FILE}"
 
+      - name: Build universal macOS binary
+        if: matrix.goos == 'darwin'
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          flags=(--clean --skip=publish,archive)
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            flags+=(--snapshot)
+          fi
+
+          go tool -modfile=tools/goreleaser/go.tool.mod goreleaser release \
+            --config .goreleaser.darwin.yaml \
+            "${flags[@]}"
+          cp dist/fallout-tracker_darwin_all/fallout-tracker dist/fallout-tracker-darwin-universal
+
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*
+          path: dist/fallout-tracker-*
           if-no-files-found: error
 
   publish:
