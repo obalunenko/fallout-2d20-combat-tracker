@@ -1,6 +1,8 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -365,6 +367,66 @@ func TestListPartyMembersUsesActiveCampaignCharactersFirst(t *testing.T) {
 	assert.Equal(t, 9, party[0].Initiative)
 }
 
+func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
+	repo := &logFailingRepo{
+		encounter: &domain.Encounter{
+			ID:    "enc-1",
+			Name:  "Alpha",
+			Round: 1,
+			Combatants: []domain.Combatant{
+				{ID: "c1", Name: "One", Initiative: 10, Active: true},
+			},
+			Resources: domain.Resources{
+				PartyAP:  0,
+				GMThreat: 0,
+			},
+		},
+		appendErr: errors.New("append log failed"),
+	}
+	svc := NewService(repo)
+
+	updated, err := svc.AddPartyAP(2)
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.Equal(t, 2, updated.Resources.PartyAP)
+	assert.Equal(t, 1, repo.saveCalls)
+	assert.Equal(t, 1, repo.appendCalls)
+
+	persisted, getErr := repo.Get()
+	require.NoError(t, getErr)
+	assert.Equal(t, 2, persisted.Resources.PartyAP, "state change is persisted even when log write fails")
+}
+
+func TestAddPartyAPLogsWhenLogWriteFails(t *testing.T) {
+	repo := &logFailingRepo{
+		encounter: &domain.Encounter{
+			ID:    "enc-1",
+			Name:  "Alpha",
+			Round: 1,
+			Combatants: []domain.Combatant{
+				{ID: "c1", Name: "One", Initiative: 10, Active: true},
+			},
+			Resources: domain.Resources{
+				PartyAP:  0,
+				GMThreat: 0,
+			},
+		},
+		appendErr: errors.New("append log failed"),
+	}
+
+	logEntries := make([]string, 0, 1)
+	svc := NewServiceWithLogf(repo, func(format string, args ...any) {
+		logEntries = append(logEntries, fmt.Sprintf(format, args...))
+	})
+
+	updated, err := svc.AddPartyAP(1)
+	require.NoError(t, err)
+	require.NotNil(t, updated)
+	require.NotEmpty(t, logEntries)
+	assert.Contains(t, logEntries[0], "append encounter log failed")
+	assert.Contains(t, logEntries[0], "encounter_id=enc-1")
+}
+
 func newSQLiteService(t *testing.T) *Service {
 	t.Helper()
 
@@ -392,4 +454,71 @@ func newSQLiteService(t *testing.T) *Service {
 	})
 	require.NoError(t, err)
 	return svc
+}
+
+type logFailingRepo struct {
+	encounter   *domain.Encounter
+	appendErr   error
+	saveCalls   int
+	appendCalls int
+}
+
+func (r *logFailingRepo) Get() (*domain.Encounter, error) {
+	return cloneEncounter(r.encounter), nil
+}
+
+func (r *logFailingRepo) Save(encounter *domain.Encounter) error {
+	r.saveCalls++
+	r.encounter = cloneEncounter(encounter)
+	return nil
+}
+
+func (r *logFailingRepo) List() ([]domain.EncounterSummary, error) { return nil, nil }
+
+func (r *logFailingRepo) GetEncounterByID(string) (*domain.Encounter, error) {
+	return cloneEncounter(r.encounter), nil
+}
+
+func (r *logFailingRepo) UpdateEncounter(_, _ string, _ []domain.Combatant) (*domain.Encounter, error) {
+	return nil, nil
+}
+
+func (r *logFailingRepo) ListPartyMembers() ([]domain.Combatant, error) { return nil, nil }
+
+func (r *logFailingRepo) CreateCampaign(_, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	return nil, nil
+}
+
+func (r *logFailingRepo) UpdateCampaign(_, _, _ string, _ []domain.NewCampaignPlayer) (*domain.Campaign, error) {
+	return nil, nil
+}
+
+func (r *logFailingRepo) GetActiveCampaign() (*domain.Campaign, error) { return nil, nil }
+
+func (r *logFailingRepo) ListCampaigns() ([]domain.Campaign, error) { return nil, nil }
+
+func (r *logFailingRepo) ListCampaignPlayers(string) ([]domain.NewCampaignPlayer, error) {
+	return nil, nil
+}
+
+func (r *logFailingRepo) ActivateCampaign(string) error { return nil }
+
+func (r *logFailingRepo) Activate(string) error { return nil }
+
+func (r *logFailingRepo) SoftDelete(string) error { return nil }
+
+func (r *logFailingRepo) AppendEncounterLog(string, int, string) error {
+	r.appendCalls++
+	return r.appendErr
+}
+
+func (r *logFailingRepo) ListEncounterLogs(string) ([]domain.EncounterLog, error) { return nil, nil }
+
+func cloneEncounter(src *domain.Encounter) *domain.Encounter {
+	if src == nil {
+		return nil
+	}
+	cp := *src
+	cp.Combatants = append([]domain.Combatant(nil), src.Combatants...)
+	return &cp
 }

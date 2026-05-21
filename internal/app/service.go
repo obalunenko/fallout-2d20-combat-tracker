@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -29,10 +30,21 @@ type EncounterRepository interface {
 
 type Service struct {
 	repo EncounterRepository
+	logf func(string, ...any)
 }
 
 func NewService(repo EncounterRepository) *Service {
-	return &Service{repo: repo}
+	return NewServiceWithLogf(repo, log.Printf)
+}
+
+func NewServiceWithLogf(repo EncounterRepository, logf func(string, ...any)) *Service {
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	return &Service{
+		repo: repo,
+		logf: logf,
+	}
 }
 
 func (s *Service) GetEncounter() (*domain.Encounter, error) {
@@ -432,7 +444,11 @@ func (s *Service) appendOperationLog(enc *domain.Encounter, message string) erro
 	if enc == nil || enc.ID == "" || message == "" {
 		return nil
 	}
-	return s.repo.AppendEncounterLog(enc.ID, enc.Round, message)
+	if err := s.repo.AppendEncounterLog(enc.ID, enc.Round, message); err != nil {
+		s.logf("append encounter log failed: encounter_id=%s round=%d message=%q err=%v", enc.ID, enc.Round, message, err)
+		return nil
+	}
+	return nil
 }
 
 func findCombatantByID(enc *domain.Encounter, combatantID string) *domain.Combatant {
