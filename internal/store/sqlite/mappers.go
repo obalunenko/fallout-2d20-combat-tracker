@@ -216,6 +216,47 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 	}
 }
 
+func monsterTemplateFromRow(r dbgen.ListMonsterTemplatesRow) domain.Combatant {
+	return combatantFromFields(combatantDBFields{
+		ID:                                r.ID,
+		Name:                              r.Name,
+		Side:                              domain.SideNPC,
+		TorsoOnly:                         r.TorsoOnly,
+		Level:                             r.Level,
+		XP:                                r.Xp,
+		Initiative:                        r.Initiative,
+		HP:                                r.Hp,
+		MaxHP:                             r.MaxHp,
+		Defense:                           r.Defense,
+		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
+		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
+		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,
+		DamageResistancePhysicalRightArm:  r.DamageResistancePhysicalRightArm,
+		DamageResistancePhysicalLeftLeg:   r.DamageResistancePhysicalLeftLeg,
+		DamageResistancePhysicalRightLeg:  r.DamageResistancePhysicalRightLeg,
+		DamageResistanceEnergyHead:        r.DamageResistanceEnergyHead,
+		DamageResistanceEnergyTorso:       r.DamageResistanceEnergyTorso,
+		DamageResistanceEnergyLeftArm:     r.DamageResistanceEnergyLeftArm,
+		DamageResistanceEnergyRightArm:    r.DamageResistanceEnergyRightArm,
+		DamageResistanceEnergyLeftLeg:     r.DamageResistanceEnergyLeftLeg,
+		DamageResistanceEnergyRightLeg:    r.DamageResistanceEnergyRightLeg,
+		DamageResistanceRadiationHead:     r.DamageResistanceRadiationHead,
+		DamageResistanceRadiationTorso:    r.DamageResistanceRadiationTorso,
+		DamageResistanceRadiationLeftArm:  r.DamageResistanceRadiationLeftArm,
+		DamageResistanceRadiationRightArm: r.DamageResistanceRadiationRightArm,
+		DamageResistanceRadiationLeftLeg:  r.DamageResistanceRadiationLeftLeg,
+		DamageResistanceRadiationRightLeg: r.DamageResistanceRadiationRightLeg,
+		DamageResistancePhysical:          r.DamageResistancePhysical,
+		DamageResistanceEnergy:            r.DamageResistanceEnergy,
+		DamageResistanceRadiation:         r.DamageResistanceRadiation,
+		DamageResistancePoison:            r.DamageResistancePoison,
+		DamageResistancePhysicalImmune:    r.DamageResistancePhysicalImmune,
+		DamageResistanceEnergyImmune:      r.DamageResistanceEnergyImmune,
+		DamageResistanceRadiationImmune:   r.DamageResistanceRadiationImmune,
+		DamageResistancePoisonImmune:      r.DamageResistancePoisonImmune,
+	})
+}
+
 type encounterDBFields struct {
 	ID         string
 	CampaignID any
@@ -338,6 +379,21 @@ func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.
 		Defense:            int64(c.Defense),
 		TorsoOnly:          boolToInt64(c.TorsoOnly),
 		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
+	}
+}
+
+func upsertMonsterTemplateParams(c domain.Combatant) dbgen.UpsertMonsterTemplateParams {
+	return dbgen.UpsertMonsterTemplateParams{
+		ID:         c.ID,
+		Name:       strings.TrimSpace(c.Name),
+		NameKey:    normalizeNameKey(c.Name),
+		TorsoOnly:  boolToInt64(c.TorsoOnly),
+		Level:      int64(c.Level),
+		Xp:         int64(c.XP),
+		Initiative: int64(c.Initiative),
+		Hp:         int64(c.HP),
+		MaxHp:      int64(c.MaxHP),
+		Defense:    int64(c.Defense),
 	}
 }
 

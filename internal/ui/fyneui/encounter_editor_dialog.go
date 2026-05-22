@@ -2,6 +2,8 @@ package fyneui
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -103,6 +105,117 @@ func showEncounterEditorDialog(
 	addCombatantBtn := widget.NewButton("+ Add Combatant", func() {
 		addRow("npc")
 	})
+	loadMonsterBtn := widget.NewButton("Load Monster From DB", func() {
+		validationError.SetText("")
+
+		monsters, err := svc.ListMonsterTemplates(ctx)
+		if err != nil {
+			validationError.SetText(err.Error())
+			return
+		}
+		if len(monsters) == 0 {
+			validationError.SetText("No saved monsters found in database")
+			return
+		}
+
+		selectedIdx := 0
+		selectedInfo := widget.NewLabel(formatMonsterTemplateOption(monsters[0]))
+		selectedInfo.Wrapping = fyne.TextWrapWord
+		countEntry := widget.NewEntry()
+		countEntry.SetText("1")
+		countEntry.SetPlaceHolder("Count")
+		monsterList := widget.NewList(
+			func() int { return len(monsters) },
+			func() fyne.CanvasObject { return widget.NewLabel("monster") },
+			func(i widget.ListItemID, o fyne.CanvasObject) {
+				if i < 0 || i >= len(monsters) {
+					return
+				}
+				o.(*widget.Label).SetText(formatMonsterTemplateOption(monsters[i]))
+			},
+		)
+		monsterList.OnSelected = func(id widget.ListItemID) {
+			if id < 0 || id >= len(monsters) {
+				return
+			}
+			selectedIdx = id
+			selectedInfo.SetText(formatMonsterTemplateOption(monsters[id]))
+		}
+		monsterList.Select(0)
+
+		content := container.NewBorder(
+			nil,
+			container.NewVBox(widget.NewForm(widget.NewFormItem("Number", countEntry)), selectedInfo),
+			nil,
+			nil,
+			monsterList,
+		)
+		dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
+		content.Resize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
+
+		var monsterDialog *dialog.CustomDialog
+		cancelBtn := widget.NewButton("Cancel", func() {
+			monsterDialog.Hide()
+		})
+		addBtn := widget.NewButton("Add", func() {
+			countText := strings.TrimSpace(countEntry.Text)
+			if countText == "" {
+				countText = "1"
+			}
+			count, parseErr := strconv.Atoi(countText)
+			if parseErr != nil || count < 1 {
+				validationError.SetText(fmt.Sprintf("invalid monster number %q", countText))
+				return
+			}
+			template := monsters[selectedIdx]
+			template.ID = ""
+			template.PlayerCharacterID = ""
+			template.Side = domain.SideNPC
+
+			var row *combatantInputRow
+			if len(rows) == 1 && combatantInputRowIsEmpty(rows[0]) {
+				row = rows[0]
+			} else {
+				row = addRow("npc")
+			}
+			fillCombatantInputRow(row, template, domain.SideNPC, count)
+			refreshDifficultyPreview()
+			monsterDialog.Hide()
+		})
+		monsterDialog = dialog.NewCustomWithoutButtons("Monster Library", content, w)
+		monsterDialog.SetButtons([]fyne.CanvasObject{cancelBtn, addBtn})
+		monsterDialog.Resize(dialogSize)
+		monsterDialog.Show()
+	})
+	saveMonstersBtn := widget.NewButton("Save NPCs To DB", func() {
+		validationError.SetText("")
+		combatants, err := collectCombatantsFromRows(rows)
+		if err != nil {
+			validationError.SetText(err.Error())
+			return
+		}
+		monsters := make([]domain.Combatant, 0, len(combatants))
+		for _, c := range combatants {
+			if c.Side != domain.SideNPC {
+				continue
+			}
+			c.ID = ""
+			c.PlayerCharacterID = ""
+			c.Active = false
+			c.Defeated = false
+			monsters = append(monsters, c)
+		}
+		if len(monsters) == 0 {
+			validationError.SetText("No NPC combatants to save")
+			return
+		}
+		saved, err := svc.SaveMonsterTemplates(ctx, monsters)
+		if err != nil {
+			validationError.SetText(err.Error())
+			return
+		}
+		validationError.SetText(fmt.Sprintf("Saved %d monster template(s)", len(saved)))
+	})
 	loadPartyBtn := widget.NewButton("Load Party From DB", func() {
 		validationError.SetText("")
 
@@ -159,7 +272,7 @@ func showEncounterEditorDialog(
 	scroll.Direction = container.ScrollBoth
 	scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
 	combatantsSection := container.NewVBox(
-		container.NewGridWithColumns(2, addCombatantBtn, loadPartyBtn),
+		container.NewGridWithColumns(4, addCombatantBtn, loadMonsterBtn, saveMonstersBtn, loadPartyBtn),
 		difficultyPreview,
 		scroll,
 	)
@@ -223,5 +336,19 @@ func showCreateEncounterDialogWindow(ctx context.Context, w fyne.Window, svc *ap
 			return err
 		},
 		refresh,
+	)
+}
+
+func formatMonsterTemplateOption(c domain.Combatant) string {
+	return fmt.Sprintf(
+		"%s | Lvl:%d XP:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+		c.Name,
+		c.Level,
+		c.XP,
+		c.Initiative,
+		c.HP,
+		c.MaxHP,
+		c.Defense,
+		formatDRValue(c.ResistPoison, c.ImmunePoison),
 	)
 }

@@ -19,6 +19,8 @@ type EncounterRepository interface {
 	GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error)
 	UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error)
 	ListPartyMembers(ctx context.Context) ([]domain.Combatant, error)
+	ListMonsterTemplates(ctx context.Context) ([]domain.Combatant, error)
+	UpsertMonsterTemplate(ctx context.Context, monster domain.Combatant) (domain.Combatant, error)
 	CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	GetActiveCampaign(ctx context.Context) (*domain.Campaign, error)
@@ -67,6 +69,10 @@ type ApplyDamageCommand struct {
 type HealCommand struct {
 	CombatantID string
 	Amount      int
+}
+
+type SaveMonsterTemplatesCommand struct {
+	Monsters []domain.Combatant
 }
 
 type Service struct {
@@ -147,6 +153,79 @@ func (s *Service) ListPartyMembers(ctx context.Context) ([]domain.Combatant, err
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
 	return s.repo.ListPartyMembers(ctx)
+}
+
+func (s *Service) ListMonsterTemplates(ctx context.Context) ([]domain.Combatant, error) {
+	ctx, cancel := s.contextForOperation(ctx)
+	defer cancel()
+	return s.repo.ListMonsterTemplates(ctx)
+}
+
+func (s *Service) SaveMonsterTemplates(ctx context.Context, monsters []domain.Combatant) ([]domain.Combatant, error) {
+	return s.ExecuteSaveMonsterTemplates(ctx, SaveMonsterTemplatesCommand{Monsters: monsters})
+}
+
+func (s *Service) ExecuteSaveMonsterTemplates(ctx context.Context, cmd SaveMonsterTemplatesCommand) ([]domain.Combatant, error) {
+	ctx, cancel := s.contextForOperation(ctx)
+	defer cancel()
+	if len(cmd.Monsters) == 0 {
+		return nil, fmt.Errorf("add at least one monster")
+	}
+
+	saved := make([]domain.Combatant, 0, len(cmd.Monsters))
+	seen := make(map[string]struct{}, len(cmd.Monsters))
+	for i := range cmd.Monsters {
+		monster := cmd.Monsters[i]
+		monster.Name = strings.TrimSpace(monster.Name)
+		if monster.Name == "" {
+			return nil, fmt.Errorf("monster name is required")
+		}
+		key := strings.ToLower(monster.Name)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		if monster.Level < 1 {
+			return nil, fmt.Errorf("monster %q: invalid level", monster.Name)
+		}
+		if monster.XP < 0 {
+			return nil, fmt.Errorf("monster %q: invalid XP", monster.Name)
+		}
+		if monster.Initiative < 0 {
+			return nil, fmt.Errorf("monster %q: invalid initiative", monster.Name)
+		}
+		if monster.HP < 0 {
+			return nil, fmt.Errorf("monster %q: invalid HP", monster.Name)
+		}
+		if monster.MaxHP <= 0 {
+			if monster.HP > 0 {
+				monster.MaxHP = monster.HP
+			} else {
+				monster.MaxHP = 1
+			}
+		}
+		if monster.HP > monster.MaxHP {
+			return nil, fmt.Errorf("monster %q: current HP cannot exceed max HP", monster.Name)
+		}
+		if monster.Defense < 0 {
+			return nil, fmt.Errorf("monster %q: invalid defense", monster.Name)
+		}
+		if strings.TrimSpace(monster.ID) == "" {
+			monster.ID = uuid.NewString()
+		}
+		monster.Side = domain.SideNPC
+		monster.PlayerCharacterID = ""
+		monster.Active = false
+		monster.Defeated = false
+		domain.NormalizeCombatantHP(&monster)
+
+		created, err := s.repo.UpsertMonsterTemplate(ctx, monster)
+		if err != nil {
+			return nil, err
+		}
+		saved = append(saved, created)
+	}
+	return saved, nil
 }
 
 func (s *Service) GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error) {

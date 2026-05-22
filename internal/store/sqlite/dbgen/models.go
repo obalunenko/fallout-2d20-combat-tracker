@@ -103,6 +103,40 @@ type EncounterLog struct {
 	DeletedAt   interface{}
 }
 
+type MonsterTemplate struct {
+	ID         string
+	Name       string
+	NameKey    string
+	TorsoOnly  int64
+	Level      int64
+	Xp         int64
+	Initiative int64
+	Hp         int64
+	MaxHp      int64
+	Defense    int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
+}
+
+type MonsterTemplateResistanceByLocation struct {
+	MonsterTemplateID string
+	DamageTypeID      int64
+	BodyLocationID    int64
+	Resistance        int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type MonsterTemplateResistanceGlobal struct {
+	MonsterTemplateID string
+	DamageTypeID      int64
+	Resistance        int64
+	Immune            int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 type Player struct {
 	ID         string
 	CampaignID string

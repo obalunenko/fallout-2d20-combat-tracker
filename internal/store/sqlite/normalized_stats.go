@@ -84,6 +84,28 @@ func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Querie
 	)
 }
 
+func upsertMonsterTemplateNormalizedStats(ctx context.Context, qtx *dbgen.Queries, monsterTemplateID string, c domain.Combatant) error {
+	return upsertNormalizedStats(
+		c,
+		func(stat resistanceGlobalStat) error {
+			return qtx.UpsertMonsterTemplateResistanceGlobal(ctx, dbgen.UpsertMonsterTemplateResistanceGlobalParams{
+				MonsterTemplateID: monsterTemplateID,
+				DamageTypeID:      int64(stat.damageTypeID),
+				Resistance:        stat.resistance,
+				Immune:            stat.immune,
+			})
+		},
+		func(stat resistanceByLocationStat) error {
+			return qtx.UpsertMonsterTemplateResistanceByLocation(ctx, dbgen.UpsertMonsterTemplateResistanceByLocationParams{
+				MonsterTemplateID: monsterTemplateID,
+				DamageTypeID:      int64(stat.damageTypeID),
+				BodyLocationID:    int64(stat.bodyLocationID),
+				Resistance:        stat.resistance,
+			})
+		},
+	)
+}
+
 func upsertNormalizedStats(
 	c domain.Combatant,
 	upsertGlobalResistance func(resistanceGlobalStat) error,
