@@ -269,32 +269,34 @@ func TestPlayerCharacterParamsMapAndTrimDomainCombatant(t *testing.T) {
 		TorsoOnly:  true,
 	}
 
-	insertParams := insertPlayerCharacterParams("pc-1", "player-1", "camp-1", combatant)
+	insertParams := insertPlayerCharacterParams("pc-1", "player-1", "camp-1", combatant, true)
 	assert.Equal(t, dbgen.InsertPlayerCharacterParams{
-		ID:         "pc-1",
-		PlayerID:   "player-1",
-		CampaignID: "camp-1",
-		Name:       "Vault Dweller",
-		Level:      3,
-		Initiative: 9,
-		Hp:         18,
-		MaxHp:      21,
-		Defense:    2,
-		TorsoOnly:  1,
-		Active:     1,
+		ID:                 "pc-1",
+		PlayerID:           "player-1",
+		CampaignID:         "camp-1",
+		Name:               "Vault Dweller",
+		Level:              3,
+		Initiative:         9,
+		Hp:                 18,
+		MaxHp:              21,
+		Defense:            2,
+		TorsoOnly:          1,
+		Active:             1,
+		AvailabilityStatus: playerCharacterAvailabilityInactive,
 	}, insertParams)
 
-	updateParams := updateActivePlayerCharacterParams("pc-1", "camp-1", combatant)
+	updateParams := updateActivePlayerCharacterParams("pc-1", "camp-1", combatant, false)
 	assert.Equal(t, dbgen.UpdateActivePlayerCharacterByIDParams{
-		CharacterID: "pc-1",
-		CampaignID:  "camp-1",
-		Name:        "Vault Dweller",
-		Level:       3,
-		Initiative:  9,
-		Hp:          18,
-		MaxHp:       21,
-		Defense:     2,
-		TorsoOnly:   1,
+		CharacterID:        "pc-1",
+		CampaignID:         "camp-1",
+		Name:               "Vault Dweller",
+		Level:              3,
+		Initiative:         9,
+		Hp:                 18,
+		MaxHp:              21,
+		Defense:            2,
+		TorsoOnly:          1,
+		AvailabilityStatus: playerCharacterAvailabilityActive,
 	}, updateParams)
 }
 

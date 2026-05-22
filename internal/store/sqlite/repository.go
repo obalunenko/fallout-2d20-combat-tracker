@@ -117,7 +117,7 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 				c.Side = domain.SideParty
 				c.XP = 0
 				c.Defeated = c.HP == 0
-				if err = updateActivePlayerCharacter(ctx, qtx, playerCharacterID, enc.CampaignID, c); err != nil {
+				if err = updateActivePlayerCharacter(ctx, qtx, playerCharacterID, enc.CampaignID, c, false); err != nil {
 					return fmt.Errorf("update campaign character %s: %w", playerCharacterID, err)
 				}
 				if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, playerCharacterID, c); err != nil {
@@ -215,6 +215,9 @@ func activePartyCombatantsByID(ctx context.Context, qtx *dbgen.Queries, campaign
 	}
 	result := make(map[string]domain.Combatant, len(rows))
 	for _, row := range rows {
+		if row.AvailabilityStatus == playerCharacterAvailabilityInactive {
+			continue
+		}
 		result[row.ID] = partyCombatantFromRow(row)
 	}
 	return result, nil
@@ -247,6 +250,10 @@ func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID strin
 	if err != nil {
 		return nil, err
 	}
+	return s.getEncounterByIDByCampaign(ctx, campaignID, encounterID)
+}
+
+func (s *EncounterStore) getEncounterByIDByCampaign(ctx context.Context, campaignID, encounterID string) (*domain.Encounter, error) {
 	row, err := s.q.GetEncounterByIDByCampaignID(ctx, dbgen.GetEncounterByIDByCampaignIDParams{
 		CampaignID:  campaignID,
 		EncounterID: encounterID,
@@ -324,7 +331,14 @@ func (s *EncounterStore) ListPartyMembers(ctx context.Context) ([]domain.Combata
 	if err != nil {
 		return nil, fmt.Errorf("list campaign characters: %w", err)
 	}
-	return partyCombatantsFromRows(activeCharacters), nil
+	party := make([]domain.Combatant, 0, len(activeCharacters))
+	for _, row := range activeCharacters {
+		if row.AvailabilityStatus == playerCharacterAvailabilityInactive {
+			continue
+		}
+		party = append(party, partyCombatantFromRow(row))
+	}
+	return party, nil
 }
 
 func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error) {
@@ -341,6 +355,79 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 		players = append(players, campaignPlayerFromRow(r))
 	}
 	return players, nil
+}
+
+func (s *EncounterStore) removeInactiveCampaignCharactersFromEncounters(ctx context.Context, campaignID string) error {
+	inactiveIDs, err := s.q.ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("list inactive campaign characters: %w", err)
+	}
+	if len(inactiveIDs) == 0 {
+		return nil
+	}
+
+	inactiveByID := make(map[string]struct{}, len(inactiveIDs))
+	for _, id := range inactiveIDs {
+		inactiveByID[id] = struct{}{}
+	}
+
+	encounterIDs, err := s.q.ListEncounterIDsByCampaignID(ctx, campaignID)
+	if err != nil {
+		return fmt.Errorf("list campaign encounters: %w", err)
+	}
+	for _, encounterID := range encounterIDs {
+		enc, err := s.getEncounterByIDByCampaign(ctx, campaignID, encounterID)
+		if err != nil {
+			return err
+		}
+
+		activeCombatantID := ""
+		if active := enc.ActiveCombatant(); active != nil {
+			activeCombatantID = active.ID
+		}
+		filtered := make([]domain.Combatant, 0, len(enc.Combatants))
+		removed := false
+		for _, c := range enc.Combatants {
+			playerCharacterID := strings.TrimSpace(c.PlayerCharacterID)
+			if c.Side == domain.SideParty && playerCharacterID != "" {
+				if _, inactive := inactiveByID[playerCharacterID]; inactive {
+					removed = true
+					continue
+				}
+			}
+			filtered = append(filtered, c)
+		}
+		if !removed {
+			continue
+		}
+
+		updated := domain.NewEncounter(enc.ID, enc.Name, filtered)
+		updated.CampaignID = enc.CampaignID
+		updated.Round = enc.Round
+		if updated.Round < 1 {
+			updated.Round = 1
+		}
+		updated.Resources = enc.Resources
+		if len(updated.Combatants) > 0 {
+			updated.TurnIndex = min(enc.TurnIndex, len(updated.Combatants)-1)
+			if updated.TurnIndex < 0 {
+				updated.TurnIndex = 0
+			}
+			for i := range updated.Combatants {
+				if updated.Combatants[i].ID == activeCombatantID {
+					updated.TurnIndex = i
+					break
+				}
+			}
+			for i := range updated.Combatants {
+				updated.Combatants[i].Active = i == updated.TurnIndex
+			}
+		}
+		if err := s.Save(ctx, updated); err != nil {
+			return fmt.Errorf("remove inactive party characters from encounter %s: %w", encounterID, err)
+		}
+	}
+	return nil
 }
 
 func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
@@ -388,7 +475,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character)); err != nil {
+		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
 			return nil, fmt.Errorf("insert player character: %w", err)
 		}
 		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
@@ -495,11 +582,11 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			if charID == "" {
 				charID = uuid.NewString()
 			}
-			if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character)); err != nil {
+			if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
 				return nil, fmt.Errorf("insert player character: %w", err)
 			}
 		} else {
-			if err = updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character); err != nil {
+			if err = updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character, p.Inactive); err != nil {
 				return nil, fmt.Errorf("update player character: %w", err)
 			}
 		}
@@ -519,6 +606,9 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 	}
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
+	}
+	if err = s.removeInactiveCampaignCharactersFromEncounters(ctx, campaignID); err != nil {
+		return nil, err
 	}
 	return &domain.Campaign{
 		ID:        campaignID,
@@ -560,8 +650,8 @@ func deactivateActiveCharactersByPlayerID(ctx context.Context, qtx *dbgen.Querie
 	return qtx.DeactivateActiveCharactersByPlayerID(ctx, playerID)
 }
 
-func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID, campaignID string, c domain.Combatant) error {
-	return qtx.UpdateActivePlayerCharacterByID(ctx, updateActivePlayerCharacterParams(characterID, campaignID, c))
+func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID, campaignID string, c domain.Combatant, inactive bool) error {
+	return qtx.UpdateActivePlayerCharacterByID(ctx, updateActivePlayerCharacterParams(characterID, campaignID, c, inactive))
 }
 
 func normalizeNameKey(value string) string {

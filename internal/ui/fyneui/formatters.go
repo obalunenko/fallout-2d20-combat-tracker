@@ -244,15 +244,20 @@ func formatDifficultyPreview(metrics domain.EncounterDifficultyMetrics) string {
 
 func formatCampaignRoster(players []domain.NewCampaignPlayer) string {
 	if len(players) == 0 {
-		return "No active players in campaign"
+		return "No players in campaign"
 	}
 	lines := make([]string, 0, len(players))
 	for i, p := range players {
+		status := "active"
+		if p.Inactive {
+			status = "inactive"
+		}
 		lines = append(lines, fmt.Sprintf(
-			"[%02d] %s -> %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+			"[%02d] %s -> %s | %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
 			i+1,
 			p.PlayerName,
 			p.Character.Name,
+			status,
 			p.Character.Level,
 			p.Character.Initiative,
 			p.Character.HP,

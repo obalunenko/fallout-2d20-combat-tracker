@@ -169,12 +169,14 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	row.drEnergyTorso.SetText("5")
 	row.drRadRL.SetText("6")
 	row.drPoison.SetText("imm")
+	row.active.SetChecked(false)
 
 	players, err := collectCampaignPlayersFromRows([]*campaignPlayerInputRow{row})
 
 	require.NoError(t, err)
 	require.Len(t, players, 1)
 	assert.Equal(t, "June", players[0].PlayerName)
+	assert.True(t, players[0].Inactive)
 	character := players[0].Character
 	assert.Equal(t, "Vault Dweller", character.Name)
 	assert.Equal(t, domain.SideParty, character.Side)

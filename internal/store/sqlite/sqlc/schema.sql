@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS player_characters (
     defense INTEGER NOT NULL DEFAULT 0,
     torso_only INTEGER NOT NULL DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1,
+    availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
@@ -183,3 +184,6 @@ WHERE active = 1;
 
 CREATE INDEX IF NOT EXISTS idx_player_characters_campaign_active
 ON player_characters(campaign_id, active, name);
+
+CREATE INDEX IF NOT EXISTS idx_player_characters_campaign_availability
+ON player_characters(campaign_id, active, availability_status, name);

@@ -400,7 +400,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, created_at, updated_at
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, availability_status, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -414,23 +414,25 @@ VALUES (
   ?9,
   ?10,
   ?11,
+  ?12,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
 `
 
 type InsertPlayerCharacterParams struct {
-	ID         string
-	PlayerID   string
-	CampaignID string
-	Name       string
-	Level      int64
-	Initiative int64
-	Hp         int64
-	MaxHp      int64
-	Defense    int64
-	TorsoOnly  int64
-	Active     int64
+	ID                 string
+	PlayerID           string
+	CampaignID         string
+	Name               string
+	Level              int64
+	Initiative         int64
+	Hp                 int64
+	MaxHp              int64
+	Defense            int64
+	TorsoOnly          int64
+	Active             int64
+	AvailabilityStatus string
 }
 
 func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCharacterParams) error {
@@ -446,6 +448,7 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 		arg.Defense,
 		arg.TorsoOnly,
 		arg.Active,
+		arg.AvailabilityStatus,
 	)
 	return err
 }
@@ -502,6 +505,7 @@ SELECT
   pc.max_hp,
   pc.defense,
   pc.torso_only,
+  pc.availability_status,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -546,6 +550,7 @@ type ListActivePartyCharactersByCampaignIDRow struct {
 	MaxHp                             int64
 	Defense                           int64
 	TorsoOnly                         int64
+	AvailabilityStatus                string
 	DamageResistancePhysicalHead      int64
 	DamageResistancePhysicalTorso     int64
 	DamageResistancePhysicalLeftArm   int64
@@ -593,6 +598,7 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 			&i.MaxHp,
 			&i.Defense,
 			&i.TorsoOnly,
+			&i.AvailabilityStatus,
 			&i.DamageResistancePhysicalHead,
 			&i.DamageResistancePhysicalTorso,
 			&i.DamageResistancePhysicalLeftArm,
@@ -936,6 +942,36 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEncounterIDsByCampaignID = `-- name: ListEncounterIDsByCampaignID :many
+SELECT id
+FROM encounters
+WHERE deleted_at IS NULL AND campaign_id = ?1
+ORDER BY updated_at DESC, id DESC
+`
+
+func (q *Queries) ListEncounterIDsByCampaignID(ctx context.Context, campaignID interface{}) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listEncounterIDsByCampaignID, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1290,6 +1326,37 @@ func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campai
 	return items, nil
 }
 
+const listInactiveCurrentPlayerCharacterIDsByCampaignID = `-- name: ListInactiveCurrentPlayerCharacterIDsByCampaignID :many
+SELECT id
+FROM player_characters
+WHERE campaign_id = ?1
+  AND active = 1
+  AND availability_status = 'inactive'
+`
+
+func (q *Queries) ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx context.Context, campaignID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listInactiveCurrentPlayerCharacterIDsByCampaignID, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlayerIDsAndNamesByCampaignID = `-- name: ListPlayerIDsAndNamesByCampaignID :many
 SELECT id, name
 FROM players
@@ -1385,20 +1452,22 @@ SET campaign_id = ?1,
     defense = ?7,
     torso_only = ?8,
     active = 1,
+    availability_status = ?9,
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-WHERE id = ?9
+WHERE id = ?10
 `
 
 type UpdateActivePlayerCharacterByIDParams struct {
-	CampaignID  string
-	Name        string
-	Level       int64
-	Initiative  int64
-	Hp          int64
-	MaxHp       int64
-	Defense     int64
-	TorsoOnly   int64
-	CharacterID string
+	CampaignID         string
+	Name               string
+	Level              int64
+	Initiative         int64
+	Hp                 int64
+	MaxHp              int64
+	Defense            int64
+	TorsoOnly          int64
+	AvailabilityStatus string
+	CharacterID        string
 }
 
 func (q *Queries) UpdateActivePlayerCharacterByID(ctx context.Context, arg UpdateActivePlayerCharacterByIDParams) error {
@@ -1411,6 +1480,7 @@ func (q *Queries) UpdateActivePlayerCharacterByID(ctx context.Context, arg Updat
 		arg.MaxHp,
 		arg.Defense,
 		arg.TorsoOnly,
+		arg.AvailabilityStatus,
 		arg.CharacterID,
 	)
 	return err

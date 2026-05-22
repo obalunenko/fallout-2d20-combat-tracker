@@ -113,20 +113,21 @@ type Player struct {
 }
 
 type PlayerCharacter struct {
-	ID         string
-	PlayerID   string
-	CampaignID string
-	Name       string
-	Level      int64
-	Initiative int64
-	Hp         int64
-	MaxHp      int64
-	Defense    int64
-	TorsoOnly  int64
-	Active     int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	DeletedAt  interface{}
+	ID                 string
+	PlayerID           string
+	CampaignID         string
+	Name               string
+	Level              int64
+	Initiative         int64
+	Hp                 int64
+	MaxHp              int64
+	Defense            int64
+	TorsoOnly          int64
+	Active             int64
+	AvailabilityStatus string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          interface{}
 }
 
 type PlayerCharacterResistanceByLocation struct {

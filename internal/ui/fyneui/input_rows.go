@@ -82,6 +82,7 @@ type campaignPlayerInputRow struct {
 	immEnergy     *widget.Check
 	immRadiation  *widget.Check
 	immPoison     *widget.Check
+	active        *widget.Check
 	root          *fyne.Container
 }
 

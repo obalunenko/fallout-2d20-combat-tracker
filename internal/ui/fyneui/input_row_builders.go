@@ -488,8 +488,9 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		immPoison:     immPoison,
 	}
 	removeBtn := widget.NewButton("Remove", func() { onRemove(row) })
-	activeLabel := widget.NewLabel("yes")
-	activeLabel.TextStyle = fyne.TextStyle{Monospace: true}
+	active := widget.NewCheck("", nil)
+	active.SetChecked(true)
+	row.active = active
 	drPartLabel := func(text string) *widget.Label {
 		l := widget.NewLabel(text)
 		l.TextStyle = fyne.TextStyle{Monospace: true}
@@ -525,7 +526,7 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	})
 	drToggleBtn.Importance = widget.LowImportance
 	baseRow := container.NewGridWithColumns(
-		12,
+		11,
 		playerName,
 		characterName,
 		level,
@@ -535,7 +536,7 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		defense,
 		drPoisonCell,
 		drToggleBtn,
-		activeLabel,
+		active,
 		removeBtn,
 	)
 	row.root = container.NewVBox(baseRow, bodyRow)

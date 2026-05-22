@@ -9,6 +9,18 @@ import (
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
 
+const (
+	playerCharacterAvailabilityActive   = "active"
+	playerCharacterAvailabilityInactive = "inactive"
+)
+
+func playerCharacterAvailabilityStatus(inactive bool) string {
+	if inactive {
+		return playerCharacterAvailabilityInactive
+	}
+	return playerCharacterAvailabilityActive
+}
+
 type combatantDBFields struct {
 	ID                                string
 	PlayerCharacterID                 string
@@ -200,6 +212,7 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 	return domain.NewCampaignPlayer{
 		PlayerName: r.PlayerName,
 		Character:  partyCombatantFromRow(r),
+		Inactive:   r.AvailabilityStatus == playerCharacterAvailabilityInactive,
 	}
 }
 
@@ -296,33 +309,35 @@ func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: value != ""}
 }
 
-func insertPlayerCharacterParams(characterID, playerID, campaignID string, c domain.Combatant) dbgen.InsertPlayerCharacterParams {
+func insertPlayerCharacterParams(characterID, playerID, campaignID string, c domain.Combatant, inactive bool) dbgen.InsertPlayerCharacterParams {
 	return dbgen.InsertPlayerCharacterParams{
-		ID:         characterID,
-		PlayerID:   playerID,
-		CampaignID: campaignID,
-		Name:       strings.TrimSpace(c.Name),
-		Level:      int64(c.Level),
-		Initiative: int64(c.Initiative),
-		Hp:         int64(c.HP),
-		MaxHp:      int64(c.MaxHP),
-		Defense:    int64(c.Defense),
-		TorsoOnly:  boolToInt64(c.TorsoOnly),
-		Active:     1,
+		ID:                 characterID,
+		PlayerID:           playerID,
+		CampaignID:         campaignID,
+		Name:               strings.TrimSpace(c.Name),
+		Level:              int64(c.Level),
+		Initiative:         int64(c.Initiative),
+		Hp:                 int64(c.HP),
+		MaxHp:              int64(c.MaxHP),
+		Defense:            int64(c.Defense),
+		TorsoOnly:          boolToInt64(c.TorsoOnly),
+		Active:             1,
+		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
 	}
 }
 
-func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.Combatant) dbgen.UpdateActivePlayerCharacterByIDParams {
+func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.Combatant, inactive bool) dbgen.UpdateActivePlayerCharacterByIDParams {
 	return dbgen.UpdateActivePlayerCharacterByIDParams{
-		CharacterID: characterID,
-		CampaignID:  campaignID,
-		Name:        strings.TrimSpace(c.Name),
-		Level:       int64(c.Level),
-		Initiative:  int64(c.Initiative),
-		Hp:          int64(c.HP),
-		MaxHp:       int64(c.MaxHP),
-		Defense:     int64(c.Defense),
-		TorsoOnly:   boolToInt64(c.TorsoOnly),
+		CharacterID:        characterID,
+		CampaignID:         campaignID,
+		Name:               strings.TrimSpace(c.Name),
+		Level:              int64(c.Level),
+		Initiative:         int64(c.Initiative),
+		Hp:                 int64(c.HP),
+		MaxHp:              int64(c.MaxHP),
+		Defense:            int64(c.Defense),
+		TorsoOnly:          boolToInt64(c.TorsoOnly),
+		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
 	}
 }
 

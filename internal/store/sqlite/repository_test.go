@@ -558,6 +558,80 @@ func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T)
 	assert.Equal(t, "Ranger", party[0].Name)
 }
 
+func TestEncounterStoreUpdateCampaignInactiveCharacterUnavailableAndRemovedFromEncounters(t *testing.T) {
+	store := newTestStore(t)
+
+	party, err := store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "enc-with-party",
+		Name: "Party Encounter",
+		Combatants: []domain.Combatant{
+			party[0],
+			{ID: "npc-1", Name: "Raider", Side: domain.SideNPC, Level: 1, XP: 30, Initiative: 6, HP: 5, MaxHP: 5},
+		},
+	}))
+
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Inactive:   true,
+			Character: domain.Combatant{
+				ID:         "repo-char-1",
+				Name:       "Scout",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				MaxHP:      6,
+				Defense:    1,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	party, err = store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	assert.Empty(t, party)
+
+	players, err := store.ListCampaignPlayers(t.Context(), "repo-test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+	assert.True(t, players[0].Inactive)
+
+	enc, err := store.GetEncounterByID(t.Context(), "enc-with-party")
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 1)
+	assert.Equal(t, "npc-1", enc.Combatants[0].ID)
+
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				ID:         "repo-char-1",
+				Name:       "Scout",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				MaxHP:      6,
+				Defense:    1,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	party, err = store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+
+	enc, err = store.GetEncounterByID(t.Context(), "enc-with-party")
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 1)
+	assert.Equal(t, "npc-1", enc.Combatants[0].ID)
+}
+
 func TestEncounterStoreMaintainsCampaignPlayerAuditFields(t *testing.T) {
 	store := newTestStore(t)
 

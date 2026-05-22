@@ -331,6 +331,7 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 
 		players = append(players, domain.NewCampaignPlayer{
 			PlayerName: playerName,
+			Inactive:   row.active != nil && !row.active.Checked,
 			Character: domain.Combatant{
 				Name:                    characterName,
 				Side:                    domain.SideParty,

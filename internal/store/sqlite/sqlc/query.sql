@@ -66,7 +66,7 @@ VALUES (
 
 -- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, created_at, updated_at
+  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, availability_status, created_at, updated_at
 )
 VALUES (
   sqlc.arg(id),
@@ -80,6 +80,7 @@ VALUES (
   sqlc.arg(defense),
   sqlc.arg(torso_only),
   sqlc.arg(active),
+  sqlc.arg(availability_status),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
@@ -115,8 +116,16 @@ SET campaign_id = sqlc.arg(campaign_id),
     defense = sqlc.arg(defense),
     torso_only = sqlc.arg(torso_only),
     active = 1,
+    availability_status = sqlc.arg(availability_status),
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(character_id);
+
+-- name: ListInactiveCurrentPlayerCharacterIDsByCampaignID :many
+SELECT id
+FROM player_characters
+WHERE campaign_id = sqlc.arg(campaign_id)
+  AND active = 1
+  AND availability_status = 'inactive';
 
 -- name: UpsertPlayerCharacterResistanceGlobal :exec
 INSERT INTO player_character_resistance_global (
@@ -209,6 +218,7 @@ SELECT
   pc.max_hp,
   pc.defense,
   pc.torso_only,
+  pc.availability_status,
   CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
   CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
   CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
@@ -403,6 +413,12 @@ ORDER BY c.position ASC;
 SELECT id
 FROM combatants
 WHERE encounter_id = sqlc.arg(encounter_id);
+
+-- name: ListEncounterIDsByCampaignID :many
+SELECT id
+FROM encounters
+WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
+ORDER BY updated_at DESC, id DESC;
 
 -- name: UpsertEncounter :exec
 INSERT INTO encounters (

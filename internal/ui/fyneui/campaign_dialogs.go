@@ -87,6 +87,7 @@ func showCampaignEditorDialog(
 				target.immRadiation.SetChecked(false)
 				target.drPoison.SetText("0")
 				target.immPoison.SetChecked(false)
+				target.active.SetChecked(true)
 				return
 			}
 			filtered := make([]*campaignPlayerInputRow, 0, len(rows)-1)
@@ -150,6 +151,7 @@ func showCampaignEditorDialog(
 			if !p.Character.ImmunePoison {
 				row.drPoison.SetText(strconv.Itoa(p.Character.ResistPoison))
 			}
+			row.active.SetChecked(!p.Inactive)
 		}
 	}
 
