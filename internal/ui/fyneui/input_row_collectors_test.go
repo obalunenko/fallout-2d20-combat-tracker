@@ -51,6 +51,7 @@ func TestCollectCombatantsFromRowsForcesPartyCountAndXP(t *testing.T) {
 	test.NewTempApp(t)
 	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
 	fillCombatantInputRow(row, domain.Combatant{
+		ID:         "char-1",
 		Name:       "Vault Dweller",
 		Level:      2,
 		XP:         99,
@@ -64,8 +65,49 @@ func TestCollectCombatantsFromRowsForcesPartyCountAndXP(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, combatants, 1)
+	assert.Empty(t, combatants[0].ID)
+	assert.Equal(t, "char-1", combatants[0].PlayerCharacterID)
 	assert.Equal(t, domain.SideParty, combatants[0].Side)
 	assert.Equal(t, 0, combatants[0].XP)
+}
+
+func TestCollectCombatantsFromRowsRejectsManualPartyMember(t *testing.T) {
+	test.NewTempApp(t)
+	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(row, domain.Combatant{
+		Name:       "Vault Dweller",
+		Level:      2,
+		Initiative: 10,
+		HP:         8,
+		MaxHP:      8,
+	}, domain.SideParty, 1)
+
+	_, err := collectCombatantsFromRows([]*combatantInputRow{row})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "party members must be loaded from campaign")
+}
+
+func TestFillCombatantInputRowLocksLoadedPartyStats(t *testing.T) {
+	test.NewTempApp(t)
+	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(row, domain.Combatant{
+		ID:         "char-1",
+		Name:       "Vault Dweller",
+		Level:      2,
+		Initiative: 10,
+		HP:         8,
+		MaxHP:      8,
+		Defense:    1,
+	}, domain.SideParty, 1)
+
+	assert.True(t, row.linkedParty)
+	assert.True(t, row.name.Disabled())
+	assert.True(t, row.side.Disabled())
+	assert.True(t, row.level.Disabled())
+	assert.True(t, row.hp.Disabled())
+	assert.True(t, row.drPoison.Disabled())
+	assert.True(t, row.immPoison.Disabled())
 }
 
 func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {

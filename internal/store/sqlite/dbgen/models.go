@@ -29,23 +29,24 @@ type Campaign struct {
 }
 
 type Combatant struct {
-	ID          string
-	EncounterID string
-	Name        string
-	Side        string
-	TorsoOnly   int64
-	Initiative  int64
-	Active      int64
-	Defeated    int64
-	Position    int64
-	Hp          int64
-	MaxHp       int64
-	Defense     int64
-	Level       int64
-	Xp          int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   interface{}
+	ID                string
+	EncounterID       string
+	PlayerCharacterID interface{}
+	Name              string
+	Side              string
+	TorsoOnly         int64
+	Initiative        int64
+	Active            int64
+	Defeated          int64
+	Position          int64
+	Hp                int64
+	MaxHp             int64
+	Defense           int64
+	Level             int64
+	Xp                int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         interface{}
 }
 
 type CombatantResistanceByLocation struct {

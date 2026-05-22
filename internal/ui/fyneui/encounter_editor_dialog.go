@@ -60,39 +60,7 @@ func showEncounterEditorDialog(
 	addRow := func(defaultSide string) *combatantInputRow {
 		row := newCombatantInputRow(defaultSide, func(target *combatantInputRow) {
 			if len(rows) == 1 {
-				target.name.SetText("")
-				target.number.SetText("1")
-				target.level.SetText("1")
-				target.xp.SetText("0")
-				target.initiative.SetText("")
-				target.hp.SetText("1")
-				target.hpMax.SetText("1")
-				target.defense.SetText("0")
-				target.drEnergyHead.SetText("0")
-				target.drEnergyTorso.SetText("0")
-				target.drEnergyLA.SetText("0")
-				target.drEnergyRA.SetText("0")
-				target.drEnergyLL.SetText("0")
-				target.drEnergyRL.SetText("0")
-				target.drRadHead.SetText("0")
-				target.drRadTorso.SetText("0")
-				target.drRadLA.SetText("0")
-				target.drRadRA.SetText("0")
-				target.drRadLL.SetText("0")
-				target.drRadRL.SetText("0")
-				target.drPhysHead.SetText("0")
-				target.drPhysTorso.SetText("0")
-				target.drPhysLA.SetText("0")
-				target.drPhysRA.SetText("0")
-				target.drPhysLL.SetText("0")
-				target.drPhysRL.SetText("0")
-				target.immPhysical.SetChecked(false)
-				target.immEnergy.SetChecked(false)
-				target.immRadiation.SetChecked(false)
-				target.drPoison.SetText("0")
-				target.immPoison.SetChecked(false)
-				target.side.SetSelected(defaultSide)
-				target.torsoOnly.SetChecked(defaultSide == "npc")
+				resetCombatantInputRow(target, domain.SideNPC)
 				refreshDifficultyPreview()
 				return
 			}
@@ -115,7 +83,7 @@ func showEncounterEditorDialog(
 	}
 
 	if len(initialCombatants) == 0 {
-		addRow("party")
+		addRow("npc")
 	} else {
 		for _, c := range initialCombatants {
 			side := string(c.Side)
@@ -148,14 +116,40 @@ func showEncounterEditorDialog(
 			return
 		}
 
-		next := 0
-		if len(rows) == 1 && combatantInputRowIsEmpty(rows[0]) {
-			fillCombatantInputRow(rows[0], partyMembers[0], domain.SideParty, 1)
-			next = 1
+		rowsByID := make(map[string]*combatantInputRow, len(rows))
+		for _, row := range rows {
+			if row.linkedParty && strings.TrimSpace(row.playerCharacterID) != "" {
+				rowsByID[row.playerCharacterID] = row
+			}
 		}
-		for i := next; i < len(partyMembers); i++ {
-			row := addRow("party")
-			fillCombatantInputRow(row, partyMembers[i], domain.SideParty, 1)
+
+		nextEmpty := -1
+		if len(rows) == 1 && combatantInputRowIsEmpty(rows[0]) {
+			nextEmpty = 0
+		}
+		loaded := 0
+		for _, member := range partyMembers {
+			memberID := strings.TrimSpace(member.ID)
+			if memberID == "" {
+				continue
+			}
+			if existing := rowsByID[memberID]; existing != nil {
+				fillCombatantInputRow(existing, member, domain.SideParty, 1)
+				loaded++
+				continue
+			}
+			var row *combatantInputRow
+			if nextEmpty >= 0 {
+				row = rows[nextEmpty]
+				nextEmpty = -1
+			} else {
+				row = addRow("party")
+			}
+			fillCombatantInputRow(row, member, domain.SideParty, 1)
+			loaded++
+		}
+		if loaded == 0 {
+			validationError.SetText("No party members with IDs found in database")
 		}
 		refreshDifficultyPreview()
 	})

@@ -20,7 +20,11 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	name.TextStyle = fyne.TextStyle{Monospace: true}
 	name.OnChanged = func(string) { notifyChange() }
 
-	side := widget.NewSelect([]string{"party", "npc"}, nil)
+	sideOptions := []string{"npc"}
+	if defaultSide == "party" {
+		sideOptions = []string{"party"}
+	}
+	side := widget.NewSelect(sideOptions, nil)
 	side.SetSelected(defaultSide)
 	torsoOnly := widget.NewCheck("torso-only", func(bool) {
 		notifyChange()
@@ -284,6 +288,9 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		notifyChange()
 	}
 	side.OnChanged = func(value string) {
+		if row.linkedParty {
+			return
+		}
 		if value == "party" {
 			row.number.SetText("1")
 			row.number.Disable()

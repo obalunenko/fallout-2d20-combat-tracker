@@ -114,6 +114,7 @@ func TestCampaignPlayerFromRowMapsPartyCharacter(t *testing.T) {
 	assert.Equal(t, "June", actual.PlayerName)
 	assert.Equal(t, domain.Combatant{
 		ID:                      "pc1",
+		PlayerCharacterID:       "pc1",
 		Name:                    "Vault Dweller",
 		Side:                    domain.SideParty,
 		TorsoOnly:               true,
@@ -239,20 +240,21 @@ func TestInsertCombatantParamsMapsDomainCombatant(t *testing.T) {
 	})
 
 	assert.Equal(t, dbgen.InsertCombatantParams{
-		ID:          "c1",
-		EncounterID: "enc-1",
-		Name:        "Raider",
-		Side:        string(domain.SideNPC),
-		TorsoOnly:   1,
-		Level:       4,
-		Xp:          80,
-		Initiative:  12,
-		Hp:          17,
-		MaxHp:       22,
-		Defense:     1,
-		Active:      1,
-		Defeated:    1,
-		Position:    2,
+		ID:                "c1",
+		EncounterID:       "enc-1",
+		PlayerCharacterID: nullString(""),
+		Name:              "Raider",
+		Side:              string(domain.SideNPC),
+		TorsoOnly:         1,
+		Level:             4,
+		Xp:                80,
+		Initiative:        12,
+		Hp:                17,
+		MaxHp:             22,
+		Defense:           1,
+		Active:            1,
+		Defeated:          1,
+		Position:          2,
 	}, actual)
 }
 

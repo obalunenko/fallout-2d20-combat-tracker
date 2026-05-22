@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS encounters (
 CREATE TABLE IF NOT EXISTS combatants (
     id TEXT PRIMARY KEY,
     encounter_id TEXT NOT NULL,
+    player_character_id TEXT NULL,
     name TEXT NOT NULL,
     side TEXT NOT NULL,
     torso_only INTEGER NOT NULL DEFAULT 0,
@@ -37,7 +38,8 @@ CREATE TABLE IF NOT EXISTS combatants (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
-    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
+    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE,
+    FOREIGN KEY (player_character_id) REFERENCES player_characters(id)
 );
 
 CREATE TABLE IF NOT EXISTS body_locations (
@@ -77,6 +79,10 @@ CREATE TABLE IF NOT EXISTS combatant_resistance_by_location (
 
 CREATE INDEX IF NOT EXISTS idx_combatants_encounter_position
 ON combatants(encounter_id, position);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_combatants_encounter_player_character
+ON combatants(encounter_id, player_character_id)
+WHERE player_character_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_encounters_deleted_updated
 ON encounters(deleted_at, updated_at DESC);

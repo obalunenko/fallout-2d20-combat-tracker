@@ -287,6 +287,58 @@ func TestApplyDamagePersistsHPAndDefeated(t *testing.T) {
 	assert.True(t, enc.Combatants[1].Defeated)
 }
 
+func TestApplyDamageAndHealPartyMemberPersistsCampaignCharacterHP(t *testing.T) {
+	svc := newSQLiteService(t)
+	created, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
+		{ID: "char-1", Name: "Draft Copy", Level: 99, Initiative: 10, Side: domain.SideParty, HP: 99, MaxHP: 99, Defense: 9},
+	})
+	require.NoError(t, err)
+	require.Len(t, created.Combatants, 1)
+	assert.Equal(t, "Vault Dweller", created.Combatants[0].Name)
+	assert.Equal(t, 1, created.Combatants[0].Level)
+	assert.Equal(t, 9, created.Combatants[0].Initiative)
+	assert.Equal(t, 7, created.Combatants[0].HP)
+	assert.Equal(t, 1, created.Combatants[0].Defense)
+	assert.Equal(t, "char-1", created.Combatants[0].PlayerCharacterID)
+	assert.NotEqual(t, "char-1", created.Combatants[0].ID)
+
+	combatantID := created.Combatants[0].ID
+	_, applied, err := svc.ApplyDamage(t.Context(), combatantID, domain.DamagePhysical, domain.BodyTorso, 4)
+	require.NoError(t, err)
+	assert.Equal(t, 4, applied)
+
+	players, err := svc.ListCampaignPlayers(t.Context(), "test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+	assert.Equal(t, 3, players[0].Character.HP)
+
+	_, healed, err := svc.Heal(t.Context(), combatantID, 2)
+	require.NoError(t, err)
+	assert.Equal(t, 2, healed)
+
+	players, err = svc.ListCampaignPlayers(t.Context(), "test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+	assert.Equal(t, 5, players[0].Character.HP)
+
+	enc, err := svc.GetEncounter(t.Context())
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 1)
+	assert.Equal(t, 5, enc.Combatants[0].HP)
+}
+
+func TestCreateEncounterRejectsDuplicatePartyCharacter(t *testing.T) {
+	svc := newSQLiteService(t)
+
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
+		{PlayerCharacterID: "char-1", Name: "Vault Dweller", Initiative: 10, Side: domain.SideParty, HP: 7, MaxHP: 7},
+		{PlayerCharacterID: "char-1", Name: "Vault Dweller", Initiative: 9, Side: domain.SideParty, HP: 7, MaxHP: 7},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "already in this encounter")
+}
+
 func TestApplyDamageRespectsImmunity(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{

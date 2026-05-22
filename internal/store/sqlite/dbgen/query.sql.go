@@ -285,7 +285,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position, created_at, updated_at
+	id, encounter_id, player_character_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -295,39 +295,42 @@ VALUES (
   ?5,
   ?6,
   ?7,
-	  ?8,
+  ?8,
 	  ?9,
 	  ?10,
 	  ?11,
 	  ?12,
 	  ?13,
 	  ?14,
+	  ?15,
 	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
 	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 	)
 `
 
 type InsertCombatantParams struct {
-	ID          string
-	EncounterID string
-	Name        string
-	Side        string
-	TorsoOnly   int64
-	Level       int64
-	Xp          int64
-	Initiative  int64
-	Hp          int64
-	MaxHp       int64
-	Defense     int64
-	Active      int64
-	Defeated    int64
-	Position    int64
+	ID                string
+	EncounterID       string
+	PlayerCharacterID interface{}
+	Name              string
+	Side              string
+	TorsoOnly         int64
+	Level             int64
+	Xp                int64
+	Initiative        int64
+	Hp                int64
+	MaxHp             int64
+	Defense           int64
+	Active            int64
+	Defeated          int64
+	Position          int64
 }
 
 func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams) error {
 	_, err := q.db.ExecContext(ctx, insertCombatant,
 		arg.ID,
 		arg.EncounterID,
+		arg.PlayerCharacterID,
 		arg.Name,
 		arg.Side,
 		arg.TorsoOnly,
@@ -671,6 +674,35 @@ func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error)
 	return items, nil
 }
 
+const listCombatantIDsByEncounterID = `-- name: ListCombatantIDsByEncounterID :many
+SELECT id
+FROM combatants
+WHERE encounter_id = ?1
+`
+
+func (q *Queries) ListCombatantIDsByEncounterID(ctx context.Context, encounterID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listCombatantIDsByEncounterID, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
 WITH combatant_resistance_global_agg AS (
   SELECT
@@ -712,55 +744,106 @@ combatant_resistance_by_location_agg AS (
   JOIN damage_types dt ON dt.id = crl.damage_type_id
   JOIN body_locations bl ON bl.id = crl.body_location_id
   GROUP BY crl.combatant_id
+),
+player_character_resistance_global_agg AS (
+  SELECT
+    crg.player_character_id,
+    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
+    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
+    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
+    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
+    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
+    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
+    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
+    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
+  FROM player_character_resistance_global crg
+  JOIN damage_types dt ON dt.id = crg.damage_type_id
+  GROUP BY crg.player_character_id
+),
+player_character_resistance_by_location_agg AS (
+  SELECT
+    crl.player_character_id,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
+    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
+    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
+    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
+  FROM player_character_resistance_by_location crl
+  JOIN damage_types dt ON dt.id = crl.damage_type_id
+  JOIN body_locations bl ON bl.id = crl.body_location_id
+  GROUP BY crl.player_character_id
 )
 SELECT
   c.id,
-  c.name,
+  c.player_character_id,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
   c.side,
-  c.level,
-  c.xp,
-  c.initiative,
-  c.hp,
-  c.max_hp,
-  c.defense,
-  c.torso_only,
-  CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
-  CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
-  CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_right_arm, 0) AS INTEGER) AS damage_resistance_physical_right_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_left_leg, 0) AS INTEGER) AS damage_resistance_physical_left_leg,
-  CAST(COALESCE(crl.damage_resistance_physical_right_leg, 0) AS INTEGER) AS damage_resistance_physical_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical, 0) AS INTEGER) AS damage_resistance_physical,
-  CAST(COALESCE(crg.damage_resistance_energy, 0) AS INTEGER) AS damage_resistance_energy,
-  CAST(COALESCE(crg.damage_resistance_radiation, 0) AS INTEGER) AS damage_resistance_radiation,
-  CAST(COALESCE(crg.damage_resistance_poison, 0) AS INTEGER) AS damage_resistance_poison,
-  CAST(COALESCE(crl.damage_resistance_energy_head, 0) AS INTEGER) AS damage_resistance_energy_head,
-  CAST(COALESCE(crl.damage_resistance_energy_torso, 0) AS INTEGER) AS damage_resistance_energy_torso,
-  CAST(COALESCE(crl.damage_resistance_energy_left_arm, 0) AS INTEGER) AS damage_resistance_energy_left_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_right_arm, 0) AS INTEGER) AS damage_resistance_energy_right_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_left_leg, 0) AS INTEGER) AS damage_resistance_energy_left_leg,
-  CAST(COALESCE(crl.damage_resistance_energy_right_leg, 0) AS INTEGER) AS damage_resistance_energy_right_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_head, 0) AS INTEGER) AS damage_resistance_radiation_head,
-  CAST(COALESCE(crl.damage_resistance_radiation_torso, 0) AS INTEGER) AS damage_resistance_radiation_torso,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_arm, 0) AS INTEGER) AS damage_resistance_radiation_left_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_arm, 0) AS INTEGER) AS damage_resistance_radiation_right_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_leg, 0) AS INTEGER) AS damage_resistance_radiation_left_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_leg, 0) AS INTEGER) AS damage_resistance_radiation_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical_immune, 0) AS INTEGER) AS damage_resistance_physical_immune,
-  CAST(COALESCE(crg.damage_resistance_energy_immune, 0) AS INTEGER) AS damage_resistance_energy_immune,
-  CAST(COALESCE(crg.damage_resistance_radiation_immune, 0) AS INTEGER) AS damage_resistance_radiation_immune,
-  CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.level ELSE c.level END AS INTEGER) AS level,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN 0 ELSE c.xp END AS INTEGER) AS xp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.initiative ELSE c.initiative END AS INTEGER) AS initiative,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.hp ELSE c.hp END AS INTEGER) AS hp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.max_hp ELSE c.max_hp END AS INTEGER) AS max_hp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.defense ELSE c.defense END AS INTEGER) AS defense,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.torso_only ELSE c.torso_only END AS INTEGER) AS torso_only,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_head, 0) ELSE COALESCE(crl.damage_resistance_physical_head, 0) END AS INTEGER) AS damage_resistance_physical_head,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_torso, 0) ELSE COALESCE(crl.damage_resistance_physical_torso, 0) END AS INTEGER) AS damage_resistance_physical_torso,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_left_arm, 0) ELSE COALESCE(crl.damage_resistance_physical_left_arm, 0) END AS INTEGER) AS damage_resistance_physical_left_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_right_arm, 0) ELSE COALESCE(crl.damage_resistance_physical_right_arm, 0) END AS INTEGER) AS damage_resistance_physical_right_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_left_leg, 0) ELSE COALESCE(crl.damage_resistance_physical_left_leg, 0) END AS INTEGER) AS damage_resistance_physical_left_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_right_leg, 0) ELSE COALESCE(crl.damage_resistance_physical_right_leg, 0) END AS INTEGER) AS damage_resistance_physical_right_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_physical, 0) ELSE COALESCE(crg.damage_resistance_physical, 0) END AS INTEGER) AS damage_resistance_physical,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_energy, 0) ELSE COALESCE(crg.damage_resistance_energy, 0) END AS INTEGER) AS damage_resistance_energy,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_radiation, 0) ELSE COALESCE(crg.damage_resistance_radiation, 0) END AS INTEGER) AS damage_resistance_radiation,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_poison, 0) ELSE COALESCE(crg.damage_resistance_poison, 0) END AS INTEGER) AS damage_resistance_poison,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_head, 0) ELSE COALESCE(crl.damage_resistance_energy_head, 0) END AS INTEGER) AS damage_resistance_energy_head,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_torso, 0) ELSE COALESCE(crl.damage_resistance_energy_torso, 0) END AS INTEGER) AS damage_resistance_energy_torso,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_left_arm, 0) ELSE COALESCE(crl.damage_resistance_energy_left_arm, 0) END AS INTEGER) AS damage_resistance_energy_left_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_right_arm, 0) ELSE COALESCE(crl.damage_resistance_energy_right_arm, 0) END AS INTEGER) AS damage_resistance_energy_right_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_left_leg, 0) ELSE COALESCE(crl.damage_resistance_energy_left_leg, 0) END AS INTEGER) AS damage_resistance_energy_left_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_right_leg, 0) ELSE COALESCE(crl.damage_resistance_energy_right_leg, 0) END AS INTEGER) AS damage_resistance_energy_right_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_head, 0) ELSE COALESCE(crl.damage_resistance_radiation_head, 0) END AS INTEGER) AS damage_resistance_radiation_head,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_torso, 0) ELSE COALESCE(crl.damage_resistance_radiation_torso, 0) END AS INTEGER) AS damage_resistance_radiation_torso,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_left_arm, 0) ELSE COALESCE(crl.damage_resistance_radiation_left_arm, 0) END AS INTEGER) AS damage_resistance_radiation_left_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_right_arm, 0) ELSE COALESCE(crl.damage_resistance_radiation_right_arm, 0) END AS INTEGER) AS damage_resistance_radiation_right_arm,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_left_leg, 0) ELSE COALESCE(crl.damage_resistance_radiation_left_leg, 0) END AS INTEGER) AS damage_resistance_radiation_left_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_right_leg, 0) ELSE COALESCE(crl.damage_resistance_radiation_right_leg, 0) END AS INTEGER) AS damage_resistance_radiation_right_leg,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_physical_immune, 0) ELSE COALESCE(crg.damage_resistance_physical_immune, 0) END AS INTEGER) AS damage_resistance_physical_immune,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_energy_immune, 0) ELSE COALESCE(crg.damage_resistance_energy_immune, 0) END AS INTEGER) AS damage_resistance_energy_immune,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_radiation_immune, 0) ELSE COALESCE(crg.damage_resistance_radiation_immune, 0) END AS INTEGER) AS damage_resistance_radiation_immune,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_poison_immune, 0) ELSE COALESCE(crg.damage_resistance_poison_immune, 0) END AS INTEGER) AS damage_resistance_poison_immune,
   c.active,
-  c.defeated
+  CAST(CASE
+    WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pc.hp <= 0 THEN 1 ELSE 0 END
+    ELSE c.defeated
+  END AS INTEGER) AS defeated
 FROM combatants c
+JOIN encounters e ON e.id = c.encounter_id
+LEFT JOIN player_characters pc ON pc.id = c.player_character_id
+  AND pc.campaign_id = e.campaign_id
 LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
 LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
+LEFT JOIN player_character_resistance_global_agg pcrg ON pcrg.player_character_id = pc.id
+LEFT JOIN player_character_resistance_by_location_agg pcrl ON pcrl.player_character_id = pc.id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC
 `
 
 type ListCombatantsByEncounterIDRow struct {
 	ID                                string
+	PlayerCharacterID                 interface{}
 	Name                              string
 	Side                              string
 	Level                             int64
@@ -811,6 +894,7 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 		var i ListCombatantsByEncounterIDRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.PlayerCharacterID,
 			&i.Name,
 			&i.Side,
 			&i.Level,

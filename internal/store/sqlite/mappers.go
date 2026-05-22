@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"database/sql"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 type combatantDBFields struct {
 	ID                                string
+	PlayerCharacterID                 string
 	Name                              string
 	Side                              domain.Side
 	TorsoOnly                         int64
@@ -52,6 +54,7 @@ type combatantDBFields struct {
 func combatantFromFields(f combatantDBFields) domain.Combatant {
 	return domain.Combatant{
 		ID:                      f.ID,
+		PlayerCharacterID:       f.PlayerCharacterID,
 		Name:                    f.Name,
 		Side:                    f.Side,
 		TorsoOnly:               f.TorsoOnly == 1,
@@ -95,6 +98,7 @@ func combatantFromFields(f combatantDBFields) domain.Combatant {
 func combatantFromRow(r dbgen.ListCombatantsByEncounterIDRow) domain.Combatant {
 	return combatantFromFields(combatantDBFields{
 		ID:                                r.ID,
+		PlayerCharacterID:                 interfaceToString(r.PlayerCharacterID),
 		Name:                              r.Name,
 		Side:                              domain.Side(r.Side),
 		TorsoOnly:                         r.TorsoOnly,
@@ -146,6 +150,7 @@ func combatantsFromRows(rows []dbgen.ListCombatantsByEncounterIDRow) []domain.Co
 func partyCombatantFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) domain.Combatant {
 	return combatantFromFields(combatantDBFields{
 		ID:                                r.ID,
+		PlayerCharacterID:                 r.ID,
 		Name:                              r.CharacterName,
 		Side:                              domain.SideParty,
 		TorsoOnly:                         r.TorsoOnly,
@@ -268,21 +273,27 @@ func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow) doma
 
 func insertCombatantParams(encounterID string, position int, c domain.Combatant) dbgen.InsertCombatantParams {
 	return dbgen.InsertCombatantParams{
-		ID:          c.ID,
-		EncounterID: encounterID,
-		Name:        c.Name,
-		Side:        string(c.Side),
-		TorsoOnly:   boolToInt64(c.TorsoOnly),
-		Level:       int64(c.Level),
-		Xp:          int64(c.XP),
-		Initiative:  int64(c.Initiative),
-		Hp:          int64(c.HP),
-		MaxHp:       int64(c.MaxHP),
-		Defense:     int64(c.Defense),
-		Active:      boolToInt64(c.Active),
-		Defeated:    boolToInt64(c.Defeated),
-		Position:    int64(position),
+		ID:                c.ID,
+		EncounterID:       encounterID,
+		PlayerCharacterID: nullString(c.PlayerCharacterID),
+		Name:              c.Name,
+		Side:              string(c.Side),
+		TorsoOnly:         boolToInt64(c.TorsoOnly),
+		Level:             int64(c.Level),
+		Xp:                int64(c.XP),
+		Initiative:        int64(c.Initiative),
+		Hp:                int64(c.HP),
+		MaxHp:             int64(c.MaxHP),
+		Defense:           int64(c.Defense),
+		Active:            boolToInt64(c.Active),
+		Defeated:          boolToInt64(c.Defeated),
+		Position:          int64(position),
 	}
+}
+
+func nullString(value string) sql.NullString {
+	value = strings.TrimSpace(value)
+	return sql.NullString{String: value, Valid: value != ""}
 }
 
 func insertPlayerCharacterParams(characterID, playerID, campaignID string, c domain.Combatant) dbgen.InsertPlayerCharacterParams {

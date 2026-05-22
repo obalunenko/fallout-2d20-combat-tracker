@@ -36,6 +36,7 @@ const (
 
 type Combatant struct {
 	ID                      string
+	PlayerCharacterID       string
 	Name                    string
 	Side                    Side
 	TorsoOnly               bool

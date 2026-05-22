@@ -162,10 +162,15 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 			side = domain.SideParty
 			xp = 0
 			count = 1
+			if strings.TrimSpace(row.playerCharacterID) == "" {
+				return nil, fmt.Errorf("combatant %q: party members must be loaded from campaign", name)
+			}
 		}
 
 		for i := 0; i < count; i++ {
 			combatants = append(combatants, domain.Combatant{
+				ID:                      strings.TrimSpace(row.combatantID),
+				PlayerCharacterID:       strings.TrimSpace(row.playerCharacterID),
 				Name:                    name,
 				Side:                    side,
 				Level:                   level,
