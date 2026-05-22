@@ -12,46 +12,43 @@ import (
 )
 
 type combatantInputRow struct {
-	name          *widget.Entry
-	side          *widget.Select
-	torsoOnly     *widget.Check
-	number        *widget.Entry
-	level         *widget.Entry
-	xp            *widget.Entry
-	initiative    *widget.Entry
-	hp            *widget.Entry
-	hpMax         *widget.Entry
-	defense       *widget.Entry
-	defenseHead   *widget.Entry
-	defenseTorso  *widget.Entry
-	defenseLA     *widget.Entry
-	defenseRA     *widget.Entry
-	defenseLL     *widget.Entry
-	defenseRL     *widget.Entry
-	drEnergyHead  *widget.Entry
-	drEnergyTorso *widget.Entry
-	drEnergyLA    *widget.Entry
-	drEnergyRA    *widget.Entry
-	drEnergyLL    *widget.Entry
-	drEnergyRL    *widget.Entry
-	drRadHead     *widget.Entry
-	drRadTorso    *widget.Entry
-	drRadLA       *widget.Entry
-	drRadRA       *widget.Entry
-	drRadLL       *widget.Entry
-	drRadRL       *widget.Entry
-	drPhysHead    *widget.Entry
-	drPhysTorso   *widget.Entry
-	drPhysLA      *widget.Entry
-	drPhysRA      *widget.Entry
-	drPhysLL      *widget.Entry
-	drPhysRL      *widget.Entry
-	drPoison      *widget.Entry
-	immPhysical   *widget.Check
-	immEnergy     *widget.Check
-	immRadiation  *widget.Check
-	immPoison     *widget.Check
-	root          *fyne.Container
+	combatantID       string
+	playerCharacterID string
+	linkedParty       bool
+	name              *widget.Entry
+	side              *widget.Select
+	torsoOnly         *widget.Check
+	number            *widget.Entry
+	level             *widget.Entry
+	xp                *widget.Entry
+	initiative        *widget.Entry
+	hp                *widget.Entry
+	hpMax             *widget.Entry
+	defense           *widget.Entry
+	drEnergyHead      *widget.Entry
+	drEnergyTorso     *widget.Entry
+	drEnergyLA        *widget.Entry
+	drEnergyRA        *widget.Entry
+	drEnergyLL        *widget.Entry
+	drEnergyRL        *widget.Entry
+	drRadHead         *widget.Entry
+	drRadTorso        *widget.Entry
+	drRadLA           *widget.Entry
+	drRadRA           *widget.Entry
+	drRadLL           *widget.Entry
+	drRadRL           *widget.Entry
+	drPhysHead        *widget.Entry
+	drPhysTorso       *widget.Entry
+	drPhysLA          *widget.Entry
+	drPhysRA          *widget.Entry
+	drPhysLL          *widget.Entry
+	drPhysRL          *widget.Entry
+	drPoison          *widget.Entry
+	immPhysical       *widget.Check
+	immEnergy         *widget.Check
+	immRadiation      *widget.Check
+	immPoison         *widget.Check
+	root              *fyne.Container
 }
 
 type campaignPlayerInputRow struct {
@@ -62,12 +59,6 @@ type campaignPlayerInputRow struct {
 	hp            *widget.Entry
 	hpMax         *widget.Entry
 	defense       *widget.Entry
-	defenseHead   *widget.Entry
-	defenseTorso  *widget.Entry
-	defenseLA     *widget.Entry
-	defenseRA     *widget.Entry
-	defenseLL     *widget.Entry
-	defenseRL     *widget.Entry
 	drEnergyHead  *widget.Entry
 	drEnergyTorso *widget.Entry
 	drEnergyLA    *widget.Entry
@@ -146,12 +137,6 @@ func combatantInputRowIsEmpty(row *combatantInputRow) bool {
 		strings.TrimSpace(row.hp.Text) == "1" &&
 		strings.TrimSpace(row.hpMax.Text) == "1" &&
 		strings.TrimSpace(row.defense.Text) == "0" &&
-		strings.TrimSpace(row.defenseHead.Text) == "0" &&
-		strings.TrimSpace(row.defenseTorso.Text) == "0" &&
-		strings.TrimSpace(row.defenseLA.Text) == "0" &&
-		strings.TrimSpace(row.defenseRA.Text) == "0" &&
-		strings.TrimSpace(row.defenseLL.Text) == "0" &&
-		strings.TrimSpace(row.defenseRL.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyHead.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyTorso.Text) == "0" &&
 		strings.TrimSpace(row.drEnergyLA.Text) == "0" &&
@@ -189,6 +174,12 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	}
 	row.side.SetSelected(selectedSide)
 	row.torsoOnly.SetChecked(template.TorsoOnly)
+	row.combatantID = strings.TrimSpace(template.ID)
+	row.playerCharacterID = strings.TrimSpace(template.PlayerCharacterID)
+	if row.playerCharacterID == "" && side == domain.SideParty {
+		row.playerCharacterID = row.combatantID
+		row.combatantID = ""
+	}
 
 	row.name.SetText(strings.TrimSpace(template.Name))
 	row.number.SetText(strconv.Itoa(count))
@@ -205,18 +196,6 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	}
 	row.hpMax.SetText(strconv.Itoa(maxHP))
 	row.defense.SetText(strconv.Itoa(template.Defense))
-	defenseHead := template.DefenseHead
-	defenseTorso := template.DefenseTorso
-	defenseLA := template.DefenseLeftArm
-	defenseRA := template.DefenseRightArm
-	defenseLL := template.DefenseLeftLeg
-	defenseRL := template.DefenseRightLeg
-	row.defenseHead.SetText(strconv.Itoa(defenseHead))
-	row.defenseTorso.SetText(strconv.Itoa(defenseTorso))
-	row.defenseLA.SetText(strconv.Itoa(defenseLA))
-	row.defenseRA.SetText(strconv.Itoa(defenseRA))
-	row.defenseLL.SetText(strconv.Itoa(defenseLL))
-	row.defenseRL.SetText(strconv.Itoa(defenseRL))
 	row.drEnergyHead.SetText(strconv.Itoa(template.ResistEnergyHead))
 	row.drEnergyTorso.SetText(strconv.Itoa(template.ResistEnergyTorso))
 	row.drEnergyLA.SetText(strconv.Itoa(template.ResistEnergyLeftArm))
@@ -244,6 +223,152 @@ func fillCombatantInputRow(row *combatantInputRow, template domain.Combatant, si
 	row.immPoison.SetChecked(template.ImmunePoison)
 	if !template.ImmunePoison {
 		row.drPoison.SetText(strconv.Itoa(template.ResistPoison))
+	}
+	setCombatantInputRowLinkedParty(row, side == domain.SideParty && row.playerCharacterID != "")
+}
+
+func resetCombatantInputRow(row *combatantInputRow, side domain.Side) {
+	if row == nil {
+		return
+	}
+	setCombatantInputRowLinkedParty(row, false)
+	row.combatantID = ""
+	row.playerCharacterID = ""
+	row.name.SetText("")
+	row.number.SetText("1")
+	row.level.SetText("1")
+	row.xp.SetText("0")
+	row.initiative.SetText("")
+	row.hp.SetText("1")
+	row.hpMax.SetText("1")
+	row.defense.SetText("0")
+	row.drEnergyHead.SetText("0")
+	row.drEnergyTorso.SetText("0")
+	row.drEnergyLA.SetText("0")
+	row.drEnergyRA.SetText("0")
+	row.drEnergyLL.SetText("0")
+	row.drEnergyRL.SetText("0")
+	row.drRadHead.SetText("0")
+	row.drRadTorso.SetText("0")
+	row.drRadLA.SetText("0")
+	row.drRadRA.SetText("0")
+	row.drRadLL.SetText("0")
+	row.drRadRL.SetText("0")
+	row.drPhysHead.SetText("0")
+	row.drPhysTorso.SetText("0")
+	row.drPhysLA.SetText("0")
+	row.drPhysRA.SetText("0")
+	row.drPhysLL.SetText("0")
+	row.drPhysRL.SetText("0")
+	row.immPhysical.SetChecked(false)
+	row.immEnergy.SetChecked(false)
+	row.immRadiation.SetChecked(false)
+	row.drPoison.SetText("0")
+	row.immPoison.SetChecked(false)
+	if side != domain.SideParty {
+		setCombatantSideOptions(row, []string{"npc"})
+		row.side.SetSelected("npc")
+		row.torsoOnly.SetChecked(true)
+		return
+	}
+	setCombatantSideOptions(row, []string{"party"})
+	row.side.SetSelected("party")
+	row.torsoOnly.SetChecked(false)
+}
+
+func setCombatantInputRowLinkedParty(row *combatantInputRow, locked bool) {
+	if row == nil {
+		return
+	}
+	wasLinked := row.linkedParty
+	row.linkedParty = locked
+	if locked {
+		setCombatantSideOptions(row, []string{"party"})
+		row.side.SetSelected("party")
+		disableCombatantInputRowStats(row)
+		return
+	}
+	if row.side.Selected == "party" {
+		setCombatantSideOptions(row, []string{"party"})
+	} else {
+		setCombatantSideOptions(row, []string{"npc"})
+	}
+	if wasLinked {
+		enableCombatantInputRowStats(row)
+	}
+}
+
+func setCombatantSideOptions(row *combatantInputRow, options []string) {
+	row.side.Options = options
+	row.side.Refresh()
+}
+
+func disableCombatantInputRowStats(row *combatantInputRow) {
+	row.name.Disable()
+	row.side.Disable()
+	row.torsoOnly.Disable()
+	row.number.Disable()
+	row.level.Disable()
+	row.xp.Disable()
+	row.initiative.Disable()
+	row.hp.Disable()
+	row.hpMax.Disable()
+	row.defense.Disable()
+	for _, entry := range combatantResistanceEntries(row) {
+		entry.Disable()
+	}
+	row.immPhysical.Disable()
+	row.immEnergy.Disable()
+	row.immRadiation.Disable()
+	row.immPoison.Disable()
+}
+
+func enableCombatantInputRowStats(row *combatantInputRow) {
+	row.name.Enable()
+	row.side.Enable()
+	row.torsoOnly.Enable()
+	row.level.Enable()
+	row.initiative.Enable()
+	row.hp.Enable()
+	row.hpMax.Enable()
+	row.defense.Enable()
+	for _, entry := range combatantResistanceEntries(row) {
+		entry.Enable()
+	}
+	row.immPhysical.Enable()
+	row.immEnergy.Enable()
+	row.immRadiation.Enable()
+	row.immPoison.Enable()
+	if row.side.Selected == "party" {
+		row.number.Disable()
+		row.xp.Disable()
+		return
+	}
+	row.number.Enable()
+	row.xp.Enable()
+}
+
+func combatantResistanceEntries(row *combatantInputRow) []*widget.Entry {
+	return []*widget.Entry{
+		row.drEnergyHead,
+		row.drEnergyTorso,
+		row.drEnergyLA,
+		row.drEnergyRA,
+		row.drEnergyLL,
+		row.drEnergyRL,
+		row.drRadHead,
+		row.drRadTorso,
+		row.drRadLA,
+		row.drRadRA,
+		row.drRadLL,
+		row.drRadRL,
+		row.drPhysHead,
+		row.drPhysTorso,
+		row.drPhysLA,
+		row.drPhysRA,
+		row.drPhysLL,
+		row.drPhysRL,
+		row.drPoison,
 	}
 }
 

@@ -64,12 +64,6 @@ func showCampaignEditorDialog(
 				target.hp.SetText("1")
 				target.hpMax.SetText("1")
 				target.defense.SetText("0")
-				target.defenseHead.SetText("0")
-				target.defenseTorso.SetText("0")
-				target.defenseLA.SetText("0")
-				target.defenseRA.SetText("0")
-				target.defenseLL.SetText("0")
-				target.defenseRL.SetText("0")
 				target.drEnergyHead.SetText("0")
 				target.drEnergyTorso.SetText("0")
 				target.drEnergyLA.SetText("0")
@@ -129,18 +123,6 @@ func showCampaignEditorDialog(
 			}
 			row.hpMax.SetText(strconv.Itoa(maxHP))
 			row.defense.SetText(strconv.Itoa(p.Character.Defense))
-			defenseHead := p.Character.DefenseHead
-			defenseTorso := p.Character.DefenseTorso
-			defenseLA := p.Character.DefenseLeftArm
-			defenseRA := p.Character.DefenseRightArm
-			defenseLL := p.Character.DefenseLeftLeg
-			defenseRL := p.Character.DefenseRightLeg
-			row.defenseHead.SetText(strconv.Itoa(defenseHead))
-			row.defenseTorso.SetText(strconv.Itoa(defenseTorso))
-			row.defenseLA.SetText(strconv.Itoa(defenseLA))
-			row.defenseRA.SetText(strconv.Itoa(defenseRA))
-			row.defenseLL.SetText(strconv.Itoa(defenseLL))
-			row.defenseRL.SetText(strconv.Itoa(defenseRL))
 			row.drEnergyHead.SetText(strconv.Itoa(p.Character.ResistEnergyHead))
 			row.drEnergyTorso.SetText(strconv.Itoa(p.Character.ResistEnergyTorso))
 			row.drEnergyLA.SetText(strconv.Itoa(p.Character.ResistEnergyLeftArm))

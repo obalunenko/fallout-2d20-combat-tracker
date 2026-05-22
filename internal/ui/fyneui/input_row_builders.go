@@ -20,7 +20,11 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	name.TextStyle = fyne.TextStyle{Monospace: true}
 	name.OnChanged = func(string) { notifyChange() }
 
-	side := widget.NewSelect([]string{"party", "npc"}, nil)
+	sideOptions := []string{"npc"}
+	if defaultSide == "party" {
+		sideOptions = []string{"party"}
+	}
+	side := widget.NewSelect(sideOptions, nil)
 	side.SetSelected(defaultSide)
 	torsoOnly := widget.NewCheck("torso-only", func(bool) {
 		notifyChange()
@@ -60,36 +64,6 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
 	defense.SetText("0")
 	defense.OnChanged = func(string) { notifyChange() }
-	defenseHead := widget.NewEntry()
-	defenseHead.SetPlaceHolder("DEF H")
-	defenseHead.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseHead.SetText("0")
-	defenseHead.OnChanged = func(string) { notifyChange() }
-	defenseTorso := widget.NewEntry()
-	defenseTorso.SetPlaceHolder("DEF T")
-	defenseTorso.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseTorso.SetText("0")
-	defenseTorso.OnChanged = func(string) { notifyChange() }
-	defenseLA := widget.NewEntry()
-	defenseLA.SetPlaceHolder("DEF LA")
-	defenseLA.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseLA.SetText("0")
-	defenseLA.OnChanged = func(string) { notifyChange() }
-	defenseRA := widget.NewEntry()
-	defenseRA.SetPlaceHolder("DEF RA")
-	defenseRA.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseRA.SetText("0")
-	defenseRA.OnChanged = func(string) { notifyChange() }
-	defenseLL := widget.NewEntry()
-	defenseLL.SetPlaceHolder("DEF LL")
-	defenseLL.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseLL.SetText("0")
-	defenseLL.OnChanged = func(string) { notifyChange() }
-	defenseRL := widget.NewEntry()
-	defenseRL.SetPlaceHolder("DEF RL")
-	defenseRL.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseRL.SetText("0")
-	defenseRL.OnChanged = func(string) { notifyChange() }
 	drEnergyHead := widget.NewEntry()
 	drEnergyHead.SetPlaceHolder("DRE H")
 	drEnergyHead.TextStyle = fyne.TextStyle{Monospace: true}
@@ -214,12 +188,6 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		hp:            hp,
 		hpMax:         hpMax,
 		defense:       defense,
-		defenseHead:   defenseHead,
-		defenseTorso:  defenseTorso,
-		defenseLA:     defenseLA,
-		defenseRA:     defenseRA,
-		defenseLL:     defenseLL,
-		defenseRL:     defenseRL,
 		drEnergyHead:  drEnergyHead,
 		drEnergyTorso: drEnergyTorso,
 		drEnergyLA:    drEnergyLA,
@@ -252,20 +220,19 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 	}
 	bodyRow := container.NewVBox(
 		container.NewGridWithColumns(
-			5,
+			4,
 			newTableHeaderLabel("Body Part"),
-			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("Physical"),
 			newTableHeaderLabel("Energy"),
 			newTableHeaderLabel("Radiation"),
 		),
-		container.NewGridWithColumns(5, drPartLabel("Immune"), widget.NewLabel(""), immPhysical, immEnergy, immRadiation),
-		container.NewGridWithColumns(5, drPartLabel("Head"), defenseHead, drPhysHead, drEnergyHead, drRadHead),
-		container.NewGridWithColumns(5, drPartLabel("Torso"), defenseTorso, drPhysTorso, drEnergyTorso, drRadTorso),
-		container.NewGridWithColumns(5, drPartLabel("Left Arm"), defenseLA, drPhysLA, drEnergyLA, drRadLA),
-		container.NewGridWithColumns(5, drPartLabel("Right Arm"), defenseRA, drPhysRA, drEnergyRA, drRadRA),
-		container.NewGridWithColumns(5, drPartLabel("Left Leg"), defenseLL, drPhysLL, drEnergyLL, drRadLL),
-		container.NewGridWithColumns(5, drPartLabel("Right Leg"), defenseRL, drPhysRL, drEnergyRL, drRadRL),
+		container.NewGridWithColumns(4, drPartLabel("Immune"), immPhysical, immEnergy, immRadiation),
+		container.NewGridWithColumns(4, drPartLabel("Head"), drPhysHead, drEnergyHead, drRadHead),
+		container.NewGridWithColumns(4, drPartLabel("Torso"), drPhysTorso, drEnergyTorso, drRadTorso),
+		container.NewGridWithColumns(4, drPartLabel("Left Arm"), drPhysLA, drEnergyLA, drRadLA),
+		container.NewGridWithColumns(4, drPartLabel("Right Arm"), drPhysRA, drEnergyRA, drRadRA),
+		container.NewGridWithColumns(4, drPartLabel("Left Leg"), drPhysLL, drEnergyLL, drRadLL),
+		container.NewGridWithColumns(4, drPartLabel("Right Leg"), drPhysRL, drEnergyRL, drRadRL),
 	)
 	bodyRow.Hide()
 	torsoRow := container.NewGridWithColumns(
@@ -300,7 +267,6 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 			e.Enable()
 		}
 		for _, e := range []*widget.Entry{
-			defenseHead, defenseLA, defenseRA, defenseLL, defenseRL,
 			drPhysHead, drPhysLA, drPhysRA, drPhysLL, drPhysRL,
 			drEnergyHead, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL,
 			drRadHead, drRadLA, drRadRA, drRadLL, drRadRL,
@@ -322,6 +288,9 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		notifyChange()
 	}
 	side.OnChanged = func(value string) {
+		if row.linkedParty {
+			return
+		}
 		if value == "party" {
 			row.number.SetText("1")
 			row.number.Disable()
@@ -392,30 +361,6 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	defense.SetPlaceHolder("Defense")
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
 	defense.SetText("0")
-	defenseHead := widget.NewEntry()
-	defenseHead.SetPlaceHolder("DEF H")
-	defenseHead.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseHead.SetText("0")
-	defenseTorso := widget.NewEntry()
-	defenseTorso.SetPlaceHolder("DEF T")
-	defenseTorso.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseTorso.SetText("0")
-	defenseLA := widget.NewEntry()
-	defenseLA.SetPlaceHolder("DEF LA")
-	defenseLA.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseLA.SetText("0")
-	defenseRA := widget.NewEntry()
-	defenseRA.SetPlaceHolder("DEF RA")
-	defenseRA.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseRA.SetText("0")
-	defenseLL := widget.NewEntry()
-	defenseLL.SetPlaceHolder("DEF LL")
-	defenseLL.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseLL.SetText("0")
-	defenseRL := widget.NewEntry()
-	defenseRL.SetPlaceHolder("DEF RL")
-	defenseRL.TextStyle = fyne.TextStyle{Monospace: true}
-	defenseRL.SetText("0")
 	drEnergyHead := widget.NewEntry()
 	drEnergyHead.SetPlaceHolder("DRE H")
 	drEnergyHead.TextStyle = fyne.TextStyle{Monospace: true}
@@ -518,12 +463,6 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		hp:            hp,
 		hpMax:         hpMax,
 		defense:       defense,
-		defenseHead:   defenseHead,
-		defenseTorso:  defenseTorso,
-		defenseLA:     defenseLA,
-		defenseRA:     defenseRA,
-		defenseLL:     defenseLL,
-		defenseRL:     defenseRL,
 		drEnergyHead:  drEnergyHead,
 		drEnergyTorso: drEnergyTorso,
 		drEnergyLA:    drEnergyLA,
@@ -558,20 +497,19 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	}
 	bodyRow := container.NewVBox(
 		container.NewGridWithColumns(
-			5,
+			4,
 			newTableHeaderLabel("Body Part"),
-			newTableHeaderLabel("Defense"),
 			newTableHeaderLabel("Physical"),
 			newTableHeaderLabel("Energy"),
 			newTableHeaderLabel("Radiation"),
 		),
-		container.NewGridWithColumns(5, drPartLabel("Immune"), widget.NewLabel(""), immPhysical, immEnergy, immRadiation),
-		container.NewGridWithColumns(5, drPartLabel("Head"), defenseHead, drPhysHead, drEnergyHead, drRadHead),
-		container.NewGridWithColumns(5, drPartLabel("Torso"), defenseTorso, drPhysTorso, drEnergyTorso, drRadTorso),
-		container.NewGridWithColumns(5, drPartLabel("Left Arm"), defenseLA, drPhysLA, drEnergyLA, drRadLA),
-		container.NewGridWithColumns(5, drPartLabel("Right Arm"), defenseRA, drPhysRA, drEnergyRA, drRadRA),
-		container.NewGridWithColumns(5, drPartLabel("Left Leg"), defenseLL, drPhysLL, drEnergyLL, drRadLL),
-		container.NewGridWithColumns(5, drPartLabel("Right Leg"), defenseRL, drPhysRL, drEnergyRL, drRadRL),
+		container.NewGridWithColumns(4, drPartLabel("Immune"), immPhysical, immEnergy, immRadiation),
+		container.NewGridWithColumns(4, drPartLabel("Head"), drPhysHead, drEnergyHead, drRadHead),
+		container.NewGridWithColumns(4, drPartLabel("Torso"), drPhysTorso, drEnergyTorso, drRadTorso),
+		container.NewGridWithColumns(4, drPartLabel("Left Arm"), drPhysLA, drEnergyLA, drRadLA),
+		container.NewGridWithColumns(4, drPartLabel("Right Arm"), drPhysRA, drEnergyRA, drRadRA),
+		container.NewGridWithColumns(4, drPartLabel("Left Leg"), drPhysLL, drEnergyLL, drRadLL),
+		container.NewGridWithColumns(4, drPartLabel("Right Leg"), drPhysRL, drEnergyRL, drRadRL),
 	)
 	bodyRow.Hide()
 	var drToggleBtn *widget.Button

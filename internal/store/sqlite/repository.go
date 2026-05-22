@@ -83,6 +83,55 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 	}()
 
 	qtx := s.q.WithTx(tx)
+	activeParty, err := activePartyCombatantsByID(ctx, qtx, enc.CampaignID)
+	if err != nil {
+		return fmt.Errorf("read campaign party characters: %w", err)
+	}
+	existingCombatants, err := combatantIDsByID(ctx, qtx, enc.ID)
+	if err != nil {
+		return fmt.Errorf("read encounter combatant ids: %w", err)
+	}
+	for i, c := range enc.Combatants {
+		domain.NormalizeCombatantHP(&c)
+		if c.Side == domain.SideParty {
+			playerCharacterID := strings.TrimSpace(c.PlayerCharacterID)
+			if playerCharacterID == "" {
+				if _, ok := activeParty[c.ID]; ok {
+					playerCharacterID = c.ID
+				}
+			}
+			if partyCharacter, ok := activeParty[playerCharacterID]; ok {
+				c.PlayerCharacterID = playerCharacterID
+				if strings.TrimSpace(c.ID) == "" || c.ID == playerCharacterID {
+					c.ID = uuid.NewString()
+				}
+				if _, existsInEncounter := existingCombatants[c.ID]; !existsInEncounter {
+					partyCharacter.Active = c.Active
+					partyCharacter.Defeated = partyCharacter.HP == 0
+					partyCharacter.ID = c.ID
+					partyCharacter.PlayerCharacterID = playerCharacterID
+					c = partyCharacter
+					enc.Combatants[i] = c
+					continue
+				}
+				c.Side = domain.SideParty
+				c.XP = 0
+				c.Defeated = c.HP == 0
+				if err = updateActivePlayerCharacter(ctx, qtx, playerCharacterID, enc.CampaignID, c); err != nil {
+					return fmt.Errorf("update campaign character %s: %w", playerCharacterID, err)
+				}
+				if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, playerCharacterID, c); err != nil {
+					return fmt.Errorf("sync campaign character stats %s: %w", playerCharacterID, err)
+				}
+			}
+		}
+		enc.Combatants[i] = c
+	}
+
+	if err = validateUniquePlayerCharacters(enc.Combatants); err != nil {
+		return err
+	}
+
 	metrics := domain.EvaluateEncounterDifficulty(enc.Combatants)
 	if err = qtx.UpsertEncounter(ctx, dbgen.UpsertEncounterParams{
 		ID:              enc.ID,
@@ -110,6 +159,7 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 
 	for i, c := range enc.Combatants {
 		domain.NormalizeCombatantHP(&c)
+		enc.Combatants[i] = c
 		if err = qtx.InsertCombatant(ctx, insertCombatantParams(enc.ID, i, c)); err != nil {
 			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
 		}
@@ -126,6 +176,48 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
+}
+
+func validateUniquePlayerCharacters(combatants []domain.Combatant) error {
+	seen := make(map[string]struct{})
+	for _, c := range combatants {
+		if c.Side != domain.SideParty {
+			continue
+		}
+		playerCharacterID := strings.TrimSpace(c.PlayerCharacterID)
+		if playerCharacterID == "" {
+			continue
+		}
+		if _, ok := seen[playerCharacterID]; ok {
+			return fmt.Errorf("player character %s is already in this encounter", playerCharacterID)
+		}
+		seen[playerCharacterID] = struct{}{}
+	}
+	return nil
+}
+
+func combatantIDsByID(ctx context.Context, qtx *dbgen.Queries, encounterID string) (map[string]struct{}, error) {
+	rows, err := qtx.ListCombatantIDsByEncounterID(ctx, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]struct{}, len(rows))
+	for _, id := range rows {
+		result[id] = struct{}{}
+	}
+	return result, nil
+}
+
+func activePartyCombatantsByID(ctx context.Context, qtx *dbgen.Queries, campaignID string) (map[string]domain.Combatant, error) {
+	rows, err := qtx.ListActivePartyCharactersByCampaignID(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]domain.Combatant, len(rows))
+	for _, row := range rows {
+		result[row.ID] = partyCombatantFromRow(row)
+	}
+	return result, nil
 }
 
 func (s *EncounterStore) List(ctx context.Context) ([]domain.EncounterSummary, error) {
@@ -623,6 +715,11 @@ func interfaceToString(v any) string {
 		return typed
 	case []byte:
 		return string(typed)
+	case sql.NullString:
+		if typed.Valid {
+			return typed.String
+		}
+		return ""
 	default:
 		return ""
 	}

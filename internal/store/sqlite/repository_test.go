@@ -193,6 +193,98 @@ func TestEncounterStoreMaintainsCombatantAuditFields(t *testing.T) {
 	assert.False(t, fields.updatedAt.Time.Before(fields.createdAt.Time))
 }
 
+func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
+	store := newTestStore(t)
+	enc := &domain.Encounter{
+		ID:        "enc-party-hp",
+		Name:      "Linked Party HP",
+		Round:     1,
+		TurnIndex: 0,
+		Combatants: []domain.Combatant{
+			{ID: "repo-char-1", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 6, MaxHP: 6, Active: true},
+			{ID: "npc-1", Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 5, MaxHP: 5},
+		},
+	}
+	require.NoError(t, store.Save(t.Context(), enc))
+
+	_, err := store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Character: domain.Combatant{
+				ID:           "repo-char-1",
+				Name:         "Scout",
+				Side:         domain.SideParty,
+				Level:        3,
+				Initiative:   12,
+				HP:           4,
+				MaxHP:        8,
+				Defense:      5,
+				TorsoOnly:    true,
+				ResistEnergy: 2,
+				ImmunePoison: true,
+				ResistPoison: 1,
+			},
+		},
+	})
+	require.NoError(t, err)
+	_, err = store.db.Exec(`UPDATE player_characters SET name = ? WHERE id = ?`, "Scout Prime", "repo-char-1")
+	require.NoError(t, err)
+
+	actual, err := store.Get(t.Context())
+	require.NoError(t, err)
+	require.Len(t, actual.Combatants, 2)
+	assert.Equal(t, "Scout Prime", actual.Combatants[0].Name)
+	assert.Equal(t, 3, actual.Combatants[0].Level)
+	assert.Equal(t, 12, actual.Combatants[0].Initiative)
+	assert.Equal(t, 4, actual.Combatants[0].HP)
+	assert.Equal(t, 8, actual.Combatants[0].MaxHP)
+	assert.Equal(t, 5, actual.Combatants[0].Defense)
+	assert.True(t, actual.Combatants[0].TorsoOnly)
+	assert.Equal(t, 2, actual.Combatants[0].ResistEnergy)
+	assert.Equal(t, 1, actual.Combatants[0].ResistPoison)
+	assert.True(t, actual.Combatants[0].ImmunePoison)
+	assert.False(t, actual.Combatants[0].Defeated)
+
+	_, err = store.db.Exec(`UPDATE player_characters SET hp = 0 WHERE id = ?`, "repo-char-1")
+	require.NoError(t, err)
+
+	actual, err = store.Get(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, 0, actual.Combatants[0].HP)
+	assert.True(t, actual.Combatants[0].Defeated)
+}
+
+func TestEncounterStoreSaveUpdatesLinkedCampaignCharacterFromPartyCombatant(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:        "enc-sync-party-hp",
+		Name:      "Sync Party HP",
+		Round:     1,
+		TurnIndex: 0,
+		Combatants: []domain.Combatant{
+			{ID: "repo-char-1", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 6, MaxHP: 6, Active: true},
+		},
+	}))
+
+	enc, err := store.Get(t.Context())
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 1)
+	enc.Combatants[0].HP = 2
+	enc.Combatants[0].Level = 4
+	enc.Combatants[0].Defense = 3
+	enc.Combatants[0].ResistPoison = 2
+
+	require.NoError(t, store.Save(t.Context(), enc))
+
+	assert.Equal(t, int64(2), queryInt64(t, store.db, `SELECT hp FROM player_characters WHERE id = ?`, "repo-char-1"))
+	party, err := store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	assert.Equal(t, 4, party[0].Level)
+	assert.Equal(t, 3, party[0].Defense)
+	assert.Equal(t, 2, party[0].ResistPoison)
+}
+
 func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
 	store := newTestStore(t)
 
@@ -536,12 +628,6 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		Initiative:              8,
 		HP:                      10,
 		MaxHP:                   10,
-		DefenseHead:             3,
-		DefenseTorso:            4,
-		DefenseLeftArm:          5,
-		DefenseRightArm:         6,
-		DefenseLeftLeg:          7,
-		DefenseRightLeg:         8,
 		ResistPhysical:          2,
 		ResistEnergy:            3,
 		ResistRadiation:         4,
@@ -574,10 +660,8 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		Combatants: []domain.Combatant{combatant},
 	}))
 
-	assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_defense_by_location WHERE combatant_id = ?`, combatant.ID))
 	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, combatant.ID))
 	assert.Equal(t, int64(18), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, combatant.ID))
-	assert.Equal(t, int64(3), queryInt64(t, store.db, `SELECT defense FROM combatant_defense_by_location WHERE combatant_id = ? AND body_location_id = 1`, combatant.ID))
 	assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM combatant_resistance_global WHERE combatant_id = ? AND damage_type_id = 1`, combatant.ID))
 }
 
@@ -603,12 +687,6 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 				Initiative:              9,
 				HP:                      11,
 				MaxHP:                   11,
-				DefenseHead:             2,
-				DefenseTorso:            2,
-				DefenseLeftArm:          2,
-				DefenseRightArm:         2,
-				DefenseLeftLeg:          2,
-				DefenseRightLeg:         2,
 				ResistEnergy:            3,
 				ResistEnergyHead:        1,
 				ResistEnergyTorso:       2,
@@ -629,7 +707,6 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(6), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_defense_by_location WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_global WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_by_location WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 2`, characterID))

@@ -27,7 +27,7 @@ Use `NEW ENCOUNTER` in the app header, then:
 
 - enter encounter name
 - add combatant rows with `+ Add Combatant`
-- fill each row with `Name`, `Side` (`party` or `npc`), `Level`, `XP` (for `npc`), `Initiative`, `HP`, `Defense`, `Body Defense`, `DR Phys`, `DR Energy`, `DR Rad`, `DR Poison`
+- fill each row with `Name`, `Side` (`party` or `npc`), `Level`, `XP` (for `npc`), `Initiative`, `HP`, global `Defense`, per-body `DR Phys`, `DR Energy`, `DR Rad`, and `DR Poison`
 - for creatures you can enable `torso-only` to use simplified body setup (torso stats only)
 - in DR fields you can enter a number or `IMM` for immunity
 
@@ -59,15 +59,14 @@ make tools-verify
 ### DB Normalization Status
 
 - Combat stats are normalized into dedicated tables:
-  - `combatant_defense_by_location`
   - `combatant_resistance_global`
   - `combatant_resistance_by_location`
-  - `player_character_defense_by_location`
   - `player_character_resistance_global`
   - `player_character_resistance_by_location`
 - Legacy wide columns in `combatants` and `player_characters` were removed in migration `00023`.
-- Current read/write SQL (`sqlc/query.sql`) relies on normalized tables only.
-- Migration notes for `00020`-`00023`: `internal/store/sqlite/migrations/README.md`.
+- Defense is global-only; body locations store DR, not Defense.
+- Current read/write SQL (`sqlc/query.sql`) relies on normalized DR tables only.
+- Migration notes for `00020`-`00025`: `internal/store/sqlite/migrations/README.md`.
 
 ## Run
 

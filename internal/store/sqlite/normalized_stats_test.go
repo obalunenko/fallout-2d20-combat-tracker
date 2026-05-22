@@ -8,26 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefenseStatsByLocationPreservesBodyLocationOrder(t *testing.T) {
-	actual := defenseStatsByLocation(domain.Combatant{
-		DefenseHead:     1,
-		DefenseTorso:    2,
-		DefenseLeftArm:  3,
-		DefenseRightArm: 4,
-		DefenseLeftLeg:  5,
-		DefenseRightLeg: 6,
-	})
-
-	assert.Equal(t, []defenseByLocationStat{
-		{bodyLocationHead, 1},
-		{bodyLocationTorso, 2},
-		{bodyLocationLeftArm, 3},
-		{bodyLocationRightArm, 4},
-		{bodyLocationLeftLeg, 5},
-		{bodyLocationRightLeg, 6},
-	}, actual)
-}
-
 func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 	actual := globalResistanceStats(domain.Combatant{
 		ResistPhysical:  1,

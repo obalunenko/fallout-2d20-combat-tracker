@@ -28,11 +28,6 @@ const (
 	damageTypePoison
 )
 
-type defenseByLocationStat struct {
-	bodyLocationID bodyLocationID
-	defense        int64
-}
-
 type resistanceGlobalStat struct {
 	damageTypeID damageTypeID
 	resistance   int64
@@ -48,13 +43,6 @@ type resistanceByLocationStat struct {
 func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, combatantID string, c domain.Combatant) error {
 	return upsertNormalizedStats(
 		c,
-		func(stat defenseByLocationStat) error {
-			return qtx.UpsertCombatantDefenseByLocation(ctx, dbgen.UpsertCombatantDefenseByLocationParams{
-				CombatantID:    combatantID,
-				BodyLocationID: int64(stat.bodyLocationID),
-				Defense:        stat.defense,
-			})
-		},
 		func(stat resistanceGlobalStat) error {
 			return qtx.UpsertCombatantResistanceGlobal(ctx, dbgen.UpsertCombatantResistanceGlobalParams{
 				CombatantID:  combatantID,
@@ -77,13 +65,6 @@ func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, com
 func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Queries, playerCharacterID string, c domain.Combatant) error {
 	return upsertNormalizedStats(
 		c,
-		func(stat defenseByLocationStat) error {
-			return qtx.UpsertPlayerCharacterDefenseByLocation(ctx, dbgen.UpsertPlayerCharacterDefenseByLocationParams{
-				PlayerCharacterID: playerCharacterID,
-				BodyLocationID:    int64(stat.bodyLocationID),
-				Defense:           stat.defense,
-			})
-		},
 		func(stat resistanceGlobalStat) error {
 			return qtx.UpsertPlayerCharacterResistanceGlobal(ctx, dbgen.UpsertPlayerCharacterResistanceGlobalParams{
 				PlayerCharacterID: playerCharacterID,
@@ -105,16 +86,9 @@ func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Querie
 
 func upsertNormalizedStats(
 	c domain.Combatant,
-	upsertDefense func(defenseByLocationStat) error,
 	upsertGlobalResistance func(resistanceGlobalStat) error,
 	upsertLocationResistance func(resistanceByLocationStat) error,
 ) error {
-	for _, stat := range defenseStatsByLocation(c) {
-		if err := upsertDefense(stat); err != nil {
-			return fmt.Errorf("upsert defense by location: %w", err)
-		}
-	}
-
 	for _, stat := range globalResistanceStats(c) {
 		if err := upsertGlobalResistance(stat); err != nil {
 			return fmt.Errorf("upsert global resistance: %w", err)
@@ -128,17 +102,6 @@ func upsertNormalizedStats(
 	}
 
 	return nil
-}
-
-func defenseStatsByLocation(c domain.Combatant) []defenseByLocationStat {
-	return []defenseByLocationStat{
-		{bodyLocationHead, int64(c.DefenseHead)},
-		{bodyLocationTorso, int64(c.DefenseTorso)},
-		{bodyLocationLeftArm, int64(c.DefenseLeftArm)},
-		{bodyLocationRightArm, int64(c.DefenseRightArm)},
-		{bodyLocationLeftLeg, int64(c.DefenseLeftLeg)},
-		{bodyLocationRightLeg, int64(c.DefenseRightLeg)},
-	}
 }
 
 func globalResistanceStats(c domain.Combatant) []resistanceGlobalStat {

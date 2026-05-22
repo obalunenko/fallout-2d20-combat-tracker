@@ -117,12 +117,12 @@ func TestApplyDamageReducesHPByResistance(t *testing.T) {
 	assert.False(t, e.Combatants[0].Defeated)
 }
 
-func TestApplyDamagePhysicalIgnoresBodyDefense(t *testing.T) {
+func TestApplyDamagePhysicalIgnoresDefense(t *testing.T) {
 	t.Parallel()
 
 	e := NewEncounter("enc-1", "test", []Combatant{{
 		ID: "c1", Name: "Alpha", Initiative: 10,
-		HP: 10, Defense: 5, DefenseTorso: 7, ResistPhysicalTorso: 0,
+		HP: 10, Defense: 5, ResistPhysicalTorso: 0,
 	}})
 
 	applied, err := e.ApplyDamage("c1", DamagePhysical, BodyTorso, 8)

@@ -41,10 +41,9 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	}
 	label.SetText(
 		fmt.Sprintf(
-			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDEF Head: %d\nDEF Torso: %d\nDEF Left Arm: %d\nDEF Right Arm: %d\nDEF Left Leg: %d\nDEF Right Leg: %d\nDRP Head: %d\nDRP Torso: %d\nDRP Left Arm: %d\nDRP Right Arm: %d\nDRP Left Leg: %d\nDRP Right Leg: %d\nDRE Head: %d\nDRE Torso: %d\nDRE Left Arm: %d\nDRE Right Arm: %d\nDRE Left Leg: %d\nDRE Right Leg: %d\nDRR Head: %d\nDRR Torso: %d\nDRR Left Arm: %d\nDRR Right Arm: %d\nDRR Left Leg: %d\nDRR Right Leg: %d\nDR Poison: %s\nStatus: %s",
+			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDRP Head: %d\nDRP Torso: %d\nDRP Left Arm: %d\nDRP Right Arm: %d\nDRP Left Leg: %d\nDRP Right Leg: %d\nDRE Head: %d\nDRE Torso: %d\nDRE Left Arm: %d\nDRE Right Arm: %d\nDRE Left Leg: %d\nDRE Right Leg: %d\nDRR Head: %d\nDRR Torso: %d\nDRR Left Arm: %d\nDRR Right Arm: %d\nDRR Left Leg: %d\nDRR Right Leg: %d\nDR Poison: %s\nStatus: %s",
 			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP,
 			c.Defense,
-			c.DefenseHead, c.DefenseTorso, c.DefenseLeftArm, c.DefenseRightArm, c.DefenseLeftLeg, c.DefenseRightLeg,
 			c.ResistPhysicalHead, c.ResistPhysicalTorso, c.ResistPhysicalLeftArm, c.ResistPhysicalRightArm, c.ResistPhysicalLeftLeg, c.ResistPhysicalRightLeg,
 			c.ResistEnergyHead, c.ResistEnergyTorso, c.ResistEnergyLeftArm, c.ResistEnergyRightArm, c.ResistEnergyLeftLeg, c.ResistEnergyRightLeg,
 			c.ResistRadiationHead, c.ResistRadiationTorso, c.ResistRadiationLeftArm, c.ResistRadiationRightArm, c.ResistRadiationLeftLeg, c.ResistRadiationRightLeg,
@@ -109,7 +108,7 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 		)
 	}
 	return fmt.Sprintf(
-		"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Defense / Damage Resistance\nLocation  | Defense | Physical | Energy | Radiation\n-----------------------------------------------------\nHead      | %7d | %8d | %6d | %9d\nTorso     | %7d | %8d | %6d | %9d\nLeft Arm  | %7d | %8d | %6d | %9d\nRight Arm | %7d | %8d | %6d | %9d\nLeft Leg  | %7d | %8d | %6d | %9d\nRight Leg | %7d | %8d | %6d | %9d",
+		"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Damage Resistance\nLocation  | Physical | Energy | Radiation\n------------------------------------------\nHead      | %8d | %6d | %9d\nTorso     | %8d | %6d | %9d\nLeft Arm  | %8d | %6d | %9d\nRight Arm | %8d | %6d | %9d\nLeft Leg  | %8d | %6d | %9d\nRight Leg | %8d | %6d | %9d",
 		encounterDisplayNameByID(enc, c.ID),
 		c.Side,
 		c.Level,
@@ -120,12 +119,12 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 		c.Defense,
 		status,
 		formatDRValue(c.ResistPoison, c.ImmunePoison),
-		c.DefenseHead, c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
-		c.DefenseTorso, c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
-		c.DefenseLeftArm, c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
-		c.DefenseRightArm, c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
-		c.DefenseLeftLeg, c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
-		c.DefenseRightLeg, c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
+		c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
+		c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
+		c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
+		c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
+		c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
+		c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
 	)
 }
 

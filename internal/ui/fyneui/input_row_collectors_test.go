@@ -21,7 +21,6 @@ func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 		HP:                      6,
 		MaxHP:                   8,
 		Defense:                 1,
-		DefenseHead:             2,
 		ResistPhysicalHead:      4,
 		ResistEnergyTorso:       5,
 		ResistRadiationRightLeg: 6,
@@ -41,7 +40,6 @@ func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 		assert.Equal(t, 6, combatant.HP)
 		assert.Equal(t, 8, combatant.MaxHP)
 		assert.Equal(t, 1, combatant.Defense)
-		assert.Equal(t, 2, combatant.DefenseHead)
 		assert.Equal(t, 4, combatant.ResistPhysicalHead)
 		assert.Equal(t, 5, combatant.ResistEnergyTorso)
 		assert.Equal(t, 6, combatant.ResistRadiationRightLeg)
@@ -53,6 +51,7 @@ func TestCollectCombatantsFromRowsForcesPartyCountAndXP(t *testing.T) {
 	test.NewTempApp(t)
 	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
 	fillCombatantInputRow(row, domain.Combatant{
+		ID:         "char-1",
 		Name:       "Vault Dweller",
 		Level:      2,
 		XP:         99,
@@ -66,8 +65,49 @@ func TestCollectCombatantsFromRowsForcesPartyCountAndXP(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, combatants, 1)
+	assert.Empty(t, combatants[0].ID)
+	assert.Equal(t, "char-1", combatants[0].PlayerCharacterID)
 	assert.Equal(t, domain.SideParty, combatants[0].Side)
 	assert.Equal(t, 0, combatants[0].XP)
+}
+
+func TestCollectCombatantsFromRowsRejectsManualPartyMember(t *testing.T) {
+	test.NewTempApp(t)
+	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(row, domain.Combatant{
+		Name:       "Vault Dweller",
+		Level:      2,
+		Initiative: 10,
+		HP:         8,
+		MaxHP:      8,
+	}, domain.SideParty, 1)
+
+	_, err := collectCombatantsFromRows([]*combatantInputRow{row})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "party members must be loaded from campaign")
+}
+
+func TestFillCombatantInputRowLocksLoadedPartyStats(t *testing.T) {
+	test.NewTempApp(t)
+	row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(row, domain.Combatant{
+		ID:         "char-1",
+		Name:       "Vault Dweller",
+		Level:      2,
+		Initiative: 10,
+		HP:         8,
+		MaxHP:      8,
+		Defense:    1,
+	}, domain.SideParty, 1)
+
+	assert.True(t, row.linkedParty)
+	assert.True(t, row.name.Disabled())
+	assert.True(t, row.side.Disabled())
+	assert.True(t, row.level.Disabled())
+	assert.True(t, row.hp.Disabled())
+	assert.True(t, row.drPoison.Disabled())
+	assert.True(t, row.immPoison.Disabled())
 }
 
 func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
@@ -82,7 +122,6 @@ func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 		HP:                     6,
 		MaxHP:                  6,
 		Defense:                3,
-		DefenseHead:            9,
 		ResistPhysicalHead:     4,
 		ResistPhysicalTorso:    5,
 		ResistEnergyLeftArm:    6,
@@ -97,8 +136,6 @@ func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 	require.Len(t, combatants, 1)
 	combatant := combatants[0]
 	assert.True(t, combatant.TorsoOnly)
-	assert.Equal(t, 0, combatant.DefenseHead)
-	assert.Equal(t, 3, combatant.DefenseTorso)
 	assert.Equal(t, 0, combatant.ResistPhysicalHead)
 	assert.Equal(t, 5, combatant.ResistPhysicalTorso)
 	assert.Equal(t, 0, combatant.ResistEnergyLeftArm)
@@ -128,7 +165,6 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	row.hp.SetText("9")
 	row.hpMax.SetText("12")
 	row.defense.SetText("2")
-	row.defenseHead.SetText("3")
 	row.drPhysHead.SetText("4")
 	row.drEnergyTorso.SetText("5")
 	row.drRadRL.SetText("6")
@@ -147,7 +183,6 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	assert.Equal(t, 9, character.HP)
 	assert.Equal(t, 12, character.MaxHP)
 	assert.Equal(t, 2, character.Defense)
-	assert.Equal(t, 3, character.DefenseHead)
 	assert.Equal(t, 4, character.ResistPhysicalHead)
 	assert.Equal(t, 5, character.ResistEnergyTorso)
 	assert.Equal(t, 6, character.ResistRadiationRightLeg)
