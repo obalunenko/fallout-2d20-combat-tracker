@@ -139,6 +139,9 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 	}
 
 	for _, p := range players {
+		if err = normalizeCampaignPlayerForSave(&p); err != nil {
+			return nil, err
+		}
 		playerID := uuid.NewString()
 		if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
 			ID:         playerID,
@@ -220,6 +223,9 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 
 	updatedPlayers := make(map[string]struct{}, len(players))
 	for _, p := range players {
+		if err = normalizeCampaignPlayerForSave(&p); err != nil {
+			return nil, err
+		}
 		playerName := strings.TrimSpace(p.PlayerName)
 		playerKey := normalizeNameKey(playerName)
 		if playerKey == "" {
@@ -325,6 +331,31 @@ func getActivePlayerCharacterByPlayerID(ctx context.Context, qtx *dbgen.Queries,
 
 func deactivateActiveCharactersByPlayerID(ctx context.Context, qtx *dbgen.Queries, playerID string) error {
 	return qtx.DeactivateActiveCharactersByPlayerID(ctx, playerID)
+}
+
+func normalizeCampaignPlayerForSave(player *domain.NewCampaignPlayer) error {
+	player.PlayerName = strings.TrimSpace(player.PlayerName)
+	if player.PlayerName == "" {
+		return fmt.Errorf("player name is required")
+	}
+	player.Character.Name = strings.TrimSpace(player.Character.Name)
+	if player.Character.Name == "" {
+		return fmt.Errorf("character name is required for player %q", player.PlayerName)
+	}
+	if player.Character.ID == "" {
+		player.Character.ID = uuid.NewString()
+	}
+	player.Character.Side = domain.SideParty
+	player.Character.XP = 0
+	domain.NormalizeCombatantHP(&player.Character)
+	if err := domain.ValidateCombatant(player.Character, domain.CombatantValidationOptions{
+		Label:       fmt.Sprintf("player %q", player.PlayerName),
+		RequireName: true,
+		MinLevel:    1,
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID, campaignID string, c domain.Combatant, inactive bool) error {

@@ -442,30 +442,12 @@ func prepareMonsterTemplate(monster domain.Combatant) (domain.Combatant, error) 
 	if monster.Name == "" {
 		return domain.Combatant{}, fmt.Errorf("monster name is required")
 	}
-	if monster.Level < 1 {
-		return domain.Combatant{}, fmt.Errorf("monster %q: invalid level", monster.Name)
-	}
-	if monster.XP < 0 {
-		return domain.Combatant{}, fmt.Errorf("monster %q: invalid XP", monster.Name)
-	}
-	if monster.Initiative < 0 {
-		return domain.Combatant{}, fmt.Errorf("monster %q: invalid initiative", monster.Name)
-	}
-	if monster.HP < 0 {
-		return domain.Combatant{}, fmt.Errorf("monster %q: invalid HP", monster.Name)
-	}
-	if monster.MaxHP <= 0 {
-		if monster.HP > 0 {
-			monster.MaxHP = monster.HP
-		} else {
-			monster.MaxHP = 1
-		}
-	}
-	if monster.HP > monster.MaxHP {
-		return domain.Combatant{}, fmt.Errorf("monster %q: current HP cannot exceed max HP", monster.Name)
-	}
-	if monster.Defense < 0 {
-		return domain.Combatant{}, fmt.Errorf("monster %q: invalid defense", monster.Name)
+	if err := domain.ValidateCombatant(monster, domain.CombatantValidationOptions{
+		Label:       fmt.Sprintf("monster %q", monster.Name),
+		RequireName: true,
+		MinLevel:    1,
+	}); err != nil {
+		return domain.Combatant{}, err
 	}
 	if strings.TrimSpace(monster.ID) == "" {
 		monster.ID = uuid.NewString()
@@ -494,27 +476,13 @@ func prepareCampaignPlayer(player *domain.NewCampaignPlayer) error {
 	if strings.TrimSpace(player.Character.Name) == "" {
 		return fmt.Errorf("character name is required for player %q", player.PlayerName)
 	}
-	if player.Character.Level < 1 {
-		return fmt.Errorf("invalid level for player %q", player.PlayerName)
-	}
-	if player.Character.HP < 0 {
-		return fmt.Errorf("invalid HP for player %q", player.PlayerName)
-	}
-	if player.Character.MaxHP <= 0 {
-		if player.Character.HP > 0 {
-			player.Character.MaxHP = player.Character.HP
-		} else {
-			player.Character.MaxHP = 1
-		}
-	}
-	if player.Character.HP > player.Character.MaxHP {
-		return fmt.Errorf("current HP cannot exceed max HP for player %q", player.PlayerName)
-	}
-	if player.Character.Initiative < 0 {
-		return fmt.Errorf("invalid initiative for player %q", player.PlayerName)
-	}
-	if player.Character.Defense < 0 {
-		return fmt.Errorf("invalid defense for player %q", player.PlayerName)
+	player.Character.Name = strings.TrimSpace(player.Character.Name)
+	if err := domain.ValidateCombatant(player.Character, domain.CombatantValidationOptions{
+		Label:       fmt.Sprintf("player %q", player.PlayerName),
+		RequireName: true,
+		MinLevel:    1,
+	}); err != nil {
+		return err
 	}
 	if strings.TrimSpace(player.Character.ID) == "" {
 		player.Character.ID = uuid.NewString()
@@ -527,6 +495,10 @@ func prepareCampaignPlayer(player *domain.NewCampaignPlayer) error {
 
 func prepareEncounterCombatants(combatants []domain.Combatant) error {
 	for i := range combatants {
+		combatants[i].Name = strings.TrimSpace(combatants[i].Name)
+		if combatants[i].Side == "" {
+			combatants[i].Side = domain.SideNPC
+		}
 		if err := validateEncounterCombatant(i, combatants[i]); err != nil {
 			return err
 		}
@@ -546,35 +518,12 @@ func validateEncounterCombatant(index int, c domain.Combatant) error {
 	if label == "" {
 		label = fmt.Sprintf("#%d", index+1)
 	}
-
-	if c.Side != "" && c.Side != domain.SideParty && c.Side != domain.SideNPC {
-		return fmt.Errorf("combatant %q: invalid side", label)
-	}
-	if c.Level < 0 {
-		return fmt.Errorf("combatant %q: invalid level", label)
-	}
-	if c.XP < 0 {
-		return fmt.Errorf("combatant %q: invalid XP", label)
-	}
-	if c.Initiative < 0 {
-		return fmt.Errorf("combatant %q: invalid initiative", label)
-	}
-	if c.HP < 0 {
-		return fmt.Errorf("combatant %q: invalid HP", label)
-	}
-	if c.MaxHP < 0 {
-		return fmt.Errorf("combatant %q: invalid max HP", label)
-	}
-	if c.MaxHP > 0 && c.HP > c.MaxHP {
-		return fmt.Errorf("combatant %q: current HP cannot exceed max HP", label)
-	}
-	if c.Defense < 0 {
-		return fmt.Errorf("combatant %q: invalid defense", label)
-	}
-	if c.HasNegativeResistance() {
-		return fmt.Errorf("combatant %q: invalid resistance", label)
-	}
-	return nil
+	return domain.ValidateCombatant(c, domain.CombatantValidationOptions{
+		Label:       fmt.Sprintf("combatant %q", label),
+		RequireName: true,
+		RequireSide: true,
+		MinLevel:    0,
+	})
 }
 
 func (s *Service) AdvanceTurn(ctx context.Context) (*domain.Encounter, error) {

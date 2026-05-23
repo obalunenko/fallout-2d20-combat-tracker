@@ -70,6 +70,10 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 }
 
 func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounter) error {
+	if err := normalizeEncounterForSave(enc); err != nil {
+		return err
+	}
+
 	activeParty, err := activePartyCombatantsByID(ctx, qtx, enc.CampaignID)
 	if err != nil {
 		return fmt.Errorf("read campaign party characters: %w", err)
@@ -157,6 +161,44 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 
 	if err = qtx.TouchCampaign(ctx, enc.CampaignID); err != nil {
 		return fmt.Errorf("touch campaign: %w", err)
+	}
+	return nil
+}
+
+func normalizeEncounterForSave(enc *domain.Encounter) error {
+	if strings.TrimSpace(enc.ID) == "" {
+		return fmt.Errorf("encounter id is required")
+	}
+	enc.Name = strings.TrimSpace(enc.Name)
+	if enc.Name == "" {
+		return fmt.Errorf("encounter name is required")
+	}
+	if enc.Round < 1 {
+		enc.Round = 1
+	}
+	if enc.TurnIndex < 0 {
+		enc.TurnIndex = 0
+	}
+	if enc.Resources.PartyAP < 0 {
+		enc.Resources.PartyAP = 0
+	}
+	if enc.Resources.GMThreat < 0 {
+		enc.Resources.GMThreat = 0
+	}
+	for i := range enc.Combatants {
+		enc.Combatants[i].Name = strings.TrimSpace(enc.Combatants[i].Name)
+		if enc.Combatants[i].Side == "" {
+			enc.Combatants[i].Side = domain.SideNPC
+		}
+		domain.NormalizeCombatantHP(&enc.Combatants[i])
+		if err := domain.ValidateCombatant(enc.Combatants[i], domain.CombatantValidationOptions{
+			Label:       fmt.Sprintf("combatant %q", enc.Combatants[i].Name),
+			RequireName: true,
+			RequireSide: true,
+			MinLevel:    0,
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
