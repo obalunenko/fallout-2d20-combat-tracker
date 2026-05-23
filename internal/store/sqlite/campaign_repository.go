@@ -34,8 +34,8 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 	return players, nil
 }
 
-func (s *EncounterStore) removeInactiveCampaignCharactersFromEncounters(ctx context.Context, campaignID string) error {
-	inactiveIDs, err := s.q.ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx, campaignID)
+func removeInactiveCampaignCharactersFromEncounters(ctx context.Context, qtx *dbgen.Queries, campaignID string) error {
+	inactiveIDs, err := qtx.ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx, campaignID)
 	if err != nil {
 		return fmt.Errorf("list inactive campaign characters: %w", err)
 	}
@@ -48,12 +48,12 @@ func (s *EncounterStore) removeInactiveCampaignCharactersFromEncounters(ctx cont
 		inactiveByID[id] = struct{}{}
 	}
 
-	encounterIDs, err := s.q.ListEncounterIDsByCampaignID(ctx, campaignID)
+	encounterIDs, err := qtx.ListEncounterIDsByCampaignID(ctx, campaignID)
 	if err != nil {
 		return fmt.Errorf("list campaign encounters: %w", err)
 	}
 	for _, encounterID := range encounterIDs {
-		enc, err := s.getEncounterByIDByCampaign(ctx, campaignID, encounterID)
+		enc, err := encounterByIDByCampaign(ctx, qtx, campaignID, encounterID)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func (s *EncounterStore) removeInactiveCampaignCharactersFromEncounters(ctx cont
 				updated.Combatants[i].Active = i == updated.TurnIndex
 			}
 		}
-		if err := s.Save(ctx, updated); err != nil {
+		if err := saveEncounter(ctx, qtx, updated); err != nil {
 			return fmt.Errorf("remove inactive party characters from encounter %s: %w", encounterID, err)
 		}
 	}
@@ -281,11 +281,11 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			return nil, fmt.Errorf("deactivate removed campaign players: %w", err)
 		}
 	}
+	if err = removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID); err != nil {
+		return nil, err
+	}
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit tx: %w", err)
-	}
-	if err = s.removeInactiveCampaignCharactersFromEncounters(ctx, campaignID); err != nil {
-		return nil, err
 	}
 	return &domain.Campaign{
 		ID:        campaignID,

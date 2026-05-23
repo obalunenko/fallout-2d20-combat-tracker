@@ -59,6 +59,17 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 	}()
 
 	qtx := s.q.WithTx(tx)
+	if err = saveEncounter(ctx, qtx, enc); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
+}
+
+func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounter) error {
 	activeParty, err := activePartyCombatantsByID(ctx, qtx, enc.CampaignID)
 	if err != nil {
 		return fmt.Errorf("read campaign party characters: %w", err)
@@ -147,10 +158,6 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 	if err = qtx.TouchCampaign(ctx, enc.CampaignID); err != nil {
 		return fmt.Errorf("touch campaign: %w", err)
 	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
 	return nil
 }
 
@@ -236,7 +243,11 @@ func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID strin
 }
 
 func (s *EncounterStore) getEncounterByIDByCampaign(ctx context.Context, campaignID, encounterID string) (*domain.Encounter, error) {
-	row, err := s.q.GetEncounterByIDByCampaignID(ctx, dbgen.GetEncounterByIDByCampaignIDParams{
+	return encounterByIDByCampaign(ctx, s.q, campaignID, encounterID)
+}
+
+func encounterByIDByCampaign(ctx context.Context, qtx *dbgen.Queries, campaignID, encounterID string) (*domain.Encounter, error) {
+	row, err := qtx.GetEncounterByIDByCampaignID(ctx, dbgen.GetEncounterByIDByCampaignIDParams{
 		CampaignID:  campaignID,
 		EncounterID: encounterID,
 	})
@@ -246,7 +257,7 @@ func (s *EncounterStore) getEncounterByIDByCampaign(ctx context.Context, campaig
 		}
 		return nil, fmt.Errorf("read encounter by id: %w", err)
 	}
-	combatants, err := combatantsByEncounterID(ctx, s.q, row.ID)
+	combatants, err := combatantsByEncounterID(ctx, qtx, row.ID)
 	if err != nil {
 		return nil, fmt.Errorf("read combatants: %w", err)
 	}

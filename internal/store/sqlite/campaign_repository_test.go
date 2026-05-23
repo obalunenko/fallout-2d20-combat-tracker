@@ -150,6 +150,67 @@ func TestEncounterStoreUpdateCampaignInactiveCharacterUnavailableAndRemovedFromE
 	assert.Equal(t, "npc-1", enc.Combatants[0].ID)
 }
 
+func TestEncounterStoreUpdateCampaignRollsBackWhenInactiveEncounterCleanupFails(t *testing.T) {
+	store := newTestStore(t)
+
+	party, err := store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "enc-with-party",
+		Name: "Party Encounter",
+		Combatants: []domain.Combatant{
+			party[0],
+			{ID: "npc-1", Name: "Raider", Side: domain.SideNPC, Level: 1, XP: 30, Initiative: 6, HP: 5, MaxHP: 5},
+		},
+	}))
+
+	_, err = store.db.Exec(`
+		CREATE TRIGGER fail_cleanup_delete
+		BEFORE DELETE ON combatants
+		WHEN OLD.encounter_id = 'enc-with-party'
+		BEGIN
+			SELECT RAISE(ABORT, 'forced cleanup failure');
+		END;
+	`)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = store.db.Exec(`DROP TRIGGER IF EXISTS fail_cleanup_delete`)
+	})
+
+	updatedStartDate := testCampaignStartDate(t).AddDate(0, 1, 0)
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Broken Update", updatedStartDate, []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player 1",
+			Inactive:   true,
+			Character: domain.Combatant{
+				ID:         "repo-char-1",
+				Name:       "Scout",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				MaxHP:      6,
+				Defense:    1,
+			},
+		},
+	})
+	require.Error(t, err)
+
+	assert.Equal(t, "Repo Test Campaign", queryString(t, store.db, `SELECT name FROM campaigns WHERE id = ?`, "repo-test-campaign"))
+	assert.Equal(t, playerCharacterAvailabilityActive, queryString(t, store.db, `SELECT availability_status FROM player_characters WHERE id = ?`, "repo-char-1"))
+
+	party, err = store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	assert.Equal(t, "repo-char-1", party[0].PlayerCharacterID)
+
+	enc, err := store.GetEncounterByID(t.Context(), "enc-with-party")
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 2)
+	assert.Contains(t, []string{enc.Combatants[0].PlayerCharacterID, enc.Combatants[1].PlayerCharacterID}, "repo-char-1")
+}
+
 func TestEncounterStoreListCampaignPlayersReadsNormalizedResistances(t *testing.T) {
 	store := newTestStore(t)
 
