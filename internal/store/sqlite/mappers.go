@@ -22,132 +22,54 @@ func playerCharacterAvailabilityStatus(inactive bool) string {
 }
 
 type combatantDBFields struct {
-	ID                                string
-	PlayerCharacterID                 string
-	Name                              string
-	Side                              domain.Side
-	TorsoOnly                         int64
-	Level                             int64
-	XP                                int64
-	Initiative                        int64
-	HP                                int64
-	MaxHP                             int64
-	Defense                           int64
-	DamageResistancePhysicalHead      int64
-	DamageResistancePhysicalTorso     int64
-	DamageResistancePhysicalLeftArm   int64
-	DamageResistancePhysicalRightArm  int64
-	DamageResistancePhysicalLeftLeg   int64
-	DamageResistancePhysicalRightLeg  int64
-	DamageResistanceEnergyHead        int64
-	DamageResistanceEnergyTorso       int64
-	DamageResistanceEnergyLeftArm     int64
-	DamageResistanceEnergyRightArm    int64
-	DamageResistanceEnergyLeftLeg     int64
-	DamageResistanceEnergyRightLeg    int64
-	DamageResistanceRadiationHead     int64
-	DamageResistanceRadiationTorso    int64
-	DamageResistanceRadiationLeftArm  int64
-	DamageResistanceRadiationRightArm int64
-	DamageResistanceRadiationLeftLeg  int64
-	DamageResistanceRadiationRightLeg int64
-	DamageResistancePhysical          int64
-	DamageResistanceEnergy            int64
-	DamageResistanceRadiation         int64
-	DamageResistancePoison            int64
-	DamageResistancePhysicalImmune    int64
-	DamageResistanceEnergyImmune      int64
-	DamageResistanceRadiationImmune   int64
-	DamageResistancePoisonImmune      int64
-	Active                            int64
-	Defeated                          int64
+	ID                string
+	PlayerCharacterID string
+	Name              string
+	Side              domain.Side
+	TorsoOnly         int64
+	Level             int64
+	XP                int64
+	Initiative        int64
+	HP                int64
+	MaxHP             int64
+	Defense           int64
+	Active            int64
+	Defeated          int64
 }
 
 func combatantFromFields(f combatantDBFields) domain.Combatant {
 	return domain.Combatant{
-		ID:                      f.ID,
-		PlayerCharacterID:       f.PlayerCharacterID,
-		Name:                    f.Name,
-		Side:                    f.Side,
-		TorsoOnly:               f.TorsoOnly == 1,
-		Level:                   int(f.Level),
-		XP:                      int(f.XP),
-		Initiative:              int(f.Initiative),
-		HP:                      int(f.HP),
-		MaxHP:                   int(f.MaxHP),
-		Defense:                 int(f.Defense),
-		ResistPhysicalHead:      int(f.DamageResistancePhysicalHead),
-		ResistPhysicalTorso:     int(f.DamageResistancePhysicalTorso),
-		ResistPhysicalLeftArm:   int(f.DamageResistancePhysicalLeftArm),
-		ResistPhysicalRightArm:  int(f.DamageResistancePhysicalRightArm),
-		ResistPhysicalLeftLeg:   int(f.DamageResistancePhysicalLeftLeg),
-		ResistPhysicalRightLeg:  int(f.DamageResistancePhysicalRightLeg),
-		ResistEnergyHead:        int(f.DamageResistanceEnergyHead),
-		ResistEnergyTorso:       int(f.DamageResistanceEnergyTorso),
-		ResistEnergyLeftArm:     int(f.DamageResistanceEnergyLeftArm),
-		ResistEnergyRightArm:    int(f.DamageResistanceEnergyRightArm),
-		ResistEnergyLeftLeg:     int(f.DamageResistanceEnergyLeftLeg),
-		ResistEnergyRightLeg:    int(f.DamageResistanceEnergyRightLeg),
-		ResistRadiationHead:     int(f.DamageResistanceRadiationHead),
-		ResistRadiationTorso:    int(f.DamageResistanceRadiationTorso),
-		ResistRadiationLeftArm:  int(f.DamageResistanceRadiationLeftArm),
-		ResistRadiationRightArm: int(f.DamageResistanceRadiationRightArm),
-		ResistRadiationLeftLeg:  int(f.DamageResistanceRadiationLeftLeg),
-		ResistRadiationRightLeg: int(f.DamageResistanceRadiationRightLeg),
-		ResistPhysical:          int(f.DamageResistancePhysical),
-		ResistEnergy:            int(f.DamageResistanceEnergy),
-		ResistRadiation:         int(f.DamageResistanceRadiation),
-		ResistPoison:            int(f.DamageResistancePoison),
-		ImmunePhysical:          f.DamageResistancePhysicalImmune == 1,
-		ImmuneEnergy:            f.DamageResistanceEnergyImmune == 1,
-		ImmuneRadiation:         f.DamageResistanceRadiationImmune == 1,
-		ImmunePoison:            f.DamageResistancePoisonImmune == 1,
-		Active:                  f.Active == 1,
-		Defeated:                f.Defeated == 1,
+		ID:                f.ID,
+		PlayerCharacterID: f.PlayerCharacterID,
+		Name:              f.Name,
+		Side:              f.Side,
+		TorsoOnly:         f.TorsoOnly == 1,
+		Level:             int(f.Level),
+		XP:                int(f.XP),
+		Initiative:        int(f.Initiative),
+		HP:                int(f.HP),
+		MaxHP:             int(f.MaxHP),
+		Defense:           int(f.Defense),
+		Active:            f.Active == 1,
+		Defeated:          f.Defeated == 1,
 	}
 }
 
 func combatantFromRow(r dbgen.ListCombatantsByEncounterIDRow) domain.Combatant {
 	return combatantFromFields(combatantDBFields{
-		ID:                                r.ID,
-		PlayerCharacterID:                 interfaceToString(r.PlayerCharacterID),
-		Name:                              r.Name,
-		Side:                              domain.Side(r.Side),
-		TorsoOnly:                         r.TorsoOnly,
-		Level:                             r.Level,
-		XP:                                r.Xp,
-		Initiative:                        r.Initiative,
-		HP:                                r.Hp,
-		MaxHP:                             r.MaxHp,
-		Defense:                           r.Defense,
-		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
-		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
-		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,
-		DamageResistancePhysicalRightArm:  r.DamageResistancePhysicalRightArm,
-		DamageResistancePhysicalLeftLeg:   r.DamageResistancePhysicalLeftLeg,
-		DamageResistancePhysicalRightLeg:  r.DamageResistancePhysicalRightLeg,
-		DamageResistanceEnergyHead:        r.DamageResistanceEnergyHead,
-		DamageResistanceEnergyTorso:       r.DamageResistanceEnergyTorso,
-		DamageResistanceEnergyLeftArm:     r.DamageResistanceEnergyLeftArm,
-		DamageResistanceEnergyRightArm:    r.DamageResistanceEnergyRightArm,
-		DamageResistanceEnergyLeftLeg:     r.DamageResistanceEnergyLeftLeg,
-		DamageResistanceEnergyRightLeg:    r.DamageResistanceEnergyRightLeg,
-		DamageResistanceRadiationHead:     r.DamageResistanceRadiationHead,
-		DamageResistanceRadiationTorso:    r.DamageResistanceRadiationTorso,
-		DamageResistanceRadiationLeftArm:  r.DamageResistanceRadiationLeftArm,
-		DamageResistanceRadiationRightArm: r.DamageResistanceRadiationRightArm,
-		DamageResistanceRadiationLeftLeg:  r.DamageResistanceRadiationLeftLeg,
-		DamageResistanceRadiationRightLeg: r.DamageResistanceRadiationRightLeg,
-		DamageResistancePhysical:          r.DamageResistancePhysical,
-		DamageResistanceEnergy:            r.DamageResistanceEnergy,
-		DamageResistanceRadiation:         r.DamageResistanceRadiation,
-		DamageResistancePoison:            r.DamageResistancePoison,
-		DamageResistancePhysicalImmune:    r.DamageResistancePhysicalImmune,
-		DamageResistanceEnergyImmune:      r.DamageResistanceEnergyImmune,
-		DamageResistanceRadiationImmune:   r.DamageResistanceRadiationImmune,
-		DamageResistancePoisonImmune:      r.DamageResistancePoisonImmune,
-		Active:                            r.Active,
-		Defeated:                          r.Defeated,
+		ID:                r.ID,
+		PlayerCharacterID: interfaceToString(r.PlayerCharacterID),
+		Name:              r.Name,
+		Side:              domain.Side(r.Side),
+		TorsoOnly:         r.TorsoOnly,
+		Level:             r.Level,
+		XP:                r.Xp,
+		Initiative:        r.Initiative,
+		HP:                r.Hp,
+		MaxHP:             r.MaxHp,
+		Defense:           r.Defense,
+		Active:            r.Active,
+		Defeated:          r.Defeated,
 	})
 }
 
@@ -161,51 +83,17 @@ func combatantsFromRows(rows []dbgen.ListCombatantsByEncounterIDRow) []domain.Co
 
 func partyCombatantFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) domain.Combatant {
 	return combatantFromFields(combatantDBFields{
-		ID:                                r.ID,
-		PlayerCharacterID:                 r.ID,
-		Name:                              r.CharacterName,
-		Side:                              domain.SideParty,
-		TorsoOnly:                         r.TorsoOnly,
-		Level:                             r.Level,
-		Initiative:                        r.Initiative,
-		HP:                                r.Hp,
-		MaxHP:                             r.MaxHp,
-		Defense:                           r.Defense,
-		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
-		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
-		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,
-		DamageResistancePhysicalRightArm:  r.DamageResistancePhysicalRightArm,
-		DamageResistancePhysicalLeftLeg:   r.DamageResistancePhysicalLeftLeg,
-		DamageResistancePhysicalRightLeg:  r.DamageResistancePhysicalRightLeg,
-		DamageResistanceEnergyHead:        r.DamageResistanceEnergyHead,
-		DamageResistanceEnergyTorso:       r.DamageResistanceEnergyTorso,
-		DamageResistanceEnergyLeftArm:     r.DamageResistanceEnergyLeftArm,
-		DamageResistanceEnergyRightArm:    r.DamageResistanceEnergyRightArm,
-		DamageResistanceEnergyLeftLeg:     r.DamageResistanceEnergyLeftLeg,
-		DamageResistanceEnergyRightLeg:    r.DamageResistanceEnergyRightLeg,
-		DamageResistanceRadiationHead:     r.DamageResistanceRadiationHead,
-		DamageResistanceRadiationTorso:    r.DamageResistanceRadiationTorso,
-		DamageResistanceRadiationLeftArm:  r.DamageResistanceRadiationLeftArm,
-		DamageResistanceRadiationRightArm: r.DamageResistanceRadiationRightArm,
-		DamageResistanceRadiationLeftLeg:  r.DamageResistanceRadiationLeftLeg,
-		DamageResistanceRadiationRightLeg: r.DamageResistanceRadiationRightLeg,
-		DamageResistancePhysical:          r.DamageResistancePhysical,
-		DamageResistanceEnergy:            r.DamageResistanceEnergy,
-		DamageResistanceRadiation:         r.DamageResistanceRadiation,
-		DamageResistancePoison:            r.DamageResistancePoison,
-		DamageResistancePhysicalImmune:    r.DamageResistancePhysicalImmune,
-		DamageResistanceEnergyImmune:      r.DamageResistanceEnergyImmune,
-		DamageResistanceRadiationImmune:   r.DamageResistanceRadiationImmune,
-		DamageResistancePoisonImmune:      r.DamageResistancePoisonImmune,
+		ID:                r.ID,
+		PlayerCharacterID: r.ID,
+		Name:              r.CharacterName,
+		Side:              domain.SideParty,
+		TorsoOnly:         r.TorsoOnly,
+		Level:             r.Level,
+		Initiative:        r.Initiative,
+		HP:                r.Hp,
+		MaxHP:             r.MaxHp,
+		Defense:           r.Defense,
 	})
-}
-
-func partyCombatantsFromRows(rows []dbgen.ListActivePartyCharactersByCampaignIDRow) []domain.Combatant {
-	party := make([]domain.Combatant, 0, len(rows))
-	for _, r := range rows {
-		party = append(party, partyCombatantFromRow(r))
-	}
-	return party
 }
 
 func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) domain.NewCampaignPlayer {
@@ -218,42 +106,16 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 
 func monsterTemplateFromRow(r dbgen.ListMonsterTemplatesRow) domain.Combatant {
 	return combatantFromFields(combatantDBFields{
-		ID:                                r.ID,
-		Name:                              r.Name,
-		Side:                              domain.SideNPC,
-		TorsoOnly:                         r.TorsoOnly,
-		Level:                             r.Level,
-		XP:                                r.Xp,
-		Initiative:                        r.Initiative,
-		HP:                                r.Hp,
-		MaxHP:                             r.MaxHp,
-		Defense:                           r.Defense,
-		DamageResistancePhysicalHead:      r.DamageResistancePhysicalHead,
-		DamageResistancePhysicalTorso:     r.DamageResistancePhysicalTorso,
-		DamageResistancePhysicalLeftArm:   r.DamageResistancePhysicalLeftArm,
-		DamageResistancePhysicalRightArm:  r.DamageResistancePhysicalRightArm,
-		DamageResistancePhysicalLeftLeg:   r.DamageResistancePhysicalLeftLeg,
-		DamageResistancePhysicalRightLeg:  r.DamageResistancePhysicalRightLeg,
-		DamageResistanceEnergyHead:        r.DamageResistanceEnergyHead,
-		DamageResistanceEnergyTorso:       r.DamageResistanceEnergyTorso,
-		DamageResistanceEnergyLeftArm:     r.DamageResistanceEnergyLeftArm,
-		DamageResistanceEnergyRightArm:    r.DamageResistanceEnergyRightArm,
-		DamageResistanceEnergyLeftLeg:     r.DamageResistanceEnergyLeftLeg,
-		DamageResistanceEnergyRightLeg:    r.DamageResistanceEnergyRightLeg,
-		DamageResistanceRadiationHead:     r.DamageResistanceRadiationHead,
-		DamageResistanceRadiationTorso:    r.DamageResistanceRadiationTorso,
-		DamageResistanceRadiationLeftArm:  r.DamageResistanceRadiationLeftArm,
-		DamageResistanceRadiationRightArm: r.DamageResistanceRadiationRightArm,
-		DamageResistanceRadiationLeftLeg:  r.DamageResistanceRadiationLeftLeg,
-		DamageResistanceRadiationRightLeg: r.DamageResistanceRadiationRightLeg,
-		DamageResistancePhysical:          r.DamageResistancePhysical,
-		DamageResistanceEnergy:            r.DamageResistanceEnergy,
-		DamageResistanceRadiation:         r.DamageResistanceRadiation,
-		DamageResistancePoison:            r.DamageResistancePoison,
-		DamageResistancePhysicalImmune:    r.DamageResistancePhysicalImmune,
-		DamageResistanceEnergyImmune:      r.DamageResistanceEnergyImmune,
-		DamageResistanceRadiationImmune:   r.DamageResistanceRadiationImmune,
-		DamageResistancePoisonImmune:      r.DamageResistancePoisonImmune,
+		ID:         r.ID,
+		Name:       r.Name,
+		Side:       domain.SideNPC,
+		TorsoOnly:  r.TorsoOnly,
+		Level:      r.Level,
+		XP:         r.Xp,
+		Initiative: r.Initiative,
+		HP:         r.Hp,
+		MaxHP:      r.MaxHp,
+		Defense:    r.Defense,
 	})
 }
 

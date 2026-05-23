@@ -167,47 +167,6 @@ ON CONFLICT (player_character_id, damage_type_id, body_location_id) DO UPDATE SE
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: ListActivePartyCharactersByCampaignID :many
-WITH player_character_resistance_global_agg AS (
-  SELECT
-    crg.player_character_id,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
-  FROM player_character_resistance_global crg
-  JOIN damage_types dt ON dt.id = crg.damage_type_id
-  GROUP BY crg.player_character_id
-),
-player_character_resistance_by_location_agg AS (
-  SELECT
-    crl.player_character_id,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
-  FROM player_character_resistance_by_location crl
-  JOIN damage_types dt ON dt.id = crl.damage_type_id
-  JOIN body_locations bl ON bl.id = crl.body_location_id
-  GROUP BY crl.player_character_id
-)
 SELECT
   pc.id,
   p.name AS player_name,
@@ -218,39 +177,38 @@ SELECT
   pc.max_hp,
   pc.defense,
   pc.torso_only,
-  pc.availability_status,
-  CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
-  CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
-  CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_right_arm, 0) AS INTEGER) AS damage_resistance_physical_right_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_left_leg, 0) AS INTEGER) AS damage_resistance_physical_left_leg,
-  CAST(COALESCE(crl.damage_resistance_physical_right_leg, 0) AS INTEGER) AS damage_resistance_physical_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical, 0) AS INTEGER) AS damage_resistance_physical,
-  CAST(COALESCE(crg.damage_resistance_energy, 0) AS INTEGER) AS damage_resistance_energy,
-  CAST(COALESCE(crg.damage_resistance_radiation, 0) AS INTEGER) AS damage_resistance_radiation,
-  CAST(COALESCE(crg.damage_resistance_poison, 0) AS INTEGER) AS damage_resistance_poison,
-  CAST(COALESCE(crl.damage_resistance_energy_head, 0) AS INTEGER) AS damage_resistance_energy_head,
-  CAST(COALESCE(crl.damage_resistance_energy_torso, 0) AS INTEGER) AS damage_resistance_energy_torso,
-  CAST(COALESCE(crl.damage_resistance_energy_left_arm, 0) AS INTEGER) AS damage_resistance_energy_left_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_right_arm, 0) AS INTEGER) AS damage_resistance_energy_right_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_left_leg, 0) AS INTEGER) AS damage_resistance_energy_left_leg,
-  CAST(COALESCE(crl.damage_resistance_energy_right_leg, 0) AS INTEGER) AS damage_resistance_energy_right_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_head, 0) AS INTEGER) AS damage_resistance_radiation_head,
-  CAST(COALESCE(crl.damage_resistance_radiation_torso, 0) AS INTEGER) AS damage_resistance_radiation_torso,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_arm, 0) AS INTEGER) AS damage_resistance_radiation_left_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_arm, 0) AS INTEGER) AS damage_resistance_radiation_right_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_leg, 0) AS INTEGER) AS damage_resistance_radiation_left_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_leg, 0) AS INTEGER) AS damage_resistance_radiation_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical_immune, 0) AS INTEGER) AS damage_resistance_physical_immune,
-  CAST(COALESCE(crg.damage_resistance_energy_immune, 0) AS INTEGER) AS damage_resistance_energy_immune,
-  CAST(COALESCE(crg.damage_resistance_radiation_immune, 0) AS INTEGER) AS damage_resistance_radiation_immune,
-  CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune
+  pc.availability_status
 FROM player_characters pc
 JOIN players p ON p.id = pc.player_id
-LEFT JOIN player_character_resistance_global_agg crg ON crg.player_character_id = pc.id
-LEFT JOIN player_character_resistance_by_location_agg crl ON crl.player_character_id = pc.id
 WHERE pc.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC;
+
+-- name: ListActivePlayerCharacterResistanceGlobalByCampaignID :many
+SELECT
+  crg.player_character_id,
+  dt.code AS damage_type,
+  crg.resistance,
+  crg.immune
+FROM player_character_resistance_global crg
+JOIN player_characters pc ON pc.id = crg.player_character_id
+JOIN damage_types dt ON dt.id = crg.damage_type_id
+WHERE pc.campaign_id = sqlc.arg(campaign_id)
+  AND pc.active = 1
+ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC;
+
+-- name: ListActivePlayerCharacterResistanceByLocationByCampaignID :many
+SELECT
+  crl.player_character_id,
+  dt.code AS damage_type,
+  bl.code AS body_location,
+  crl.resistance
+FROM player_character_resistance_by_location crl
+JOIN player_characters pc ON pc.id = crl.player_character_id
+JOIN damage_types dt ON dt.id = crl.damage_type_id
+JOIN body_locations bl ON bl.id = crl.body_location_id
+WHERE pc.campaign_id = sqlc.arg(campaign_id)
+  AND pc.active = 1
+ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC;
 
 -- name: GetLatestEncounterByCampaignID :one
 SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
@@ -273,88 +231,6 @@ WHERE deleted_at IS NULL
   AND id = sqlc.arg(encounter_id);
 
 -- name: ListCombatantsByEncounterID :many
-WITH combatant_resistance_global_agg AS (
-  SELECT
-    crg.combatant_id,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
-  FROM combatant_resistance_global crg
-  JOIN damage_types dt ON dt.id = crg.damage_type_id
-  GROUP BY crg.combatant_id
-),
-combatant_resistance_by_location_agg AS (
-  SELECT
-    crl.combatant_id,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
-  FROM combatant_resistance_by_location crl
-  JOIN damage_types dt ON dt.id = crl.damage_type_id
-  JOIN body_locations bl ON bl.id = crl.body_location_id
-  GROUP BY crl.combatant_id
-),
-player_character_resistance_global_agg AS (
-  SELECT
-    crg.player_character_id,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
-  FROM player_character_resistance_global crg
-  JOIN damage_types dt ON dt.id = crg.damage_type_id
-  GROUP BY crg.player_character_id
-),
-player_character_resistance_by_location_agg AS (
-  SELECT
-    crl.player_character_id,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
-  FROM player_character_resistance_by_location crl
-  JOIN damage_types dt ON dt.id = crl.damage_type_id
-  JOIN body_locations bl ON bl.id = crl.body_location_id
-  GROUP BY crl.player_character_id
-)
 SELECT
   c.id,
   c.player_character_id,
@@ -367,32 +243,6 @@ SELECT
   CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.max_hp ELSE c.max_hp END AS INTEGER) AS max_hp,
   CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.defense ELSE c.defense END AS INTEGER) AS defense,
   CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.torso_only ELSE c.torso_only END AS INTEGER) AS torso_only,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_head, 0) ELSE COALESCE(crl.damage_resistance_physical_head, 0) END AS INTEGER) AS damage_resistance_physical_head,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_torso, 0) ELSE COALESCE(crl.damage_resistance_physical_torso, 0) END AS INTEGER) AS damage_resistance_physical_torso,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_left_arm, 0) ELSE COALESCE(crl.damage_resistance_physical_left_arm, 0) END AS INTEGER) AS damage_resistance_physical_left_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_right_arm, 0) ELSE COALESCE(crl.damage_resistance_physical_right_arm, 0) END AS INTEGER) AS damage_resistance_physical_right_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_left_leg, 0) ELSE COALESCE(crl.damage_resistance_physical_left_leg, 0) END AS INTEGER) AS damage_resistance_physical_left_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_physical_right_leg, 0) ELSE COALESCE(crl.damage_resistance_physical_right_leg, 0) END AS INTEGER) AS damage_resistance_physical_right_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_physical, 0) ELSE COALESCE(crg.damage_resistance_physical, 0) END AS INTEGER) AS damage_resistance_physical,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_energy, 0) ELSE COALESCE(crg.damage_resistance_energy, 0) END AS INTEGER) AS damage_resistance_energy,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_radiation, 0) ELSE COALESCE(crg.damage_resistance_radiation, 0) END AS INTEGER) AS damage_resistance_radiation,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_poison, 0) ELSE COALESCE(crg.damage_resistance_poison, 0) END AS INTEGER) AS damage_resistance_poison,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_head, 0) ELSE COALESCE(crl.damage_resistance_energy_head, 0) END AS INTEGER) AS damage_resistance_energy_head,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_torso, 0) ELSE COALESCE(crl.damage_resistance_energy_torso, 0) END AS INTEGER) AS damage_resistance_energy_torso,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_left_arm, 0) ELSE COALESCE(crl.damage_resistance_energy_left_arm, 0) END AS INTEGER) AS damage_resistance_energy_left_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_right_arm, 0) ELSE COALESCE(crl.damage_resistance_energy_right_arm, 0) END AS INTEGER) AS damage_resistance_energy_right_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_left_leg, 0) ELSE COALESCE(crl.damage_resistance_energy_left_leg, 0) END AS INTEGER) AS damage_resistance_energy_left_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_energy_right_leg, 0) ELSE COALESCE(crl.damage_resistance_energy_right_leg, 0) END AS INTEGER) AS damage_resistance_energy_right_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_head, 0) ELSE COALESCE(crl.damage_resistance_radiation_head, 0) END AS INTEGER) AS damage_resistance_radiation_head,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_torso, 0) ELSE COALESCE(crl.damage_resistance_radiation_torso, 0) END AS INTEGER) AS damage_resistance_radiation_torso,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_left_arm, 0) ELSE COALESCE(crl.damage_resistance_radiation_left_arm, 0) END AS INTEGER) AS damage_resistance_radiation_left_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_right_arm, 0) ELSE COALESCE(crl.damage_resistance_radiation_right_arm, 0) END AS INTEGER) AS damage_resistance_radiation_right_arm,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_left_leg, 0) ELSE COALESCE(crl.damage_resistance_radiation_left_leg, 0) END AS INTEGER) AS damage_resistance_radiation_left_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrl.damage_resistance_radiation_right_leg, 0) ELSE COALESCE(crl.damage_resistance_radiation_right_leg, 0) END AS INTEGER) AS damage_resistance_radiation_right_leg,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_physical_immune, 0) ELSE COALESCE(crg.damage_resistance_physical_immune, 0) END AS INTEGER) AS damage_resistance_physical_immune,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_energy_immune, 0) ELSE COALESCE(crg.damage_resistance_energy_immune, 0) END AS INTEGER) AS damage_resistance_energy_immune,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_radiation_immune, 0) ELSE COALESCE(crg.damage_resistance_radiation_immune, 0) END AS INTEGER) AS damage_resistance_radiation_immune,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN COALESCE(pcrg.damage_resistance_poison_immune, 0) ELSE COALESCE(crg.damage_resistance_poison_immune, 0) END AS INTEGER) AS damage_resistance_poison_immune,
   c.active,
   CAST(CASE
     WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pc.hp <= 0 THEN 1 ELSE 0 END
@@ -402,12 +252,68 @@ FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 LEFT JOIN player_characters pc ON pc.id = c.player_character_id
   AND pc.campaign_id = e.campaign_id
-LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
-LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
-LEFT JOIN player_character_resistance_global_agg pcrg ON pcrg.player_character_id = pc.id
-LEFT JOIN player_character_resistance_by_location_agg pcrl ON pcrl.player_character_id = pc.id
 WHERE c.encounter_id = sqlc.arg(encounter_id)
 ORDER BY c.position ASC;
+
+-- name: ListCombatantResistanceGlobalByEncounterID :many
+SELECT
+  crg.combatant_id,
+  dt.code AS damage_type,
+  crg.resistance,
+  crg.immune
+FROM combatant_resistance_global crg
+JOIN combatants c ON c.id = crg.combatant_id
+JOIN damage_types dt ON dt.id = crg.damage_type_id
+WHERE c.encounter_id = sqlc.arg(encounter_id)
+ORDER BY c.position ASC, dt.id ASC;
+
+-- name: ListCombatantResistanceByLocationByEncounterID :many
+SELECT
+  crl.combatant_id,
+  dt.code AS damage_type,
+  bl.code AS body_location,
+  crl.resistance
+FROM combatant_resistance_by_location crl
+JOIN combatants c ON c.id = crl.combatant_id
+JOIN damage_types dt ON dt.id = crl.damage_type_id
+JOIN body_locations bl ON bl.id = crl.body_location_id
+WHERE c.encounter_id = sqlc.arg(encounter_id)
+ORDER BY c.position ASC, dt.id ASC, bl.id ASC;
+
+-- name: ListLinkedPlayerCharacterResistanceGlobalByEncounterID :many
+SELECT
+  c.id AS combatant_id,
+  pcrg.player_character_id,
+  dt.code AS damage_type,
+  pcrg.resistance,
+  pcrg.immune
+FROM combatants c
+JOIN encounters e ON e.id = c.encounter_id
+JOIN player_characters pc ON pc.id = c.player_character_id
+  AND pc.campaign_id = e.campaign_id
+JOIN player_character_resistance_global pcrg ON pcrg.player_character_id = pc.id
+JOIN damage_types dt ON dt.id = pcrg.damage_type_id
+WHERE c.encounter_id = sqlc.arg(encounter_id)
+  AND c.side = 'party'
+ORDER BY c.position ASC, dt.id ASC;
+
+-- name: ListLinkedPlayerCharacterResistanceByLocationByEncounterID :many
+SELECT
+  c.id AS combatant_id,
+  pcrl.player_character_id,
+  dt.code AS damage_type,
+  bl.code AS body_location,
+  pcrl.resistance
+FROM combatants c
+JOIN encounters e ON e.id = c.encounter_id
+JOIN player_characters pc ON pc.id = c.player_character_id
+  AND pc.campaign_id = e.campaign_id
+JOIN player_character_resistance_by_location pcrl ON pcrl.player_character_id = pc.id
+JOIN damage_types dt ON dt.id = pcrl.damage_type_id
+JOIN body_locations bl ON bl.id = pcrl.body_location_id
+WHERE c.encounter_id = sqlc.arg(encounter_id)
+  AND c.side = 'party'
+ORDER BY c.position ASC, dt.id ASC, bl.id ASC;
 
 -- name: ListCombatantIDsByEncounterID :many
 SELECT id
@@ -596,135 +502,6 @@ FROM encounter_logs
 WHERE encounter_id = sqlc.arg(encounter_id)
 ORDER BY created_at DESC, rowid DESC;
 
--- name: ListEncounterPartyTemplatesByCampaignID :many
-WITH combatant_resistance_global_agg AS (
-  SELECT
-    crg.combatant_id,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
-  FROM combatant_resistance_global crg
-  JOIN damage_types dt ON dt.id = crg.damage_type_id
-  GROUP BY crg.combatant_id
-),
-combatant_resistance_by_location_agg AS (
-  SELECT
-    crl.combatant_id,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
-  FROM combatant_resistance_by_location crl
-  JOIN damage_types dt ON dt.id = crl.damage_type_id
-  JOIN body_locations bl ON bl.id = crl.body_location_id
-  GROUP BY crl.combatant_id
-),
-latest_party AS (
-  SELECT
-    c.name,
-    c.level,
-    c.xp,
-    c.initiative,
-    c.hp,
-    c.max_hp,
-    c.defense,
-    c.torso_only,
-    CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
-    CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
-    CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
-    CAST(COALESCE(crl.damage_resistance_physical_right_arm, 0) AS INTEGER) AS damage_resistance_physical_right_arm,
-    CAST(COALESCE(crl.damage_resistance_physical_left_leg, 0) AS INTEGER) AS damage_resistance_physical_left_leg,
-    CAST(COALESCE(crl.damage_resistance_physical_right_leg, 0) AS INTEGER) AS damage_resistance_physical_right_leg,
-    CAST(COALESCE(crg.damage_resistance_physical, 0) AS INTEGER) AS damage_resistance_physical,
-    CAST(COALESCE(crg.damage_resistance_energy, 0) AS INTEGER) AS damage_resistance_energy,
-    CAST(COALESCE(crg.damage_resistance_radiation, 0) AS INTEGER) AS damage_resistance_radiation,
-    CAST(COALESCE(crg.damage_resistance_poison, 0) AS INTEGER) AS damage_resistance_poison,
-    CAST(COALESCE(crl.damage_resistance_energy_head, 0) AS INTEGER) AS damage_resistance_energy_head,
-    CAST(COALESCE(crl.damage_resistance_energy_torso, 0) AS INTEGER) AS damage_resistance_energy_torso,
-    CAST(COALESCE(crl.damage_resistance_energy_left_arm, 0) AS INTEGER) AS damage_resistance_energy_left_arm,
-    CAST(COALESCE(crl.damage_resistance_energy_right_arm, 0) AS INTEGER) AS damage_resistance_energy_right_arm,
-    CAST(COALESCE(crl.damage_resistance_energy_left_leg, 0) AS INTEGER) AS damage_resistance_energy_left_leg,
-    CAST(COALESCE(crl.damage_resistance_energy_right_leg, 0) AS INTEGER) AS damage_resistance_energy_right_leg,
-    CAST(COALESCE(crl.damage_resistance_radiation_head, 0) AS INTEGER) AS damage_resistance_radiation_head,
-    CAST(COALESCE(crl.damage_resistance_radiation_torso, 0) AS INTEGER) AS damage_resistance_radiation_torso,
-    CAST(COALESCE(crl.damage_resistance_radiation_left_arm, 0) AS INTEGER) AS damage_resistance_radiation_left_arm,
-    CAST(COALESCE(crl.damage_resistance_radiation_right_arm, 0) AS INTEGER) AS damage_resistance_radiation_right_arm,
-    CAST(COALESCE(crl.damage_resistance_radiation_left_leg, 0) AS INTEGER) AS damage_resistance_radiation_left_leg,
-    CAST(COALESCE(crl.damage_resistance_radiation_right_leg, 0) AS INTEGER) AS damage_resistance_radiation_right_leg,
-    CAST(COALESCE(crg.damage_resistance_physical_immune, 0) AS INTEGER) AS damage_resistance_physical_immune,
-    CAST(COALESCE(crg.damage_resistance_energy_immune, 0) AS INTEGER) AS damage_resistance_energy_immune,
-    CAST(COALESCE(crg.damage_resistance_radiation_immune, 0) AS INTEGER) AS damage_resistance_radiation_immune,
-    CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune,
-    ROW_NUMBER() OVER (
-      PARTITION BY LOWER(TRIM(c.name))
-      ORDER BY e.updated_at DESC, e.id DESC, c.position ASC
-    ) AS rn
-  FROM combatants c
-  JOIN encounters e ON e.id = c.encounter_id
-  LEFT JOIN combatant_resistance_global_agg crg ON crg.combatant_id = c.id
-  LEFT JOIN combatant_resistance_by_location_agg crl ON crl.combatant_id = c.id
-  WHERE c.side = 'party'
-    AND e.deleted_at IS NULL
-    AND e.campaign_id = sqlc.arg(campaign_id)
-)
-SELECT
-  name,
-  level,
-  xp,
-  initiative,
-  hp,
-  max_hp,
-  defense,
-  torso_only,
-  damage_resistance_physical_head,
-  damage_resistance_physical_torso,
-  damage_resistance_physical_left_arm,
-  damage_resistance_physical_right_arm,
-  damage_resistance_physical_left_leg,
-  damage_resistance_physical_right_leg,
-  damage_resistance_physical,
-  damage_resistance_energy,
-  damage_resistance_radiation,
-  damage_resistance_poison,
-  damage_resistance_energy_head,
-  damage_resistance_energy_torso,
-  damage_resistance_energy_left_arm,
-  damage_resistance_energy_right_arm,
-  damage_resistance_energy_left_leg,
-  damage_resistance_energy_right_leg,
-  damage_resistance_radiation_head,
-  damage_resistance_radiation_torso,
-  damage_resistance_radiation_left_arm,
-  damage_resistance_radiation_right_arm,
-  damage_resistance_radiation_left_leg,
-  damage_resistance_radiation_right_leg,
-  damage_resistance_physical_immune,
-  damage_resistance_energy_immune,
-  damage_resistance_radiation_immune,
-  damage_resistance_poison_immune
-FROM latest_party
-WHERE rn = 1
-ORDER BY name COLLATE NOCASE ASC;
-
 -- name: UpsertMonsterTemplate :exec
 INSERT INTO monster_templates (
   id, name, name_key, torso_only, level, xp, initiative, hp, max_hp, defense, created_at, updated_at, deleted_at
@@ -801,47 +578,6 @@ ON CONFLICT (monster_template_id, damage_type_id, body_location_id) DO UPDATE SE
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: ListMonsterTemplates :many
-WITH monster_template_resistance_global_agg AS (
-  SELECT
-    crg.monster_template_id,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.resistance END) AS damage_resistance_physical,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.resistance END) AS damage_resistance_energy,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.resistance END) AS damage_resistance_radiation,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.resistance END) AS damage_resistance_poison,
-    MAX(CASE WHEN dt.code = 'physical' THEN crg.immune END) AS damage_resistance_physical_immune,
-    MAX(CASE WHEN dt.code = 'energy' THEN crg.immune END) AS damage_resistance_energy_immune,
-    MAX(CASE WHEN dt.code = 'radiation' THEN crg.immune END) AS damage_resistance_radiation_immune,
-    MAX(CASE WHEN dt.code = 'poison' THEN crg.immune END) AS damage_resistance_poison_immune
-  FROM monster_template_resistance_global crg
-  JOIN damage_types dt ON dt.id = crg.damage_type_id
-  GROUP BY crg.monster_template_id
-),
-monster_template_resistance_by_location_agg AS (
-  SELECT
-    crl.monster_template_id,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_physical_head,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_physical_torso,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_physical_left_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_physical_right_arm,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_physical_left_leg,
-    MAX(CASE WHEN dt.code = 'physical' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_physical_right_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_energy_head,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_energy_torso,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_energy_left_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_energy_right_arm,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_energy_left_leg,
-    MAX(CASE WHEN dt.code = 'energy' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_energy_right_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'head' THEN crl.resistance END) AS damage_resistance_radiation_head,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'torso' THEN crl.resistance END) AS damage_resistance_radiation_torso,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_arm' THEN crl.resistance END) AS damage_resistance_radiation_left_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_arm' THEN crl.resistance END) AS damage_resistance_radiation_right_arm,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'left_leg' THEN crl.resistance END) AS damage_resistance_radiation_left_leg,
-    MAX(CASE WHEN dt.code = 'radiation' AND bl.code = 'right_leg' THEN crl.resistance END) AS damage_resistance_radiation_right_leg
-  FROM monster_template_resistance_by_location crl
-  JOIN damage_types dt ON dt.id = crl.damage_type_id
-  JOIN body_locations bl ON bl.id = crl.body_location_id
-  GROUP BY crl.monster_template_id
-)
 SELECT
   mt.id,
   mt.name,
@@ -851,35 +587,32 @@ SELECT
   mt.hp,
   mt.max_hp,
   mt.defense,
-  mt.torso_only,
-  CAST(COALESCE(crl.damage_resistance_physical_head, 0) AS INTEGER) AS damage_resistance_physical_head,
-  CAST(COALESCE(crl.damage_resistance_physical_torso, 0) AS INTEGER) AS damage_resistance_physical_torso,
-  CAST(COALESCE(crl.damage_resistance_physical_left_arm, 0) AS INTEGER) AS damage_resistance_physical_left_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_right_arm, 0) AS INTEGER) AS damage_resistance_physical_right_arm,
-  CAST(COALESCE(crl.damage_resistance_physical_left_leg, 0) AS INTEGER) AS damage_resistance_physical_left_leg,
-  CAST(COALESCE(crl.damage_resistance_physical_right_leg, 0) AS INTEGER) AS damage_resistance_physical_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical, 0) AS INTEGER) AS damage_resistance_physical,
-  CAST(COALESCE(crg.damage_resistance_energy, 0) AS INTEGER) AS damage_resistance_energy,
-  CAST(COALESCE(crg.damage_resistance_radiation, 0) AS INTEGER) AS damage_resistance_radiation,
-  CAST(COALESCE(crg.damage_resistance_poison, 0) AS INTEGER) AS damage_resistance_poison,
-  CAST(COALESCE(crl.damage_resistance_energy_head, 0) AS INTEGER) AS damage_resistance_energy_head,
-  CAST(COALESCE(crl.damage_resistance_energy_torso, 0) AS INTEGER) AS damage_resistance_energy_torso,
-  CAST(COALESCE(crl.damage_resistance_energy_left_arm, 0) AS INTEGER) AS damage_resistance_energy_left_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_right_arm, 0) AS INTEGER) AS damage_resistance_energy_right_arm,
-  CAST(COALESCE(crl.damage_resistance_energy_left_leg, 0) AS INTEGER) AS damage_resistance_energy_left_leg,
-  CAST(COALESCE(crl.damage_resistance_energy_right_leg, 0) AS INTEGER) AS damage_resistance_energy_right_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_head, 0) AS INTEGER) AS damage_resistance_radiation_head,
-  CAST(COALESCE(crl.damage_resistance_radiation_torso, 0) AS INTEGER) AS damage_resistance_radiation_torso,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_arm, 0) AS INTEGER) AS damage_resistance_radiation_left_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_arm, 0) AS INTEGER) AS damage_resistance_radiation_right_arm,
-  CAST(COALESCE(crl.damage_resistance_radiation_left_leg, 0) AS INTEGER) AS damage_resistance_radiation_left_leg,
-  CAST(COALESCE(crl.damage_resistance_radiation_right_leg, 0) AS INTEGER) AS damage_resistance_radiation_right_leg,
-  CAST(COALESCE(crg.damage_resistance_physical_immune, 0) AS INTEGER) AS damage_resistance_physical_immune,
-  CAST(COALESCE(crg.damage_resistance_energy_immune, 0) AS INTEGER) AS damage_resistance_energy_immune,
-  CAST(COALESCE(crg.damage_resistance_radiation_immune, 0) AS INTEGER) AS damage_resistance_radiation_immune,
-  CAST(COALESCE(crg.damage_resistance_poison_immune, 0) AS INTEGER) AS damage_resistance_poison_immune
+  mt.torso_only
 FROM monster_templates mt
-LEFT JOIN monster_template_resistance_global_agg crg ON crg.monster_template_id = mt.id
-LEFT JOIN monster_template_resistance_by_location_agg crl ON crl.monster_template_id = mt.id
 WHERE mt.deleted_at IS NULL
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC;
+
+-- name: ListMonsterTemplateResistanceGlobal :many
+SELECT
+  mtg.monster_template_id,
+  dt.code AS damage_type,
+  mtg.resistance,
+  mtg.immune
+FROM monster_template_resistance_global mtg
+JOIN monster_templates mt ON mt.id = mtg.monster_template_id
+JOIN damage_types dt ON dt.id = mtg.damage_type_id
+WHERE mt.deleted_at IS NULL
+ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC;
+
+-- name: ListMonsterTemplateResistanceByLocation :many
+SELECT
+  mtl.monster_template_id,
+  dt.code AS damage_type,
+  bl.code AS body_location,
+  mtl.resistance
+FROM monster_template_resistance_by_location mtl
+JOIN monster_templates mt ON mt.id = mtl.monster_template_id
+JOIN damage_types dt ON dt.id = mtl.damage_type_id
+JOIN body_locations bl ON bl.id = mtl.body_location_id
+WHERE mt.deleted_at IS NULL
+ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC, bl.id ASC;

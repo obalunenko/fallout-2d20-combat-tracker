@@ -117,6 +117,65 @@ func TestApplyDamageReducesHPByResistance(t *testing.T) {
 	assert.False(t, e.Combatants[0].Defeated)
 }
 
+func TestApplyDamageStacksGlobalAndLocationResistance(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		damageType DamageType
+		location   BodyLocation
+		combatant  Combatant
+		want       int
+	}{
+		{
+			name:       "physical",
+			damageType: DamagePhysical,
+			location:   BodyTorso,
+			combatant:  Combatant{ResistPhysical: 3, ResistPhysicalTorso: 2},
+			want:       5,
+		},
+		{
+			name:       "energy",
+			damageType: DamageEnergy,
+			location:   BodyLeftArm,
+			combatant:  Combatant{ResistEnergy: 2, ResistEnergyLeftArm: 4},
+			want:       4,
+		},
+		{
+			name:       "radiation",
+			damageType: DamageRadiation,
+			location:   BodyRightLeg,
+			combatant:  Combatant{ResistRadiation: 1, ResistRadiationRightLeg: 5},
+			want:       4,
+		},
+		{
+			name:       "poison ignores location resistance",
+			damageType: DamagePoison,
+			location:   BodyHead,
+			combatant:  Combatant{ResistPoison: 4, ResistRadiationHead: 5},
+			want:       6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tt.combatant.ID = "c1"
+			tt.combatant.Name = "Alpha"
+			tt.combatant.Initiative = 10
+			tt.combatant.HP = 20
+			tt.combatant.MaxHP = 20
+			e := NewEncounter("enc-1", "test", []Combatant{tt.combatant})
+
+			applied, err := e.ApplyDamage("c1", tt.damageType, tt.location, 10)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, applied)
+			assert.Equal(t, 20-tt.want, e.Combatants[0].HP)
+		})
+	}
+}
+
 func TestApplyDamagePhysicalIgnoresDefense(t *testing.T) {
 	t.Parallel()
 

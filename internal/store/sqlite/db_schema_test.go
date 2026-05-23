@@ -1,0 +1,124 @@
+package sqlite
+
+import (
+	"path/filepath"
+	"testing"
+
+	"github.com/obalunenko/fallout/internal/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "repo-fk-cascade.db")
+	db, err := OpenAndMigrate(dbPath)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	store := NewEncounterStore(db)
+	_, err = store.CreateCampaign(t.Context(), "fk-campaign", "FK Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Player A",
+			Character: domain.Combatant{
+				ID:         "fk-char-1",
+				Name:       "Scout",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 7,
+				HP:         6,
+				MaxHP:      6,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "fk-encounter",
+		Name: "Cascade Check",
+		Combatants: []domain.Combatant{{
+			ID:                  "fk-npc-1",
+			Name:                "Raider",
+			Side:                domain.SideNPC,
+			Initiative:          8,
+			HP:                  6,
+			MaxHP:               6,
+			ResistPoison:        2,
+			ResistPhysicalTorso: 1,
+		}},
+	}))
+	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
+	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, "fk-npc-1"))
+
+	conn1, err := db.Conn(t.Context())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, conn1.Close())
+	}()
+	conn2, err := db.Conn(t.Context())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, conn2.Close())
+	}()
+
+	var foreignKeysConn1, foreignKeysConn2 int64
+	require.NoError(t, conn1.QueryRowContext(t.Context(), `PRAGMA foreign_keys`).Scan(&foreignKeysConn1))
+	require.NoError(t, conn2.QueryRowContext(t.Context(), `PRAGMA foreign_keys`).Scan(&foreignKeysConn2))
+	assert.Equal(t, int64(1), foreignKeysConn1)
+	assert.Equal(t, int64(1), foreignKeysConn2)
+
+	_, err = conn2.ExecContext(t.Context(), `DELETE FROM encounters WHERE id = ?`, "fk-encounter")
+	require.NoError(t, err)
+
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, "fk-npc-1"))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, "fk-npc-1"))
+}
+
+func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T) {
+	store := newTestStore(t)
+	legacyColumns := []string{
+		"defense_head",
+		"defense_torso",
+		"defense_left_arm",
+		"defense_right_arm",
+		"defense_left_leg",
+		"defense_right_leg",
+		"damage_resistance_physical_head",
+		"damage_resistance_physical_torso",
+		"damage_resistance_physical_left_arm",
+		"damage_resistance_physical_right_arm",
+		"damage_resistance_physical_left_leg",
+		"damage_resistance_physical_right_leg",
+		"damage_resistance_physical",
+		"damage_resistance_energy",
+		"damage_resistance_radiation",
+		"damage_resistance_poison",
+		"damage_resistance_energy_head",
+		"damage_resistance_energy_torso",
+		"damage_resistance_energy_left_arm",
+		"damage_resistance_energy_right_arm",
+		"damage_resistance_energy_left_leg",
+		"damage_resistance_energy_right_leg",
+		"damage_resistance_radiation_head",
+		"damage_resistance_radiation_torso",
+		"damage_resistance_radiation_left_arm",
+		"damage_resistance_radiation_right_arm",
+		"damage_resistance_radiation_left_leg",
+		"damage_resistance_radiation_right_leg",
+		"damage_resistance_physical_immune",
+		"damage_resistance_energy_immune",
+		"damage_resistance_radiation_immune",
+		"damage_resistance_poison_immune",
+	}
+
+	for _, table := range []string{"combatants", "player_characters"} {
+		columns := queryColumnNames(t, store.db, table)
+		for _, column := range legacyColumns {
+			assert.NotContains(t, columns, column, "%s.%s should be removed", table, column)
+		}
+	}
+
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'trigger' AND name LIKE 'trg_sync_%'`))
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('combatant_defense_by_location', 'player_character_defense_by_location')`))
+}

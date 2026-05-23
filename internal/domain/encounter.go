@@ -228,11 +228,12 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, locat
 	}
 
 	target := &e.Combatants[combatantIdx]
-	resistance, immune, err := target.resistanceByType(damageType)
+	profile := target.ResistanceProfile()
+	resistance, immune, err := profile.GlobalResistance(damageType)
 	if err != nil {
 		return 0, err
 	}
-	locationResistance, err := target.resistanceByTypeAndLocation(damageType, location)
+	locationResistance, err := profile.LocationResistance(damageType, location)
 	if err != nil {
 		return 0, err
 	}
@@ -291,37 +292,6 @@ func (e *Encounter) normalizeActive() {
 	}
 }
 
-func (c *Combatant) resistanceByType(damageType DamageType) (int, bool, error) {
-	switch damageType {
-	case DamagePhysical:
-		return 0, c.ImmunePhysical, nil
-	case DamageEnergy:
-		return 0, c.ImmuneEnergy, nil
-	case DamageRadiation:
-		return 0, c.ImmuneRadiation, nil
-	case DamagePoison:
-		return max(c.ResistPoison, 0), c.ImmunePoison, nil
-	default:
-		return 0, false, fmt.Errorf("unknown damage type: %q", damageType)
-	}
-}
-
-func (c *Combatant) resistanceByTypeAndLocation(damageType DamageType, location BodyLocation) (int, error) {
-	switch damageType {
-	case DamagePhysical:
-		return c.physicalLocationResistance(location)
-	case DamageEnergy:
-		return c.energyLocationResistance(location)
-	case DamageRadiation:
-		return c.radiationLocationResistance(location)
-	case DamagePoison:
-		// Poison is global-only, no body location reduction.
-		return 0, nil
-	default:
-		return 0, fmt.Errorf("unknown damage type: %q", damageType)
-	}
-}
-
 func (c *Combatant) normalizeHPState() {
 	if c.MaxHP <= 0 {
 		if c.HP > 0 {
@@ -354,85 +324,7 @@ func NormalizeCombatantHP(c *Combatant) {
 }
 
 func (c *Combatant) normalizeLocationResistance() {
-	c.ResistPhysical = max(c.ResistPhysical, 0)
-	c.ResistEnergy = max(c.ResistEnergy, 0)
-	c.ResistRadiation = max(c.ResistRadiation, 0)
-	c.ResistPoison = max(c.ResistPoison, 0)
-	c.ResistPhysicalHead = max(c.ResistPhysicalHead, 0)
-	c.ResistPhysicalTorso = max(c.ResistPhysicalTorso, 0)
-	c.ResistPhysicalLeftArm = max(c.ResistPhysicalLeftArm, 0)
-	c.ResistPhysicalRightArm = max(c.ResistPhysicalRightArm, 0)
-	c.ResistPhysicalLeftLeg = max(c.ResistPhysicalLeftLeg, 0)
-	c.ResistPhysicalRightLeg = max(c.ResistPhysicalRightLeg, 0)
-	c.ResistEnergyHead = max(c.ResistEnergyHead, 0)
-	c.ResistEnergyTorso = max(c.ResistEnergyTorso, 0)
-	c.ResistEnergyLeftArm = max(c.ResistEnergyLeftArm, 0)
-	c.ResistEnergyRightArm = max(c.ResistEnergyRightArm, 0)
-	c.ResistEnergyLeftLeg = max(c.ResistEnergyLeftLeg, 0)
-	c.ResistEnergyRightLeg = max(c.ResistEnergyRightLeg, 0)
-	c.ResistRadiationHead = max(c.ResistRadiationHead, 0)
-	c.ResistRadiationTorso = max(c.ResistRadiationTorso, 0)
-	c.ResistRadiationLeftArm = max(c.ResistRadiationLeftArm, 0)
-	c.ResistRadiationRightArm = max(c.ResistRadiationRightArm, 0)
-	c.ResistRadiationLeftLeg = max(c.ResistRadiationLeftLeg, 0)
-	c.ResistRadiationRightLeg = max(c.ResistRadiationRightLeg, 0)
-}
-
-func (c *Combatant) physicalLocationResistance(location BodyLocation) (int, error) {
-	switch location {
-	case BodyHead:
-		return max(c.ResistPhysicalHead, 0), nil
-	case BodyTorso:
-		return max(c.ResistPhysicalTorso, 0), nil
-	case BodyLeftArm:
-		return max(c.ResistPhysicalLeftArm, 0), nil
-	case BodyRightArm:
-		return max(c.ResistPhysicalRightArm, 0), nil
-	case BodyLeftLeg:
-		return max(c.ResistPhysicalLeftLeg, 0), nil
-	case BodyRightLeg:
-		return max(c.ResistPhysicalRightLeg, 0), nil
-	default:
-		return 0, fmt.Errorf("unknown body location: %q", location)
-	}
-}
-
-func (c *Combatant) energyLocationResistance(location BodyLocation) (int, error) {
-	switch location {
-	case BodyHead:
-		return max(c.ResistEnergyHead, 0), nil
-	case BodyTorso:
-		return max(c.ResistEnergyTorso, 0), nil
-	case BodyLeftArm:
-		return max(c.ResistEnergyLeftArm, 0), nil
-	case BodyRightArm:
-		return max(c.ResistEnergyRightArm, 0), nil
-	case BodyLeftLeg:
-		return max(c.ResistEnergyLeftLeg, 0), nil
-	case BodyRightLeg:
-		return max(c.ResistEnergyRightLeg, 0), nil
-	default:
-		return 0, fmt.Errorf("unknown body location: %q", location)
-	}
-}
-
-func (c *Combatant) radiationLocationResistance(location BodyLocation) (int, error) {
-	switch location {
-	case BodyHead:
-		return max(c.ResistRadiationHead, 0), nil
-	case BodyTorso:
-		return max(c.ResistRadiationTorso, 0), nil
-	case BodyLeftArm:
-		return max(c.ResistRadiationLeftArm, 0), nil
-	case BodyRightArm:
-		return max(c.ResistRadiationRightArm, 0), nil
-	case BodyLeftLeg:
-		return max(c.ResistRadiationLeftLeg, 0), nil
-	case BodyRightLeg:
-		return max(c.ResistRadiationRightLeg, 0), nil
-	default:
-		return 0, fmt.Errorf("unknown body location: %q", location)
-	}
+	c.SetResistanceProfile(c.ResistanceProfile())
 }
 
 type EncounterDifficulty string

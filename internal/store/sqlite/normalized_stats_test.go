@@ -9,7 +9,7 @@ import (
 )
 
 func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
-	actual := globalResistanceStats(domain.Combatant{
+	actual, err := globalResistanceStats(domain.Combatant{
 		ResistPhysical:  1,
 		ResistEnergy:    2,
 		ResistRadiation: 3,
@@ -17,6 +17,7 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 		ImmunePhysical:  true,
 		ImmuneRadiation: true,
 	})
+	require.NoError(t, err)
 
 	assert.Equal(t, []resistanceGlobalStat{
 		{damageTypePhysical, 1, 1},
@@ -27,7 +28,7 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 }
 
 func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing.T) {
-	actual := resistanceStatsByLocation(domain.Combatant{
+	actual, err := resistanceStatsByLocation(domain.Combatant{
 		ResistPhysicalHead:      1,
 		ResistPhysicalTorso:     2,
 		ResistPhysicalLeftArm:   3,
@@ -47,6 +48,7 @@ func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing
 		ResistRadiationLeftLeg:  17,
 		ResistRadiationRightLeg: 18,
 	})
+	require.NoError(t, err)
 
 	require.Len(t, actual, 18)
 	assert.Equal(t, []resistanceByLocationStat{
@@ -69,4 +71,15 @@ func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing
 		{damageTypeRadiation, bodyLocationLeftLeg, 17},
 		{damageTypeRadiation, bodyLocationRightLeg, 18},
 	}, actual)
+}
+
+func TestNormalizedStatsLookupIDsCoverDomainTypes(t *testing.T) {
+	for _, damageType := range domain.DamageTypes() {
+		_, ok := damageTypeIDs[damageType]
+		assert.True(t, ok, "missing damage type id for %q", damageType)
+	}
+	for _, bodyLocation := range domain.BodyLocations() {
+		_, ok := bodyLocationIDs[bodyLocation]
+		assert.True(t, ok, "missing body location id for %q", bodyLocation)
+	}
 }

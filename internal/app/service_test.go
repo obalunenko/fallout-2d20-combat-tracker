@@ -22,6 +22,46 @@ func TestCreateEncounterRejectsEmptyCombatants(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCreateEncounterRejectsInvalidCombatantValues(t *testing.T) {
+	tests := []struct {
+		name      string
+		combatant domain.Combatant
+		want      string
+	}{
+		{
+			name:      "invalid side",
+			combatant: domain.Combatant{Name: "Raider", Side: domain.Side("other"), Initiative: 8, HP: 6, MaxHP: 6},
+			want:      "invalid side",
+		},
+		{
+			name:      "negative hp",
+			combatant: domain.Combatant{Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: -1, MaxHP: 6},
+			want:      "invalid HP",
+		},
+		{
+			name:      "hp exceeds max hp",
+			combatant: domain.Combatant{Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 7, MaxHP: 6},
+			want:      "current HP cannot exceed max HP",
+		},
+		{
+			name:      "negative resistance",
+			combatant: domain.Combatant{Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 6, MaxHP: 6, ResistEnergyTorso: -1},
+			want:      "invalid resistance",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := newSQLiteService(t)
+
+			_, err := svc.CreateEncounter(t.Context(), "enc-invalid", "Invalid", []domain.Combatant{tt.combatant})
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.want)
+		})
+	}
+}
+
 func TestCreateEncounterPersistsAndGetReturnsSorted(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", []domain.Combatant{
@@ -173,6 +213,21 @@ func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
 	require.Less(t, persisted.TurnIndex, len(persisted.Combatants))
 	assert.Equal(t, beforeActiveID, persisted.Combatants[persisted.TurnIndex].ID)
+}
+
+func TestUpdateEncounterRejectsInvalidCombatantValues(t *testing.T) {
+	svc := newSQLiteService(t)
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
+		{ID: "n1", Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 6, MaxHP: 6},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.UpdateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
+		{ID: "n1", Name: "Raider", Side: domain.SideNPC, Initiative: 8, HP: 6, MaxHP: 6, Defense: -1},
+	})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid defense")
 }
 
 func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {

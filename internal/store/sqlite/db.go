@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -29,7 +31,7 @@ func DefaultDBPath() (string, error) {
 }
 
 func OpenAndMigrate(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite db: %w", err)
 	}
@@ -50,4 +52,23 @@ func OpenAndMigrate(dbPath string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func sqliteDSN(dbPath string) string {
+	if strings.HasPrefix(dbPath, "file:") {
+		separator := "?"
+		if strings.Contains(dbPath, "?") {
+			separator = "&"
+		}
+		return dbPath + separator + "_pragma=foreign_keys(1)"
+	}
+
+	u := url.URL{
+		Scheme: "file",
+		Path:   dbPath,
+	}
+	q := u.Query()
+	q.Add("_pragma", "foreign_keys(1)")
+	u.RawQuery = q.Encode()
+	return u.String()
 }

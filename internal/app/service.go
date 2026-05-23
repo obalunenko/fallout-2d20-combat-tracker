@@ -12,25 +12,45 @@ import (
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
-type EncounterRepository interface {
+type EncounterReader interface {
 	Get(ctx context.Context) (*domain.Encounter, error)
-	Save(ctx context.Context, encounter *domain.Encounter) error
 	List(ctx context.Context) ([]domain.EncounterSummary, error)
 	GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error)
-	UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error)
 	ListPartyMembers(ctx context.Context) ([]domain.Combatant, error)
+}
+
+type EncounterWriter interface {
+	Save(ctx context.Context, encounter *domain.Encounter) error
+	UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error)
+	Activate(ctx context.Context, encounterID string) error
+	SoftDelete(ctx context.Context, encounterID string) error
+}
+
+type MonsterTemplateRepository interface {
 	ListMonsterTemplates(ctx context.Context) ([]domain.Combatant, error)
 	UpsertMonsterTemplate(ctx context.Context, monster domain.Combatant) (domain.Combatant, error)
+}
+
+type CampaignRepository interface {
 	CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error)
 	GetActiveCampaign(ctx context.Context) (*domain.Campaign, error)
 	ListCampaigns(ctx context.Context) ([]domain.Campaign, error)
 	ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error)
 	ActivateCampaign(ctx context.Context, campaignID string) error
-	Activate(ctx context.Context, encounterID string) error
-	SoftDelete(ctx context.Context, encounterID string) error
+}
+
+type EncounterLogRepository interface {
 	AppendEncounterLog(ctx context.Context, encounterID string, round int, message string) error
 	ListEncounterLogs(ctx context.Context, encounterID string) ([]domain.EncounterLog, error)
+}
+
+type EncounterRepository interface {
+	EncounterReader
+	EncounterWriter
+	MonsterTemplateRepository
+	CampaignRepository
+	EncounterLogRepository
 }
 
 type CreateCampaignCommand struct {
@@ -175,49 +195,15 @@ func (s *Service) ExecuteSaveMonsterTemplates(ctx context.Context, cmd SaveMonst
 	saved := make([]domain.Combatant, 0, len(cmd.Monsters))
 	seen := make(map[string]struct{}, len(cmd.Monsters))
 	for i := range cmd.Monsters {
-		monster := cmd.Monsters[i]
-		monster.Name = strings.TrimSpace(monster.Name)
-		if monster.Name == "" {
-			return nil, fmt.Errorf("monster name is required")
+		monster, err := prepareMonsterTemplate(cmd.Monsters[i])
+		if err != nil {
+			return nil, err
 		}
 		key := strings.ToLower(monster.Name)
 		if _, exists := seen[key]; exists {
 			continue
 		}
 		seen[key] = struct{}{}
-		if monster.Level < 1 {
-			return nil, fmt.Errorf("monster %q: invalid level", monster.Name)
-		}
-		if monster.XP < 0 {
-			return nil, fmt.Errorf("monster %q: invalid XP", monster.Name)
-		}
-		if monster.Initiative < 0 {
-			return nil, fmt.Errorf("monster %q: invalid initiative", monster.Name)
-		}
-		if monster.HP < 0 {
-			return nil, fmt.Errorf("monster %q: invalid HP", monster.Name)
-		}
-		if monster.MaxHP <= 0 {
-			if monster.HP > 0 {
-				monster.MaxHP = monster.HP
-			} else {
-				monster.MaxHP = 1
-			}
-		}
-		if monster.HP > monster.MaxHP {
-			return nil, fmt.Errorf("monster %q: current HP cannot exceed max HP", monster.Name)
-		}
-		if monster.Defense < 0 {
-			return nil, fmt.Errorf("monster %q: invalid defense", monster.Name)
-		}
-		if strings.TrimSpace(monster.ID) == "" {
-			monster.ID = uuid.NewString()
-		}
-		monster.Side = domain.SideNPC
-		monster.PlayerCharacterID = ""
-		monster.Active = false
-		monster.Defeated = false
-		domain.NormalizeCombatantHP(&monster)
 
 		created, err := s.repo.UpsertMonsterTemplate(ctx, monster)
 		if err != nil {
@@ -261,41 +247,8 @@ func (s *Service) ExecuteCreateCampaign(ctx context.Context, cmd CreateCampaignC
 	if strings.TrimSpace(cmd.ID) == "" {
 		cmd.ID = uuid.NewString()
 	}
-	for i := range cmd.Players {
-		if strings.TrimSpace(cmd.Players[i].PlayerName) == "" {
-			return nil, fmt.Errorf("player name is required")
-		}
-		if strings.TrimSpace(cmd.Players[i].Character.Name) == "" {
-			return nil, fmt.Errorf("character name is required for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Level < 1 {
-			return nil, fmt.Errorf("invalid level for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.HP < 0 {
-			return nil, fmt.Errorf("invalid HP for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.MaxHP <= 0 {
-			if cmd.Players[i].Character.HP > 0 {
-				cmd.Players[i].Character.MaxHP = cmd.Players[i].Character.HP
-			} else {
-				cmd.Players[i].Character.MaxHP = 1
-			}
-		}
-		if cmd.Players[i].Character.HP > cmd.Players[i].Character.MaxHP {
-			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Initiative < 0 {
-			return nil, fmt.Errorf("invalid initiative for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Defense < 0 {
-			return nil, fmt.Errorf("invalid defense for player %q", cmd.Players[i].PlayerName)
-		}
-		if strings.TrimSpace(cmd.Players[i].Character.ID) == "" {
-			cmd.Players[i].Character.ID = uuid.NewString()
-		}
-		domain.NormalizeCombatantHP(&cmd.Players[i].Character)
-		cmd.Players[i].Character.Side = domain.SideParty
-		cmd.Players[i].Character.XP = 0
+	if err := prepareCampaignPlayers(cmd.Players); err != nil {
+		return nil, err
 	}
 	return s.repo.CreateCampaign(ctx, cmd.ID, cmd.Name, cmd.StartDate, cmd.Players)
 }
@@ -357,41 +310,8 @@ func (s *Service) ExecuteUpdateCampaign(ctx context.Context, cmd UpdateCampaignC
 	if len(cmd.Players) == 0 {
 		return nil, fmt.Errorf("add at least one player")
 	}
-	for i := range cmd.Players {
-		if strings.TrimSpace(cmd.Players[i].PlayerName) == "" {
-			return nil, fmt.Errorf("player name is required")
-		}
-		if strings.TrimSpace(cmd.Players[i].Character.Name) == "" {
-			return nil, fmt.Errorf("character name is required for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Level < 1 {
-			return nil, fmt.Errorf("invalid level for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.HP < 0 {
-			return nil, fmt.Errorf("invalid HP for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.MaxHP <= 0 {
-			if cmd.Players[i].Character.HP > 0 {
-				cmd.Players[i].Character.MaxHP = cmd.Players[i].Character.HP
-			} else {
-				cmd.Players[i].Character.MaxHP = 1
-			}
-		}
-		if cmd.Players[i].Character.HP > cmd.Players[i].Character.MaxHP {
-			return nil, fmt.Errorf("current HP cannot exceed max HP for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Initiative < 0 {
-			return nil, fmt.Errorf("invalid initiative for player %q", cmd.Players[i].PlayerName)
-		}
-		if cmd.Players[i].Character.Defense < 0 {
-			return nil, fmt.Errorf("invalid defense for player %q", cmd.Players[i].PlayerName)
-		}
-		if strings.TrimSpace(cmd.Players[i].Character.ID) == "" {
-			cmd.Players[i].Character.ID = uuid.NewString()
-		}
-		domain.NormalizeCombatantHP(&cmd.Players[i].Character)
-		cmd.Players[i].Character.Side = domain.SideParty
-		cmd.Players[i].Character.XP = 0
+	if err := prepareCampaignPlayers(cmd.Players); err != nil {
+		return nil, err
 	}
 	return s.repo.UpdateCampaign(ctx, cmd.CampaignID, cmd.Name, cmd.StartDate, cmd.Players)
 }
@@ -474,11 +394,8 @@ func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounte
 	if strings.TrimSpace(cmd.ID) == "" {
 		cmd.ID = uuid.NewString()
 	}
-	for i := range cmd.Combatants {
-		if strings.TrimSpace(cmd.Combatants[i].ID) == "" {
-			cmd.Combatants[i].ID = uuid.NewString()
-		}
-		domain.NormalizeCombatantHP(&cmd.Combatants[i])
+	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
+		return nil, err
 	}
 	enc := domain.NewEncounter(cmd.ID, cmd.Name, cmd.Combatants)
 	enc.CampaignID = activeCampaign.ID
@@ -509,11 +426,8 @@ func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounte
 	if len(cmd.Combatants) == 0 {
 		return nil, fmt.Errorf("cannot update encounter without combatants")
 	}
-	for i := range cmd.Combatants {
-		if strings.TrimSpace(cmd.Combatants[i].ID) == "" {
-			cmd.Combatants[i].ID = uuid.NewString()
-		}
-		domain.NormalizeCombatantHP(&cmd.Combatants[i])
+	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
+		return nil, err
 	}
 	enc, err := s.repo.UpdateEncounter(ctx, cmd.EncounterID, cmd.Name, cmd.Combatants)
 	if err != nil {
@@ -521,6 +435,146 @@ func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounte
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter updated (%s)", cmd.Name))
 	return enc, nil
+}
+
+func prepareMonsterTemplate(monster domain.Combatant) (domain.Combatant, error) {
+	monster.Name = strings.TrimSpace(monster.Name)
+	if monster.Name == "" {
+		return domain.Combatant{}, fmt.Errorf("monster name is required")
+	}
+	if monster.Level < 1 {
+		return domain.Combatant{}, fmt.Errorf("monster %q: invalid level", monster.Name)
+	}
+	if monster.XP < 0 {
+		return domain.Combatant{}, fmt.Errorf("monster %q: invalid XP", monster.Name)
+	}
+	if monster.Initiative < 0 {
+		return domain.Combatant{}, fmt.Errorf("monster %q: invalid initiative", monster.Name)
+	}
+	if monster.HP < 0 {
+		return domain.Combatant{}, fmt.Errorf("monster %q: invalid HP", monster.Name)
+	}
+	if monster.MaxHP <= 0 {
+		if monster.HP > 0 {
+			monster.MaxHP = monster.HP
+		} else {
+			monster.MaxHP = 1
+		}
+	}
+	if monster.HP > monster.MaxHP {
+		return domain.Combatant{}, fmt.Errorf("monster %q: current HP cannot exceed max HP", monster.Name)
+	}
+	if monster.Defense < 0 {
+		return domain.Combatant{}, fmt.Errorf("monster %q: invalid defense", monster.Name)
+	}
+	if strings.TrimSpace(monster.ID) == "" {
+		monster.ID = uuid.NewString()
+	}
+	monster.Side = domain.SideNPC
+	monster.PlayerCharacterID = ""
+	monster.Active = false
+	monster.Defeated = false
+	domain.NormalizeCombatantHP(&monster)
+	return monster, nil
+}
+
+func prepareCampaignPlayers(players []domain.NewCampaignPlayer) error {
+	for i := range players {
+		if err := prepareCampaignPlayer(&players[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func prepareCampaignPlayer(player *domain.NewCampaignPlayer) error {
+	if strings.TrimSpace(player.PlayerName) == "" {
+		return fmt.Errorf("player name is required")
+	}
+	if strings.TrimSpace(player.Character.Name) == "" {
+		return fmt.Errorf("character name is required for player %q", player.PlayerName)
+	}
+	if player.Character.Level < 1 {
+		return fmt.Errorf("invalid level for player %q", player.PlayerName)
+	}
+	if player.Character.HP < 0 {
+		return fmt.Errorf("invalid HP for player %q", player.PlayerName)
+	}
+	if player.Character.MaxHP <= 0 {
+		if player.Character.HP > 0 {
+			player.Character.MaxHP = player.Character.HP
+		} else {
+			player.Character.MaxHP = 1
+		}
+	}
+	if player.Character.HP > player.Character.MaxHP {
+		return fmt.Errorf("current HP cannot exceed max HP for player %q", player.PlayerName)
+	}
+	if player.Character.Initiative < 0 {
+		return fmt.Errorf("invalid initiative for player %q", player.PlayerName)
+	}
+	if player.Character.Defense < 0 {
+		return fmt.Errorf("invalid defense for player %q", player.PlayerName)
+	}
+	if strings.TrimSpace(player.Character.ID) == "" {
+		player.Character.ID = uuid.NewString()
+	}
+	domain.NormalizeCombatantHP(&player.Character)
+	player.Character.Side = domain.SideParty
+	player.Character.XP = 0
+	return nil
+}
+
+func prepareEncounterCombatants(combatants []domain.Combatant) error {
+	for i := range combatants {
+		if err := validateEncounterCombatant(i, combatants[i]); err != nil {
+			return err
+		}
+		if strings.TrimSpace(combatants[i].ID) == "" {
+			combatants[i].ID = uuid.NewString()
+		}
+		domain.NormalizeCombatantHP(&combatants[i])
+	}
+	return nil
+}
+
+func validateEncounterCombatant(index int, c domain.Combatant) error {
+	label := strings.TrimSpace(c.Name)
+	if label == "" {
+		label = strings.TrimSpace(c.ID)
+	}
+	if label == "" {
+		label = fmt.Sprintf("#%d", index+1)
+	}
+
+	if c.Side != "" && c.Side != domain.SideParty && c.Side != domain.SideNPC {
+		return fmt.Errorf("combatant %q: invalid side", label)
+	}
+	if c.Level < 0 {
+		return fmt.Errorf("combatant %q: invalid level", label)
+	}
+	if c.XP < 0 {
+		return fmt.Errorf("combatant %q: invalid XP", label)
+	}
+	if c.Initiative < 0 {
+		return fmt.Errorf("combatant %q: invalid initiative", label)
+	}
+	if c.HP < 0 {
+		return fmt.Errorf("combatant %q: invalid HP", label)
+	}
+	if c.MaxHP < 0 {
+		return fmt.Errorf("combatant %q: invalid max HP", label)
+	}
+	if c.MaxHP > 0 && c.HP > c.MaxHP {
+		return fmt.Errorf("combatant %q: current HP cannot exceed max HP", label)
+	}
+	if c.Defense < 0 {
+		return fmt.Errorf("combatant %q: invalid defense", label)
+	}
+	if c.HasNegativeResistance() {
+		return fmt.Errorf("combatant %q: invalid resistance", label)
+	}
+	return nil
 }
 
 func (s *Service) AdvanceTurn(ctx context.Context) (*domain.Encounter, error) {

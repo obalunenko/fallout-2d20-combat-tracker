@@ -28,6 +28,22 @@ const (
 	damageTypePoison
 )
 
+var damageTypeIDs = map[domain.DamageType]damageTypeID{
+	domain.DamagePhysical:  damageTypePhysical,
+	domain.DamageEnergy:    damageTypeEnergy,
+	domain.DamageRadiation: damageTypeRadiation,
+	domain.DamagePoison:    damageTypePoison,
+}
+
+var bodyLocationIDs = map[domain.BodyLocation]bodyLocationID{
+	domain.BodyHead:     bodyLocationHead,
+	domain.BodyTorso:    bodyLocationTorso,
+	domain.BodyLeftArm:  bodyLocationLeftArm,
+	domain.BodyRightArm: bodyLocationRightArm,
+	domain.BodyLeftLeg:  bodyLocationLeftLeg,
+	domain.BodyRightLeg: bodyLocationRightLeg,
+}
+
 type resistanceGlobalStat struct {
 	damageTypeID damageTypeID
 	resistance   int64
@@ -111,13 +127,21 @@ func upsertNormalizedStats(
 	upsertGlobalResistance func(resistanceGlobalStat) error,
 	upsertLocationResistance func(resistanceByLocationStat) error,
 ) error {
-	for _, stat := range globalResistanceStats(c) {
+	globalStats, err := globalResistanceStats(c)
+	if err != nil {
+		return fmt.Errorf("build global resistance stats: %w", err)
+	}
+	for _, stat := range globalStats {
 		if err := upsertGlobalResistance(stat); err != nil {
 			return fmt.Errorf("upsert global resistance: %w", err)
 		}
 	}
 
-	for _, stat := range resistanceStatsByLocation(c) {
+	locationStats, err := resistanceStatsByLocation(c)
+	if err != nil {
+		return fmt.Errorf("build location resistance stats: %w", err)
+	}
+	for _, stat := range locationStats {
 		if err := upsertLocationResistance(stat); err != nil {
 			return fmt.Errorf("upsert location resistance: %w", err)
 		}
@@ -126,63 +150,50 @@ func upsertNormalizedStats(
 	return nil
 }
 
-func globalResistanceStats(c domain.Combatant) []resistanceGlobalStat {
-	return []resistanceGlobalStat{
-		{damageTypePhysical, int64(c.ResistPhysical), boolToInt64(c.ImmunePhysical)},
-		{damageTypeEnergy, int64(c.ResistEnergy), boolToInt64(c.ImmuneEnergy)},
-		{damageTypeRadiation, int64(c.ResistRadiation), boolToInt64(c.ImmuneRadiation)},
-		{damageTypePoison, int64(c.ResistPoison), boolToInt64(c.ImmunePoison)},
+func globalResistanceStats(c domain.Combatant) ([]resistanceGlobalStat, error) {
+	profile := c.ResistanceProfile()
+	stats := make([]resistanceGlobalStat, 0, len(domain.DamageTypes()))
+	for _, damageType := range domain.DamageTypes() {
+		damageTypeID, ok := damageTypeIDs[damageType]
+		if !ok {
+			return nil, fmt.Errorf("unknown damage type id: %q", damageType)
+		}
+		resistance, immune, err := profile.GlobalResistance(damageType)
+		if err != nil {
+			return nil, err
+		}
+		stats = append(stats, resistanceGlobalStat{
+			damageTypeID: damageTypeID,
+			resistance:   int64(resistance),
+			immune:       boolToInt64(immune),
+		})
 	}
+	return stats, nil
 }
 
-func resistanceStatsByLocation(c domain.Combatant) []resistanceByLocationStat {
-	bodyLocationIDs := []bodyLocationID{
-		bodyLocationHead,
-		bodyLocationTorso,
-		bodyLocationLeftArm,
-		bodyLocationRightArm,
-		bodyLocationLeftLeg,
-		bodyLocationRightLeg,
-	}
-	resistanceByLocation := []struct {
-		damageTypeID damageTypeID
-		values       []int64
-	}{
-		{damageTypePhysical, []int64{
-			int64(c.ResistPhysicalHead),
-			int64(c.ResistPhysicalTorso),
-			int64(c.ResistPhysicalLeftArm),
-			int64(c.ResistPhysicalRightArm),
-			int64(c.ResistPhysicalLeftLeg),
-			int64(c.ResistPhysicalRightLeg),
-		}},
-		{damageTypeEnergy, []int64{
-			int64(c.ResistEnergyHead),
-			int64(c.ResistEnergyTorso),
-			int64(c.ResistEnergyLeftArm),
-			int64(c.ResistEnergyRightArm),
-			int64(c.ResistEnergyLeftLeg),
-			int64(c.ResistEnergyRightLeg),
-		}},
-		{damageTypeRadiation, []int64{
-			int64(c.ResistRadiationHead),
-			int64(c.ResistRadiationTorso),
-			int64(c.ResistRadiationLeftArm),
-			int64(c.ResistRadiationRightArm),
-			int64(c.ResistRadiationLeftLeg),
-			int64(c.ResistRadiationRightLeg),
-		}},
-	}
-
-	stats := make([]resistanceByLocationStat, 0, len(resistanceByLocation)*len(bodyLocationIDs))
-	for _, byDamageType := range resistanceByLocation {
-		for idx, bodyLocationID := range bodyLocationIDs {
+func resistanceStatsByLocation(c domain.Combatant) ([]resistanceByLocationStat, error) {
+	profile := c.ResistanceProfile()
+	stats := make([]resistanceByLocationStat, 0, len(domain.LocationDamageTypes())*len(domain.BodyLocations()))
+	for _, damageType := range domain.LocationDamageTypes() {
+		damageTypeID, ok := damageTypeIDs[damageType]
+		if !ok {
+			return nil, fmt.Errorf("unknown damage type id: %q", damageType)
+		}
+		for _, bodyLocation := range domain.BodyLocations() {
+			bodyLocationID, ok := bodyLocationIDs[bodyLocation]
+			if !ok {
+				return nil, fmt.Errorf("unknown body location id: %q", bodyLocation)
+			}
+			resistance, err := profile.LocationResistance(damageType, bodyLocation)
+			if err != nil {
+				return nil, err
+			}
 			stats = append(stats, resistanceByLocationStat{
-				damageTypeID:   byDamageType.damageTypeID,
+				damageTypeID:   damageTypeID,
 				bodyLocationID: bodyLocationID,
-				resistance:     byDamageType.values[idx],
+				resistance:     int64(resistance),
 			})
 		}
 	}
-	return stats
+	return stats, nil
 }
