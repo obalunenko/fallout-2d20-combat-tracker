@@ -20,9 +20,9 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []resistanceGlobalStat{
-		{damageTypePhysical, 1, 1},
-		{damageTypeEnergy, 2, 0},
-		{damageTypeRadiation, 3, 1},
+		{damageTypePhysical, 0, 1},
+		{damageTypeEnergy, 0, 0},
+		{damageTypeRadiation, 0, 1},
 		{damageTypePoison, 4, 0},
 	}, actual)
 }

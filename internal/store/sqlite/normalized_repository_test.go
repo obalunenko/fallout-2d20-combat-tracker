@@ -101,6 +101,6 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 
 	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_global WHERE player_character_id = ?`, characterID))
 	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_by_location WHERE player_character_id = ?`, characterID))
-	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 2`, characterID))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT resistance FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 2`, characterID))
 	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT immune FROM player_character_resistance_global WHERE player_character_id = ? AND damage_type_id = 3`, characterID))
 }

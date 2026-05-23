@@ -228,19 +228,14 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, locat
 	}
 
 	target := &e.Combatants[combatantIdx]
-	profile := target.ResistanceProfile()
-	resistance, immune, err := profile.GlobalResistance(damageType)
-	if err != nil {
-		return 0, err
-	}
-	locationResistance, err := profile.LocationResistance(damageType, location)
+	resistance, immune, err := target.damageResistance(damageType, location)
 	if err != nil {
 		return 0, err
 	}
 
 	effective := 0
 	if !immune {
-		effective = max(amount-resistance-locationResistance, 0)
+		effective = max(amount-resistance, 0)
 	}
 
 	target.HP -= effective

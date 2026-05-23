@@ -34,14 +34,14 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 				ID: "p1", Name: "Roland", Side: domain.SideParty,
 				Level: 7, XP: 0, Initiative: 11, HP: 22, MaxHP: 22, Defense: 2,
 				ResistPhysicalHead: 2, ResistPhysicalTorso: 2, ResistPhysicalLeftArm: 2, ResistPhysicalRightArm: 2, ResistPhysicalLeftLeg: 2, ResistPhysicalRightLeg: 2,
-				ResistPhysical: 3, ResistEnergy: 2, ResistRadiation: 1, ResistPoison: 0,
+				ResistPoison: 0,
 				ImmunePoison: true, Active: false, Defeated: false,
 			},
 			{
 				ID: "n1", Name: "Radscorpion", Side: domain.SideNPC,
 				Level: 5, XP: 80, Initiative: 9, HP: 18, MaxHP: 18, Defense: 1,
 				ResistPhysicalHead: 1, ResistPhysicalTorso: 1, ResistPhysicalLeftArm: 1, ResistPhysicalRightArm: 1, ResistPhysicalLeftLeg: 1, ResistPhysicalRightLeg: 1,
-				ResistPhysical: 2, ResistEnergy: 1, ResistRadiation: 4, ResistPoison: 3,
+				ResistPoison:   3,
 				ImmunePhysical: true, Active: true, Defeated: false,
 			},
 		},
@@ -217,18 +217,18 @@ func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
 		{
 			PlayerName: "Player 1",
 			Character: domain.Combatant{
-				ID:           "repo-char-1",
-				Name:         "Scout",
-				Side:         domain.SideParty,
-				Level:        3,
-				Initiative:   12,
-				HP:           4,
-				MaxHP:        8,
-				Defense:      5,
-				TorsoOnly:    true,
-				ResistEnergy: 2,
-				ImmunePoison: true,
-				ResistPoison: 1,
+				ID:                "repo-char-1",
+				Name:              "Scout",
+				Side:              domain.SideParty,
+				Level:             3,
+				Initiative:        12,
+				HP:                4,
+				MaxHP:             8,
+				Defense:           5,
+				TorsoOnly:         true,
+				ResistEnergyTorso: 2,
+				ImmunePoison:      true,
+				ResistPoison:      1,
 			},
 		},
 	})
@@ -246,11 +246,11 @@ func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
 	assert.Equal(t, 8, actual.Combatants[0].MaxHP)
 	assert.Equal(t, 5, actual.Combatants[0].Defense)
 	assert.True(t, actual.Combatants[0].TorsoOnly)
-	assert.Equal(t, 2, actual.Combatants[0].ResistEnergy)
+	assert.Equal(t, 2, actual.Combatants[0].ResistEnergyTorso)
 	assert.Equal(t, 1, actual.Combatants[0].ResistPoison)
 	assert.True(t, actual.Combatants[0].ImmunePoison)
 	assert.False(t, actual.Combatants[0].Defeated)
-	assert.Equal(t, 4, actual.Combatants[1].ResistPhysical)
+	assert.Equal(t, 0, actual.Combatants[1].ResistPhysical)
 	assert.Equal(t, 6, actual.Combatants[1].ResistEnergyRightArm)
 	assert.Equal(t, 7, actual.Combatants[1].ResistRadiationLeftLeg)
 	assert.Equal(t, 8, actual.Combatants[1].ResistRadiationRightLeg)

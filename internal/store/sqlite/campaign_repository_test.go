@@ -184,9 +184,9 @@ func TestEncounterStoreListCampaignPlayersReadsNormalizedResistances(t *testing.
 	require.Len(t, players, 1)
 
 	character := players[0].Character
-	assert.Equal(t, 2, character.ResistPhysical)
-	assert.Equal(t, 3, character.ResistEnergy)
-	assert.Equal(t, 4, character.ResistRadiation)
+	assert.Equal(t, 0, character.ResistPhysical)
+	assert.Equal(t, 0, character.ResistEnergy)
+	assert.Equal(t, 0, character.ResistRadiation)
 	assert.Equal(t, 5, character.ResistPoison)
 	assert.Equal(t, 6, character.ResistPhysicalTorso)
 	assert.Equal(t, 7, character.ResistEnergyLeftArm)

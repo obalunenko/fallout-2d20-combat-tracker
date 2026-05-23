@@ -117,7 +117,7 @@ func TestApplyDamageReducesHPByResistance(t *testing.T) {
 	assert.False(t, e.Combatants[0].Defeated)
 }
 
-func TestApplyDamageStacksGlobalAndLocationResistance(t *testing.T) {
+func TestApplyDamageUsesGlobalOrLocationResistance(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -128,25 +128,39 @@ func TestApplyDamageStacksGlobalAndLocationResistance(t *testing.T) {
 		want       int
 	}{
 		{
-			name:       "physical",
+			name:       "physical uses location in body-location mode",
 			damageType: DamagePhysical,
 			location:   BodyTorso,
 			combatant:  Combatant{ResistPhysical: 3, ResistPhysicalTorso: 2},
-			want:       5,
+			want:       8,
 		},
 		{
-			name:       "energy",
+			name:       "energy uses location in body-location mode",
 			damageType: DamageEnergy,
 			location:   BodyLeftArm,
 			combatant:  Combatant{ResistEnergy: 2, ResistEnergyLeftArm: 4},
-			want:       4,
+			want:       6,
 		},
 		{
-			name:       "radiation",
+			name:       "radiation uses location in body-location mode",
 			damageType: DamageRadiation,
 			location:   BodyRightLeg,
 			combatant:  Combatant{ResistRadiation: 1, ResistRadiationRightLeg: 5},
-			want:       4,
+			want:       5,
+		},
+		{
+			name:       "torso-only physical uses torso location and ignores global",
+			damageType: DamagePhysical,
+			location:   BodyTorso,
+			combatant:  Combatant{TorsoOnly: true, ResistPhysical: 3, ResistPhysicalTorso: 2},
+			want:       8,
+		},
+		{
+			name:       "torso-only energy uses torso location",
+			damageType: DamageEnergy,
+			location:   BodyTorso,
+			combatant:  Combatant{TorsoOnly: true, ResistEnergyTorso: 4},
+			want:       6,
 		},
 		{
 			name:       "poison ignores location resistance",

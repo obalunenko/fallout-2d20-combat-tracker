@@ -36,9 +36,9 @@ func TestEncounterStoreListMonsterTemplatesReadsNormalizedResistances(t *testing
 	require.Len(t, monsters, 1)
 
 	assert.Equal(t, "Sentry Bot", monsters[0].Name)
-	assert.Equal(t, 2, monsters[0].ResistPhysical)
-	assert.Equal(t, 3, monsters[0].ResistEnergy)
-	assert.Equal(t, 4, monsters[0].ResistRadiation)
+	assert.Equal(t, 0, monsters[0].ResistPhysical)
+	assert.Equal(t, 0, monsters[0].ResistEnergy)
+	assert.Equal(t, 0, monsters[0].ResistRadiation)
 	assert.Equal(t, 5, monsters[0].ResistPoison)
 	assert.Equal(t, 6, monsters[0].ResistPhysicalTorso)
 	assert.Equal(t, 7, monsters[0].ResistEnergyLeftArm)

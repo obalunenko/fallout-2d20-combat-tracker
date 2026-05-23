@@ -79,13 +79,36 @@ func (c Combatant) ResistanceProfile() ResistanceProfile {
 	return c.resistanceProfile(true)
 }
 
+func (c Combatant) damageResistance(damageType DamageType, location BodyLocation) (int, bool, error) {
+	profile := c.ResistanceProfile()
+	poisonResistance, immune, err := profile.GlobalResistance(damageType)
+	if err != nil {
+		return 0, false, err
+	}
+	if damageType == DamagePoison {
+		return poisonResistance, immune, nil
+	}
+	if !isKnownBodyLocation(location) {
+		return 0, false, fmt.Errorf("unknown body location: %q", location)
+	}
+	if c.TorsoOnly {
+		torsoResistance, err := profile.LocationResistance(damageType, BodyTorso)
+		if err != nil {
+			return 0, false, err
+		}
+		return torsoResistance, immune, nil
+	}
+	locationResistance, err := profile.LocationResistance(damageType, location)
+	if err != nil {
+		return 0, false, err
+	}
+	return locationResistance, immune, nil
+}
+
 func (c Combatant) HasNegativeResistance() bool {
 	profile := c.resistanceProfile(false)
-	for _, damageType := range DamageTypes() {
-		resistance := profile.Global[damageType]
-		if resistance.Value < 0 {
-			return true
-		}
+	if profile.Global[DamagePoison].Value < 0 {
+		return true
 	}
 	for _, damageType := range LocationDamageTypes() {
 		for _, location := range BodyLocations() {
@@ -100,9 +123,9 @@ func (c Combatant) HasNegativeResistance() bool {
 func (c Combatant) resistanceProfile(normalize bool) ResistanceProfile {
 	return ResistanceProfile{
 		Global: map[DamageType]Resistance{
-			DamagePhysical:  {Value: resistanceValue(c.ResistPhysical, normalize), Immune: c.ImmunePhysical},
-			DamageEnergy:    {Value: resistanceValue(c.ResistEnergy, normalize), Immune: c.ImmuneEnergy},
-			DamageRadiation: {Value: resistanceValue(c.ResistRadiation, normalize), Immune: c.ImmuneRadiation},
+			DamagePhysical:  {Immune: c.ImmunePhysical},
+			DamageEnergy:    {Immune: c.ImmuneEnergy},
+			DamageRadiation: {Immune: c.ImmuneRadiation},
 			DamagePoison:    {Value: resistanceValue(c.ResistPoison, normalize), Immune: c.ImmunePoison},
 		},
 		ByLocation: map[DamageType]map[BodyLocation]int{
@@ -146,9 +169,12 @@ func (c *Combatant) SetResistanceProfile(profile ResistanceProfile) {
 		return
 	}
 
-	c.ResistPhysical, c.ImmunePhysical = profile.globalValue(DamagePhysical)
-	c.ResistEnergy, c.ImmuneEnergy = profile.globalValue(DamageEnergy)
-	c.ResistRadiation, c.ImmuneRadiation = profile.globalValue(DamageRadiation)
+	_, c.ImmunePhysical = profile.globalValue(DamagePhysical)
+	_, c.ImmuneEnergy = profile.globalValue(DamageEnergy)
+	_, c.ImmuneRadiation = profile.globalValue(DamageRadiation)
+	c.ResistPhysical = 0
+	c.ResistEnergy = 0
+	c.ResistRadiation = 0
 	c.ResistPoison, c.ImmunePoison = profile.globalValue(DamagePoison)
 
 	c.ResistPhysicalHead = profile.locationValue(DamagePhysical, BodyHead)

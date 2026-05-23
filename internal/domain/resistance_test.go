@@ -44,7 +44,7 @@ func TestResistanceProfileReadsCombatantFields(t *testing.T) {
 
 	resistance, immune, err := profile.GlobalResistance(DamageEnergy)
 	require.NoError(t, err)
-	assert.Equal(t, 3, resistance)
+	assert.Equal(t, 0, resistance)
 	assert.True(t, immune)
 
 	resistance, immune, err = profile.GlobalResistance(DamagePoison)
@@ -87,7 +87,7 @@ func TestResistanceProfileNormalizesNegativeValues(t *testing.T) {
 func TestCombatantHasNegativeResistance(t *testing.T) {
 	t.Parallel()
 
-	assert.False(t, Combatant{ResistPhysical: 1, ResistEnergyTorso: 2}.HasNegativeResistance())
+	assert.False(t, Combatant{ResistPhysical: -1, ResistEnergyTorso: 2}.HasNegativeResistance())
 	assert.True(t, Combatant{ResistPoison: -1}.HasNegativeResistance())
 	assert.True(t, Combatant{ResistRadiationRightLeg: -1}.HasNegativeResistance())
 }
@@ -117,11 +117,11 @@ func TestSetResistanceProfileWritesCombatantFields(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, 2, combatant.ResistPhysical)
+	assert.Equal(t, 0, combatant.ResistPhysical)
 	assert.True(t, combatant.ImmunePhysical)
-	assert.Equal(t, 3, combatant.ResistEnergy)
+	assert.Equal(t, 0, combatant.ResistEnergy)
 	assert.False(t, combatant.ImmuneEnergy)
-	assert.Equal(t, 4, combatant.ResistRadiation)
+	assert.Equal(t, 0, combatant.ResistRadiation)
 	assert.True(t, combatant.ImmuneRadiation)
 	assert.Equal(t, 5, combatant.ResistPoison)
 	assert.False(t, combatant.ImmunePoison)

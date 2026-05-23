@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS combatant_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (combatant_id, damage_type_id),
+    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
@@ -161,6 +162,7 @@ CREATE TABLE IF NOT EXISTS player_character_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (player_character_id, damage_type_id),
+    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
@@ -215,6 +217,7 @@ CREATE TABLE IF NOT EXISTS monster_template_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (monster_template_id, damage_type_id),
+    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (monster_template_id) REFERENCES monster_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );

@@ -122,3 +122,42 @@ func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'trigger' AND name LIKE 'trg_sync_%'`))
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('combatant_defense_by_location', 'player_character_defense_by_location')`))
 }
+
+func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "global-resistance-schema",
+		Name: "Global Resistance Schema",
+		Combatants: []domain.Combatant{{
+			ID:                  "global-resistance-combatant",
+			Name:                "Raider",
+			Side:                domain.SideNPC,
+			Initiative:          8,
+			HP:                  6,
+			MaxHP:               6,
+			ResistPhysicalTorso: 2,
+			ResistPoison:        3,
+		}},
+	}))
+	monster, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
+		Name:                "Schema Sentry",
+		Level:               1,
+		Initiative:          5,
+		HP:                  4,
+		MaxHP:               4,
+		ResistPhysicalTorso: 2,
+		ResistPoison:        3,
+	})
+	require.NoError(t, err)
+
+	_, err = store.db.Exec(`UPDATE combatant_resistance_global SET resistance = 1 WHERE combatant_id = ? AND damage_type_id = 1`, "global-resistance-combatant")
+	require.Error(t, err)
+	_, err = store.db.Exec(`UPDATE player_character_resistance_global SET resistance = 1 WHERE player_character_id = ? AND damage_type_id = 2`, "repo-char-1")
+	require.Error(t, err)
+	_, err = store.db.Exec(`UPDATE monster_template_resistance_global SET resistance = 1 WHERE monster_template_id = ? AND damage_type_id = 3`, monster.ID)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(`UPDATE combatant_resistance_global SET resistance = 4 WHERE combatant_id = ? AND damage_type_id = 4`, "global-resistance-combatant")
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT resistance FROM combatant_resistance_global WHERE combatant_id = ? AND damage_type_id = 4`, "global-resistance-combatant"))
+}
