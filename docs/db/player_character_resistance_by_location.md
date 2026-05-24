@@ -36,7 +36,7 @@ ON sprl.stat_profile_id = pc.stat_profile_id
 
 | Name                                                                          | Columns | Comment | Type  |
 | ----------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [player_characters](player_characters.md)                                     | 10      |         | table |
+| [player_characters](player_characters.md)                                     | 9       |         | table |
 | [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) | 6       |         | table |
 
 ## Triggers

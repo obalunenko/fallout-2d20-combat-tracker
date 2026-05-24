@@ -67,6 +67,7 @@ make tools-verify
 - Resistance rows are shared through:
   - `stat_profile_resistance_global`
   - `stat_profile_resistance_by_location`
+- Deliberate cached/snapshot fields are documented in `docs/db-normalization.md`.
 - Legacy wide stat/resistance columns were removed by migrations.
 - `internal/store/sqlite/sqlc/schema.sql` is generated from a clean database with all migrations applied.
 - DB documentation is generated from the same clean migrated state via `tbls`.

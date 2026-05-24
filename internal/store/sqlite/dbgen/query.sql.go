@@ -395,7 +395,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, stat_profile_id, name, active, availability_status, created_at, updated_at
+  id, player_id, stat_profile_id, name, active, availability_status, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -404,7 +404,6 @@ VALUES (
   ?4,
   ?5,
   ?6,
-  ?7,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -413,7 +412,6 @@ VALUES (
 type InsertPlayerCharacterParams struct {
 	ID                 string
 	PlayerID           string
-	CampaignID         string
 	StatProfileID      string
 	Name               string
 	Active             int64
@@ -424,7 +422,6 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 	_, err := q.db.ExecContext(ctx, insertPlayerCharacter,
 		arg.ID,
 		arg.PlayerID,
-		arg.CampaignID,
 		arg.StatProfileID,
 		arg.Name,
 		arg.Active,
@@ -448,7 +445,7 @@ SELECT
 FROM player_characters pc
 JOIN stat_profiles sp ON sp.id = pc.stat_profile_id
 JOIN players p ON p.id = pc.player_id
-WHERE pc.campaign_id = ?1 AND pc.active = 1
+WHERE p.campaign_id = ?1 AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC
 `
 
@@ -506,10 +503,11 @@ SELECT
   bl.code AS body_location,
   sprl.resistance
 FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
 JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
-WHERE pc.campaign_id = ?1
+WHERE p.campaign_id = ?1
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC
 `
@@ -556,9 +554,10 @@ SELECT
   sprg.resistance,
   sprg.immune
 FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
 JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
-WHERE pc.campaign_id = ?1
+WHERE p.campaign_id = ?1
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC
 `
@@ -798,25 +797,26 @@ const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
 SELECT
   c.id,
   c.player_character_id,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
   c.side,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
   c.active,
   CAST(CASE
-    WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
+    WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
     ELSE c.defeated
   END AS INTEGER) AS defeated
 FROM combatants c
 JOIN stat_profiles csp ON csp.id = c.stat_profile_id
 JOIN encounters e ON e.id = c.encounter_id
 LEFT JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+LEFT JOIN players pcp ON pcp.id = pc.player_id
+  AND pcp.campaign_id = e.campaign_id
 LEFT JOIN stat_profiles pcsp ON pcsp.id = pc.stat_profile_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC
@@ -1054,11 +1054,12 @@ func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campai
 }
 
 const listInactiveCurrentPlayerCharacterIDsByCampaignID = `-- name: ListInactiveCurrentPlayerCharacterIDsByCampaignID :many
-SELECT id
-FROM player_characters
-WHERE campaign_id = ?1
-  AND active = 1
-  AND availability_status = 'inactive'
+SELECT pc.id
+FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
+WHERE p.campaign_id = ?1
+  AND pc.active = 1
+  AND pc.availability_status = 'inactive'
 `
 
 func (q *Queries) ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx context.Context, campaignID string) ([]string, error) {
@@ -1094,7 +1095,8 @@ SELECT
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+JOIN players p ON p.id = pc.player_id
+  AND p.campaign_id = e.campaign_id
 JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
@@ -1150,7 +1152,8 @@ SELECT
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+JOIN players p ON p.id = pc.player_id
+  AND p.campaign_id = e.campaign_id
 JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = ?1
@@ -1440,28 +1443,21 @@ func (q *Queries) TouchCampaign(ctx context.Context, campaignID string) error {
 
 const updateActivePlayerCharacterByID = `-- name: UpdateActivePlayerCharacterByID :exec
 UPDATE player_characters
-SET campaign_id = ?1,
-    name = ?2,
+SET name = ?1,
     active = 1,
-    availability_status = ?3,
+    availability_status = ?2,
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-WHERE id = ?4
+WHERE id = ?3
 `
 
 type UpdateActivePlayerCharacterByIDParams struct {
-	CampaignID         string
 	Name               string
 	AvailabilityStatus string
 	CharacterID        string
 }
 
 func (q *Queries) UpdateActivePlayerCharacterByID(ctx context.Context, arg UpdateActivePlayerCharacterByIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterByID,
-		arg.CampaignID,
-		arg.Name,
-		arg.AvailabilityStatus,
-		arg.CharacterID,
-	)
+	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterByID, arg.Name, arg.AvailabilityStatus, arg.CharacterID)
 	return err
 }
 
@@ -1552,6 +1548,8 @@ type UpsertEncounterParams struct {
 	EnemyTotalXp    int64
 }
 
+// Difficulty and party/enemy metrics are an intentional encounter-summary cache.
+// The repository recomputes them from the in-memory encounter before every save.
 func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams) error {
 	_, err := q.db.ExecContext(ctx, upsertEncounter,
 		arg.ID,

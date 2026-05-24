@@ -444,7 +444,12 @@ func TestEncounterStoreListPartyMembersUsesActiveCampaignCharactersFirst(t *test
 
 func TestEncounterStoreListPartyMembersReturnsEmptyWhenNoActiveCharacters(t *testing.T) {
 	store := newTestStore(t)
-	_, err := store.db.Exec(`UPDATE player_characters SET active = 0 WHERE campaign_id = ?`, "repo-test-campaign")
+	_, err := store.db.Exec(
+		`UPDATE player_characters
+         SET active = 0
+         WHERE player_id IN (SELECT id FROM players WHERE campaign_id = ?)`,
+		"repo-test-campaign",
+	)
 	require.NoError(t, err)
 
 	require.NoError(t, store.Save(t.Context(), &domain.Encounter{

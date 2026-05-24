@@ -62,6 +62,7 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 		},
 	})
 	require.NoError(t, err)
+	assert.NotContains(t, queryColumnNames(t, store.db, "player_characters"), "campaign_id")
 	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
 		ID:   "fk-encounter",
 		Name: "Cascade Check",
@@ -161,13 +162,6 @@ func TestOpenAndMigrateEnforcesCampaignRelationships(t *testing.T) {
 	require.Error(t, err)
 
 	_, err = store.db.Exec(
-		`UPDATE player_characters SET campaign_id = ? WHERE id = ?`,
-		"other-campaign",
-		"repo-char-1",
-	)
-	require.Error(t, err)
-
-	_, err = store.db.Exec(
 		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
          VALUES (?, ?, ?, ?, ?)`,
 		"campaign-rel-encounter",
@@ -192,6 +186,129 @@ func TestOpenAndMigrateEnforcesCampaignRelationships(t *testing.T) {
 		0,
 	)
 	require.Error(t, err)
+}
+
+func TestOpenAndMigrateEnforcesCoreRelationshipInvariants(t *testing.T) {
+	store := newTestStore(t)
+
+	_, err := store.CreateCampaign(t.Context(), "relationship-other-campaign", "Relationship Other Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Other Player",
+			Character: domain.Combatant{
+				ID:         "relationship-other-char",
+				Name:       "Other Character",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 5,
+				HP:         5,
+				MaxHP:      5,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	playerID := queryString(t, store.db, `SELECT id FROM players WHERE campaign_id = ? AND name = ?`, "repo-test-campaign", "Player 1")
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "relationship-encounter",
+		Name: "Relationship Invariants",
+		Combatants: []domain.Combatant{{
+			ID:         "relationship-combatant",
+			Name:       "Raider",
+			Side:       domain.SideNPC,
+			Initiative: 8,
+			HP:         6,
+			MaxHP:      6,
+		}},
+	}))
+	_, err = store.db.Exec(`INSERT INTO stat_profiles (id) VALUES (?)`, statProfileID(statProfileCombatantKind, "relationship-linked-combatant"))
+	require.NoError(t, err)
+	_, err = store.db.Exec(
+		`INSERT INTO combatants (
+            id, encounter_id, stat_profile_id, player_character_id, name, side, position
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"relationship-linked-combatant",
+		"relationship-encounter",
+		statProfileID(statProfileCombatantKind, "relationship-linked-combatant"),
+		"repo-char-1",
+		"Linked Character",
+		string(domain.SideParty),
+		1,
+	)
+	require.NoError(t, err)
+
+	t.Run("player character requires existing player", func(t *testing.T) {
+		_, err := store.db.Exec(`INSERT INTO stat_profiles (id) VALUES (?)`, statProfileID(statProfilePlayerCharacterKind, "relationship-missing-player-char"))
+		require.NoError(t, err)
+
+		_, err = store.db.Exec(
+			`INSERT INTO player_characters (
+                id, player_id, stat_profile_id, name, active, availability_status
+             ) VALUES (?, ?, ?, ?, ?, ?)`,
+			"relationship-missing-player-char",
+			"missing-player",
+			statProfileID(statProfilePlayerCharacterKind, "relationship-missing-player-char"),
+			"Missing Player Character",
+			0,
+			playerCharacterAvailabilityActive,
+		)
+		require.Error(t, err)
+	})
+
+	t.Run("player campaign update keeps linked combatants consistent", func(t *testing.T) {
+		_, err := store.db.Exec(`UPDATE players SET campaign_id = ? WHERE id = ?`, "relationship-other-campaign", playerID)
+		require.Error(t, err)
+	})
+
+	t.Run("player has at most one active character", func(t *testing.T) {
+		_, err := store.db.Exec(`INSERT INTO stat_profiles (id) VALUES (?)`, statProfileID(statProfilePlayerCharacterKind, "relationship-second-active-char"))
+		require.NoError(t, err)
+
+		_, err = store.db.Exec(
+			`INSERT INTO player_characters (
+                id, player_id, stat_profile_id, name, active, availability_status
+             ) VALUES (?, ?, ?, ?, ?, ?)`,
+			"relationship-second-active-char",
+			playerID,
+			statProfileID(statProfilePlayerCharacterKind, "relationship-second-active-char"),
+			"Second Active Character",
+			1,
+			playerCharacterAvailabilityActive,
+		)
+		require.Error(t, err)
+	})
+
+	t.Run("combatant requires existing encounter", func(t *testing.T) {
+		_, err := store.db.Exec(`INSERT INTO stat_profiles (id) VALUES (?)`, statProfileID(statProfileCombatantKind, "relationship-missing-encounter-combatant"))
+		require.NoError(t, err)
+
+		_, err = store.db.Exec(
+			`INSERT INTO combatants (
+                id, encounter_id, stat_profile_id, name, side, position
+             ) VALUES (?, ?, ?, ?, ?, ?)`,
+			"relationship-missing-encounter-combatant",
+			"missing-encounter",
+			statProfileID(statProfileCombatantKind, "relationship-missing-encounter-combatant"),
+			"Missing Encounter Combatant",
+			string(domain.SideNPC),
+			0,
+		)
+		require.Error(t, err)
+	})
+
+	t.Run("combatant requires existing stat profile", func(t *testing.T) {
+		_, err := store.db.Exec(
+			`INSERT INTO combatants (
+                id, encounter_id, stat_profile_id, name, side, position
+             ) VALUES (?, ?, ?, ?, ?, ?)`,
+			"relationship-missing-profile-combatant",
+			"relationship-encounter",
+			statProfileID(statProfileCombatantKind, "relationship-missing-profile-combatant"),
+			"Missing Profile Combatant",
+			string(domain.SideNPC),
+			1,
+		)
+		require.Error(t, err)
+	})
 }
 
 func TestOpenAndMigrateEnforcesSingleActiveCombatantPerEncounter(t *testing.T) {
@@ -222,6 +339,43 @@ func TestOpenAndMigrateEnforcesSingleActiveCombatantPerEncounter(t *testing.T) {
 
 	_, err := store.db.Exec(`UPDATE combatants SET active = 1 WHERE id = ?`, "inactive-1")
 	require.Error(t, err)
+}
+
+func TestOpenAndMigrateCascadesOwnedStatProfiles(t *testing.T) {
+	store := newTestStore(t)
+
+	playerCharacterProfileID := statProfileID(statProfilePlayerCharacterKind, "repo-char-1")
+	_, err := store.db.Exec(`DELETE FROM stat_profiles WHERE id = ?`, playerCharacterProfileID)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(`DELETE FROM player_characters WHERE id = ?`, "repo-char-1")
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, playerCharacterProfileID))
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, playerCharacterProfileID))
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, playerCharacterProfileID))
+
+	monster, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
+		ID:                  "cascade-monster",
+		Name:                "Cascade Monster",
+		Level:               1,
+		XP:                  20,
+		Initiative:          4,
+		HP:                  5,
+		MaxHP:               5,
+		ResistPoison:        2,
+		ResistPhysicalTorso: 1,
+	})
+	require.NoError(t, err)
+
+	monsterProfileID := statProfileID(statProfileMonsterTemplateKind, monster.ID)
+	_, err = store.db.Exec(`DELETE FROM stat_profiles WHERE id = ?`, monsterProfileID)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(`DELETE FROM monster_templates WHERE id = ?`, monster.ID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, monsterProfileID))
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, monsterProfileID))
+	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, monsterProfileID))
 }
 
 func TestMigration35BackfillsNullEncounterCampaigns(t *testing.T) {

@@ -216,11 +216,10 @@ func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: value != ""}
 }
 
-func insertPlayerCharacterParams(characterID, playerID, campaignID string, c domain.Combatant, inactive bool) dbgen.InsertPlayerCharacterParams {
+func insertPlayerCharacterParams(characterID, playerID string, c domain.Combatant, inactive bool) dbgen.InsertPlayerCharacterParams {
 	return dbgen.InsertPlayerCharacterParams{
 		ID:                 characterID,
 		PlayerID:           playerID,
-		CampaignID:         campaignID,
 		StatProfileID:      statProfileID(statProfilePlayerCharacterKind, characterID),
 		Name:               strings.TrimSpace(c.Name),
 		Active:             1,
@@ -228,10 +227,9 @@ func insertPlayerCharacterParams(characterID, playerID, campaignID string, c dom
 	}
 }
 
-func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.Combatant, inactive bool) dbgen.UpdateActivePlayerCharacterByIDParams {
+func updateActivePlayerCharacterParams(characterID string, c domain.Combatant, inactive bool) dbgen.UpdateActivePlayerCharacterByIDParams {
 	return dbgen.UpdateActivePlayerCharacterByIDParams{
 		CharacterID:        characterID,
-		CampaignID:         campaignID,
 		Name:               strings.TrimSpace(c.Name),
 		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
 	}

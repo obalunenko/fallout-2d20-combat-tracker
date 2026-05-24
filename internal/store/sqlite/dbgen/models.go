@@ -137,7 +137,6 @@ type Player struct {
 type PlayerCharacter struct {
 	ID                 string
 	PlayerID           string
-	CampaignID         string
 	StatProfileID      string
 	Name               string
 	Active             int64

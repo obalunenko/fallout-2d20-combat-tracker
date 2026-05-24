@@ -143,12 +143,11 @@ VALUES (
 
 -- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, stat_profile_id, name, active, availability_status, created_at, updated_at
+  id, player_id, stat_profile_id, name, active, availability_status, created_at, updated_at
 )
 VALUES (
   sqlc.arg(id),
   sqlc.arg(player_id),
-  sqlc.arg(campaign_id),
   sqlc.arg(stat_profile_id),
   sqlc.arg(name),
   sqlc.arg(active),
@@ -179,19 +178,19 @@ WHERE player_id = sqlc.arg(player_id)
 
 -- name: UpdateActivePlayerCharacterByID :exec
 UPDATE player_characters
-SET campaign_id = sqlc.arg(campaign_id),
-    name = sqlc.arg(name),
+SET name = sqlc.arg(name),
     active = 1,
     availability_status = sqlc.arg(availability_status),
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(character_id);
 
 -- name: ListInactiveCurrentPlayerCharacterIDsByCampaignID :many
-SELECT id
-FROM player_characters
-WHERE campaign_id = sqlc.arg(campaign_id)
-  AND active = 1
-  AND availability_status = 'inactive';
+SELECT pc.id
+FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
+WHERE p.campaign_id = sqlc.arg(campaign_id)
+  AND pc.active = 1
+  AND pc.availability_status = 'inactive';
 
 -- name: ListActivePartyCharactersByCampaignID :many
 SELECT
@@ -208,7 +207,7 @@ SELECT
 FROM player_characters pc
 JOIN stat_profiles sp ON sp.id = pc.stat_profile_id
 JOIN players p ON p.id = pc.player_id
-WHERE pc.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
+WHERE p.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC;
 
 -- name: ListActivePlayerCharacterResistanceGlobalByCampaignID :many
@@ -218,9 +217,10 @@ SELECT
   sprg.resistance,
   sprg.immune
 FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
 JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
-WHERE pc.campaign_id = sqlc.arg(campaign_id)
+WHERE p.campaign_id = sqlc.arg(campaign_id)
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC;
 
@@ -231,10 +231,11 @@ SELECT
   bl.code AS body_location,
   sprl.resistance
 FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
 JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
-WHERE pc.campaign_id = sqlc.arg(campaign_id)
+WHERE p.campaign_id = sqlc.arg(campaign_id)
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC;
 
@@ -262,25 +263,26 @@ WHERE deleted_at IS NULL
 SELECT
   c.id,
   c.player_character_id,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
   c.side,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
+  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
   c.active,
   CAST(CASE
-    WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
+    WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
     ELSE c.defeated
   END AS INTEGER) AS defeated
 FROM combatants c
 JOIN stat_profiles csp ON csp.id = c.stat_profile_id
 JOIN encounters e ON e.id = c.encounter_id
 LEFT JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+LEFT JOIN players pcp ON pcp.id = pc.player_id
+  AND pcp.campaign_id = e.campaign_id
 LEFT JOIN stat_profiles pcsp ON pcsp.id = pc.stat_profile_id
 WHERE c.encounter_id = sqlc.arg(encounter_id)
 ORDER BY c.position ASC;
@@ -320,7 +322,8 @@ SELECT
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+JOIN players p ON p.id = pc.player_id
+  AND p.campaign_id = e.campaign_id
 JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = sqlc.arg(encounter_id)
@@ -337,7 +340,8 @@ SELECT
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
-  AND pc.campaign_id = e.campaign_id
+JOIN players p ON p.id = pc.player_id
+  AND p.campaign_id = e.campaign_id
 JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
@@ -356,6 +360,8 @@ FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
 ORDER BY updated_at DESC, id DESC;
 
+-- Difficulty and party/enemy metrics are an intentional encounter-summary cache.
+-- The repository recomputes them from the in-memory encounter before every save.
 -- name: UpsertEncounter :exec
 INSERT INTO encounters (
   id, campaign_id, name, round, turn_index, party_ap, gm_threat,
