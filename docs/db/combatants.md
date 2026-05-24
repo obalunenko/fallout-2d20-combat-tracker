@@ -66,6 +66,7 @@ CREATE TABLE "combatants" (
 
 | Name                                      | Definition                                                                                                                                                     |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| idx_combatants_one_active_per_encounter   | CREATE UNIQUE INDEX idx_combatants_one_active_per_encounter<br />ON combatants(encounter_id)<br />WHERE active = 1                                             |
 | idx_combatants_encounter_player_character | CREATE UNIQUE INDEX idx_combatants_encounter_player_character<br />ON combatants(encounter_id, player_character_id)<br />WHERE player_character_id IS NOT NULL |
 | idx_combatants_encounter_position         | CREATE INDEX idx_combatants_encounter_position<br />ON combatants(encounter_id, position)                                                                      |
 | sqlite_autoindex_combatants_1             | PRIMARY KEY (id)                                                                                                                                               |

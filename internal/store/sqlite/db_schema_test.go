@@ -114,6 +114,9 @@ func TestOpenAndMigrateCreatesCriticalEncounterIndexes(t *testing.T) {
 		{name: "updated_at", desc: true},
 		{name: "id", desc: true},
 	})
+	assertIndexColumns(t, store.db, "idx_combatants_one_active_per_encounter", []indexColumn{
+		{name: "encounter_id"},
+	})
 }
 
 func TestOpenAndMigrateEnforcesCampaignRelationships(t *testing.T) {
@@ -191,6 +194,36 @@ func TestOpenAndMigrateEnforcesCampaignRelationships(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestOpenAndMigrateEnforcesSingleActiveCombatantPerEncounter(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "single-active",
+		Name: "Single Active",
+		Combatants: []domain.Combatant{
+			{
+				ID:         "active-1",
+				Name:       "Active One",
+				Side:       domain.SideNPC,
+				Initiative: 10,
+				HP:         6,
+				MaxHP:      6,
+				Active:     true,
+			},
+			{
+				ID:         "inactive-1",
+				Name:       "Inactive One",
+				Side:       domain.SideNPC,
+				Initiative: 9,
+				HP:         5,
+				MaxHP:      5,
+			},
+		},
+	}))
+
+	_, err := store.db.Exec(`UPDATE combatants SET active = 1 WHERE id = ?`, "inactive-1")
+	require.Error(t, err)
+}
+
 func TestMigration35BackfillsNullEncounterCampaigns(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "migration-35-legacy.db")
 	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
@@ -226,6 +259,44 @@ func TestMigration35BackfillsNullEncounterCampaigns(t *testing.T) {
 		1,
 		0,
 	)
+	require.Error(t, err)
+}
+
+func TestMigration36BackfillsDuplicateActiveCombatants(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "migration-36-legacy.db")
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	goose.SetBaseFS(migrationsFS)
+	require.NoError(t, goose.SetDialect("sqlite3"))
+	require.NoError(t, goose.UpTo(db, "migrations", 35))
+
+	_, err = db.Exec(`
+		INSERT INTO campaigns (id, name, start_date)
+		VALUES ('active-campaign', 'Active Campaign', '2026-01-01 00:00:00');
+		INSERT OR IGNORE INTO app_state (id, active_campaign_id)
+		VALUES (1, 'active-campaign');
+		INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+		VALUES ('legacy-active-encounter', 'active-campaign', 'Legacy Active', 1, 1);
+		INSERT INTO stat_profiles (id)
+		VALUES ('combatant:active-a'), ('combatant:active-b');
+		INSERT INTO combatants (
+			id, encounter_id, stat_profile_id, name, side, active, defeated, position
+		) VALUES
+			('active-a', 'legacy-active-encounter', 'combatant:active-a', 'Active A', 'npc', 1, 0, 0),
+			('active-b', 'legacy-active-encounter', 'combatant:active-b', 'Active B', 'npc', 1, 0, 1);
+	`)
+	require.NoError(t, err)
+
+	require.NoError(t, goose.Up(db, "migrations"))
+
+	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ? AND active = 1`, "legacy-active-encounter"))
+	assert.Equal(t, "active-b", queryString(t, db, `SELECT id FROM combatants WHERE encounter_id = ? AND active = 1`, "legacy-active-encounter"))
+
+	_, err = db.Exec(`UPDATE combatants SET active = 1 WHERE id = ?`, "active-a")
 	require.Error(t, err)
 }
 

@@ -270,6 +270,10 @@ ON monster_templates(deleted_at, name COLLATE NOCASE);
 CREATE INDEX idx_encounters_campaign_deleted_updated
 ON encounters(campaign_id, deleted_at, updated_at DESC, id DESC);
 
+CREATE UNIQUE INDEX idx_combatants_one_active_per_encounter
+ON combatants(encounter_id)
+WHERE active = 1;
+
 CREATE TRIGGER trg_stat_profile_resistance_global_poison_only_insert
 BEFORE INSERT ON stat_profile_resistance_global
 WHEN NEW.resistance <> 0

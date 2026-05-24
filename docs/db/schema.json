@@ -1056,6 +1056,14 @@
       ],
       "indexes": [
         {
+          "name": "idx_combatants_one_active_per_encounter",
+          "def": "CREATE UNIQUE INDEX idx_combatants_one_active_per_encounter\nON combatants(encounter_id)\nWHERE active = 1",
+          "table": "combatants",
+          "columns": [
+            "encounter_id"
+          ]
+        },
+        {
           "name": "idx_combatants_encounter_player_character",
           "def": "CREATE UNIQUE INDEX idx_combatants_encounter_player_character\nON combatants(encounter_id, player_character_id)\nWHERE player_character_id IS NOT NULL",
           "table": "combatants",
