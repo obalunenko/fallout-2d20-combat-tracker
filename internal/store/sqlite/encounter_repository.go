@@ -73,6 +73,10 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 	if err := normalizeEncounterForSave(enc); err != nil {
 		return err
 	}
+	ids, err := normalizedDictionaryIDs(ctx, qtx)
+	if err != nil {
+		return err
+	}
 
 	activeParty, err := activePartyCombatantsByID(ctx, qtx, enc.CampaignID)
 	if err != nil {
@@ -111,7 +115,7 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 				if err = updateActivePlayerCharacter(ctx, qtx, playerCharacterID, enc.CampaignID, c, false); err != nil {
 					return fmt.Errorf("update campaign character %s: %w", playerCharacterID, err)
 				}
-				if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, playerCharacterID, c); err != nil {
+				if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, playerCharacterID, c); err != nil {
 					return fmt.Errorf("sync campaign character stats %s: %w", playerCharacterID, err)
 				}
 			}
@@ -154,7 +158,7 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 		if err = qtx.InsertCombatant(ctx, insertCombatantParams(enc.ID, i, c)); err != nil {
 			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
 		}
-		if err = upsertCombatantNormalizedStats(ctx, qtx, c.ID, c); err != nil {
+		if err = upsertCombatantNormalizedStats(ctx, qtx, ids, c.ID, c); err != nil {
 			return fmt.Errorf("sync normalized combatant stats %s: %w", c.ID, err)
 		}
 	}

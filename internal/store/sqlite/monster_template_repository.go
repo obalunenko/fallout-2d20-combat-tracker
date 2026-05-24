@@ -65,12 +65,16 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 	if err = qtx.UpsertMonsterTemplate(ctx, upsertMonsterTemplateParams(monster)); err != nil {
 		return domain.Combatant{}, fmt.Errorf("upsert monster template: %w", err)
 	}
+	ids, err := normalizedDictionaryIDs(ctx, qtx)
+	if err != nil {
+		return domain.Combatant{}, err
+	}
 	templateID, err := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
 	if err != nil {
 		return domain.Combatant{}, fmt.Errorf("get monster template id: %w", err)
 	}
 	monster.ID = templateID
-	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, templateID, monster); err != nil {
+	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster); err != nil {
 		return domain.Combatant{}, fmt.Errorf("sync normalized monster template stats: %w", err)
 	}
 	if err = tx.Commit(); err != nil {

@@ -9,7 +9,8 @@ import (
 )
 
 func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
-	actual, err := globalResistanceStats(domain.Combatant{
+	ids := testDictionaryIDs()
+	actual, err := globalResistanceStats(ids, domain.Combatant{
 		ResistPhysical:  1,
 		ResistEnergy:    2,
 		ResistRadiation: 3,
@@ -20,15 +21,16 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []resistanceGlobalStat{
-		{damageTypePhysical, 0, 1},
-		{damageTypeEnergy, 0, 0},
-		{damageTypeRadiation, 0, 1},
-		{damageTypePoison, 4, 0},
+		{ids.damageTypes[domain.DamagePhysical], 0, 1},
+		{ids.damageTypes[domain.DamageEnergy], 0, 0},
+		{ids.damageTypes[domain.DamageRadiation], 0, 1},
+		{ids.damageTypes[domain.DamagePoison], 4, 0},
 	}, actual)
 }
 
 func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing.T) {
-	actual, err := resistanceStatsByLocation(domain.Combatant{
+	ids := testDictionaryIDs()
+	actual, err := resistanceStatsByLocation(ids, domain.Combatant{
 		ResistPhysicalHead:      1,
 		ResistPhysicalTorso:     2,
 		ResistPhysicalLeftArm:   3,
@@ -52,34 +54,52 @@ func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing
 
 	require.Len(t, actual, 18)
 	assert.Equal(t, []resistanceByLocationStat{
-		{damageTypePhysical, bodyLocationHead, 1},
-		{damageTypePhysical, bodyLocationTorso, 2},
-		{damageTypePhysical, bodyLocationLeftArm, 3},
-		{damageTypePhysical, bodyLocationRightArm, 4},
-		{damageTypePhysical, bodyLocationLeftLeg, 5},
-		{damageTypePhysical, bodyLocationRightLeg, 6},
-		{damageTypeEnergy, bodyLocationHead, 7},
-		{damageTypeEnergy, bodyLocationTorso, 8},
-		{damageTypeEnergy, bodyLocationLeftArm, 9},
-		{damageTypeEnergy, bodyLocationRightArm, 10},
-		{damageTypeEnergy, bodyLocationLeftLeg, 11},
-		{damageTypeEnergy, bodyLocationRightLeg, 12},
-		{damageTypeRadiation, bodyLocationHead, 13},
-		{damageTypeRadiation, bodyLocationTorso, 14},
-		{damageTypeRadiation, bodyLocationLeftArm, 15},
-		{damageTypeRadiation, bodyLocationRightArm, 16},
-		{damageTypeRadiation, bodyLocationLeftLeg, 17},
-		{damageTypeRadiation, bodyLocationRightLeg, 18},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyHead], 1},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyTorso], 2},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyLeftArm], 3},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyRightArm], 4},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyLeftLeg], 5},
+		{ids.damageTypes[domain.DamagePhysical], ids.bodyLocations[domain.BodyRightLeg], 6},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyHead], 7},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyTorso], 8},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyLeftArm], 9},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyRightArm], 10},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyLeftLeg], 11},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyRightLeg], 12},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyHead], 13},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyTorso], 14},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyLeftArm], 15},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightArm], 16},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyLeftLeg], 17},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightLeg], 18},
 	}, actual)
 }
 
-func TestNormalizedStatsLookupIDsCoverDomainTypes(t *testing.T) {
-	for _, damageType := range domain.DamageTypes() {
-		_, ok := damageTypeIDs[damageType]
-		assert.True(t, ok, "missing damage type id for %q", damageType)
-	}
-	for _, bodyLocation := range domain.BodyLocations() {
-		_, ok := bodyLocationIDs[bodyLocation]
-		assert.True(t, ok, "missing body location id for %q", bodyLocation)
+func TestNormalizedStatsFailsWhenDictionaryIDsAreMissing(t *testing.T) {
+	ids := testDictionaryIDs()
+	delete(ids.damageTypes, domain.DamagePoison)
+
+	_, err := globalResistanceStats(ids, domain.Combatant{})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown damage type id")
+}
+
+func testDictionaryIDs() dictionaryIDs {
+	return dictionaryIDs{
+		damageTypes: map[domain.DamageType]int64{
+			domain.DamagePhysical:  101,
+			domain.DamageEnergy:    102,
+			domain.DamageRadiation: 103,
+			domain.DamagePoison:    104,
+		},
+		bodyLocations: map[domain.BodyLocation]int64{
+			domain.BodyHead:     201,
+			domain.BodyTorso:    202,
+			domain.BodyLeftArm:  203,
+			domain.BodyRightArm: 204,
+			domain.BodyLeftLeg:  205,
+			domain.BodyRightLeg: 206,
+		},
 	}
 }

@@ -61,10 +61,33 @@ CREATE TABLE IF NOT EXISTS combatant_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (combatant_id, damage_type_id),
-    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
+
+CREATE TRIGGER IF NOT EXISTS trg_combatant_resistance_global_poison_only_insert
+BEFORE INSERT ON combatant_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_combatant_resistance_global_poison_only_update
+BEFORE UPDATE OF damage_type_id, resistance ON combatant_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
 
 CREATE TABLE IF NOT EXISTS combatant_resistance_by_location (
     combatant_id TEXT NOT NULL,
@@ -164,10 +187,33 @@ CREATE TABLE IF NOT EXISTS player_character_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (player_character_id, damage_type_id),
-    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
+
+CREATE TRIGGER IF NOT EXISTS trg_player_character_resistance_global_poison_only_insert
+BEFORE INSERT ON player_character_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_player_character_resistance_global_poison_only_update
+BEFORE UPDATE OF damage_type_id, resistance ON player_character_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
 
 CREATE TABLE IF NOT EXISTS player_character_resistance_by_location (
     player_character_id TEXT NOT NULL,
@@ -220,10 +266,33 @@ CREATE TABLE IF NOT EXISTS monster_template_resistance_global (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     PRIMARY KEY (monster_template_id, damage_type_id),
-    CHECK (damage_type_id = 4 OR resistance = 0),
     FOREIGN KEY (monster_template_id) REFERENCES monster_templates(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
+
+CREATE TRIGGER IF NOT EXISTS trg_monster_template_resistance_global_poison_only_insert
+BEFORE INSERT ON monster_template_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_monster_template_resistance_global_poison_only_update
+BEFORE UPDATE OF damage_type_id, resistance ON monster_template_resistance_global
+WHEN NEW.resistance <> 0
+  AND NOT EXISTS (
+    SELECT 1 FROM damage_types dt
+    WHERE dt.id = NEW.damage_type_id
+      AND dt.code = 'poison'
+  )
+BEGIN
+    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+END;
 
 CREATE TABLE IF NOT EXISTS monster_template_resistance_by_location (
     monster_template_id TEXT NOT NULL,

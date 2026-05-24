@@ -137,6 +137,10 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 	}); err != nil {
 		return nil, fmt.Errorf("insert campaign: %w", err)
 	}
+	ids, err := normalizedDictionaryIDs(ctx, qtx)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, p := range players {
 		if err = normalizeCampaignPlayerForSave(&p); err != nil {
@@ -158,7 +162,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
 			return nil, fmt.Errorf("insert player character: %w", err)
 		}
-		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character); err != nil {
 			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
 		}
 	}
@@ -220,6 +224,10 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 	if err != nil {
 		return nil, fmt.Errorf("list campaign players: %w", err)
 	}
+	ids, err := normalizedDictionaryIDs(ctx, qtx)
+	if err != nil {
+		return nil, err
+	}
 
 	updatedPlayers := make(map[string]struct{}, len(players))
 	for _, p := range players {
@@ -274,7 +282,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			}
 		}
 
-		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, charID, p.Character); err != nil {
+		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character); err != nil {
 			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
 		}
 	}

@@ -152,16 +152,57 @@ func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = store.db.Exec(`UPDATE combatant_resistance_global SET resistance = 1 WHERE combatant_id = ? AND damage_type_id = 1`, "global-resistance-combatant")
+	_, err = store.db.Exec(
+		`UPDATE combatant_resistance_global
+         SET resistance = 1
+         WHERE combatant_id = ?
+           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		"global-resistance-combatant",
+		string(domain.DamagePhysical),
+	)
 	require.Error(t, err)
-	_, err = store.db.Exec(`UPDATE player_character_resistance_global SET resistance = 1 WHERE player_character_id = ? AND damage_type_id = 2`, "repo-char-1")
+	_, err = store.db.Exec(
+		`UPDATE player_character_resistance_global
+         SET resistance = 1
+         WHERE player_character_id = ?
+           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		"repo-char-1",
+		string(domain.DamageEnergy),
+	)
 	require.Error(t, err)
-	_, err = store.db.Exec(`UPDATE monster_template_resistance_global SET resistance = 1 WHERE monster_template_id = ? AND damage_type_id = 3`, monster.ID)
+	_, err = store.db.Exec(
+		`UPDATE monster_template_resistance_global
+         SET resistance = 1
+         WHERE monster_template_id = ?
+           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		monster.ID,
+		string(domain.DamageRadiation),
+	)
 	require.Error(t, err)
 
-	_, err = store.db.Exec(`UPDATE combatant_resistance_global SET resistance = 4 WHERE combatant_id = ? AND damage_type_id = 4`, "global-resistance-combatant")
+	_, err = store.db.Exec(
+		`UPDATE combatant_resistance_global
+         SET resistance = 4
+         WHERE combatant_id = ?
+           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		"global-resistance-combatant",
+		string(domain.DamagePoison),
+	)
 	require.NoError(t, err)
-	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT resistance FROM combatant_resistance_global WHERE combatant_id = ? AND damage_type_id = 4`, "global-resistance-combatant"))
+	assert.Equal(
+		t,
+		int64(4),
+		queryInt64(
+			t,
+			store.db,
+			`SELECT resistance
+             FROM combatant_resistance_global
+             WHERE combatant_id = ?
+               AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+			"global-resistance-combatant",
+			string(domain.DamagePoison),
+		),
+	)
 }
 
 func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {

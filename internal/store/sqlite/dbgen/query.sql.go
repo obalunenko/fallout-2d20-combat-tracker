@@ -630,6 +630,35 @@ func (q *Queries) ListActivePlayerCharacterResistanceGlobalByCampaignID(ctx cont
 	return items, nil
 }
 
+const listBodyLocations = `-- name: ListBodyLocations :many
+SELECT id, code
+FROM body_locations
+ORDER BY code ASC
+`
+
+func (q *Queries) ListBodyLocations(ctx context.Context) ([]BodyLocation, error) {
+	rows, err := q.db.QueryContext(ctx, listBodyLocations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BodyLocation
+	for rows.Next() {
+		var i BodyLocation
+		if err := rows.Scan(&i.ID, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaigns = `-- name: ListCampaigns :many
 SELECT id, name, start_date, updated_at
 FROM campaigns
@@ -863,6 +892,35 @@ func (q *Queries) ListCombatantsByEncounterID(ctx context.Context, encounterID s
 			&i.Active,
 			&i.Defeated,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDamageTypes = `-- name: ListDamageTypes :many
+SELECT id, code
+FROM damage_types
+ORDER BY code ASC
+`
+
+func (q *Queries) ListDamageTypes(ctx context.Context) ([]DamageType, error) {
+	rows, err := q.db.QueryContext(ctx, listDamageTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DamageType
+	for rows.Next() {
+		var i DamageType
+		if err := rows.Scan(&i.ID, &i.Code); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

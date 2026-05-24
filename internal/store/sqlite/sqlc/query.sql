@@ -2,6 +2,16 @@
 INSERT OR IGNORE INTO app_state (id, active_campaign_id)
 VALUES (1, NULL);
 
+-- name: ListDamageTypes :many
+SELECT id, code
+FROM damage_types
+ORDER BY code ASC;
+
+-- name: ListBodyLocations :many
+SELECT id, code
+FROM body_locations
+ORDER BY code ASC;
+
 -- name: GetActiveCampaign :one
 SELECT c.id, c.name, c.start_date, c.updated_at
 FROM campaigns c
