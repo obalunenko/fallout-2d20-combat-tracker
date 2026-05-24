@@ -1,0 +1,15 @@
+name: fallout-tracker
+desc: Fallout 2d20 Combat Tracker SQLite schema.
+dsn: ${TBLS_DSN}
+docPath: ${TBLS_DOC_PATH}
+
+format:
+  adjust: true
+  sort: false
+  hideColumnsWithoutValues: true
+
+er:
+  skip: true
+
+exclude:
+  - goose_db_version

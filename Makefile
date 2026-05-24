@@ -3,6 +3,7 @@ CMD_PATH := ./cmd/fallout-tracker
 BIN_DIR := ./bin
 MIGRATIONS_DIR := ./internal/store/sqlite/migrations
 SCHEMA_SQL := ./internal/store/sqlite/sqlc/schema.sql
+DB_DOC_DIR ?= ./docs/db
 DB ?= ./tracker.db
 TOOLS_BIN_DIR := ./tools/bin
 GOOSE_TOOL_DIR := ./tools/goose
@@ -11,6 +12,9 @@ GOOSE_BIN := $(TOOLS_BIN_DIR)/goose
 SQLC_TOOL_DIR := ./tools/sqlc
 SQLC_TOOL_MODFILE := go.tool.mod
 SQLC_BIN := $(TOOLS_BIN_DIR)/sqlc
+TBLS_TOOL_DIR := ./tools/tbls
+TBLS_TOOL_MODFILE := go.tool.mod
+TBLS_BIN := $(TOOLS_BIN_DIR)/tbls
 GOLANGCI_TOOL_DIR := ./tools/golangci-lint
 GOLANGCI_TOOL_MODFILE := go.tool.mod
 GOLANGCI_BIN := $(TOOLS_BIN_DIR)/golangci-lint
@@ -18,7 +22,7 @@ GORELEASER_TOOL_DIR := ./tools/goreleaser
 GORELEASER_TOOL_MODFILE := go.tool.mod
 GORELEASER_BIN := $(TOOLS_BIN_DIR)/goreleaser
 
-.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install schema-generate sqlc-generate db-check goose-status goose-create vet lint lint-install goreleaser-install goreleaser-check goreleaser-local goreleaser-snapshot ci-check clean
+.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install tbls-install schema-generate sqlc-generate db-doc-generate db-check goose-status goose-create vet lint lint-install goreleaser-install goreleaser-check goreleaser-local goreleaser-snapshot ci-check clean
 
 help:
 	@echo "Targets:"
@@ -31,6 +35,7 @@ help:
 	@echo "  make tools-verify - Verify tool dependency integrity for all tool modules"
 	@echo "  make schema-generate - Rebuild sqlc/schema.sql from a clean migrated DB"
 	@echo "  make sqlc-generate - Generate typed DB code via sqlc"
+	@echo "  make db-doc-generate - Generate DB docs via tbls from a clean migrated DB"
 	@echo "  make db-check - Regenerate sqlc code and run tests"
 	@echo "  make vet    - Run go vet"
 	@echo "  make lint   - Run golangci-lint v2"
@@ -69,12 +74,14 @@ tidy:
 tools-list:
 	go list -modfile=$(GOOSE_TOOL_DIR)/$(GOOSE_TOOL_MODFILE) tool
 	go list -modfile=$(SQLC_TOOL_DIR)/$(SQLC_TOOL_MODFILE) tool
+	go list -modfile=$(TBLS_TOOL_DIR)/$(TBLS_TOOL_MODFILE) tool
 	go list -modfile=$(GOLANGCI_TOOL_DIR)/$(GOLANGCI_TOOL_MODFILE) tool
 	go list -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) tool
 
 tools-verify:
 	go mod verify -modfile=$(GOOSE_TOOL_DIR)/$(GOOSE_TOOL_MODFILE)
 	go mod verify -modfile=$(SQLC_TOOL_DIR)/$(SQLC_TOOL_MODFILE)
+	go mod verify -modfile=$(TBLS_TOOL_DIR)/$(TBLS_TOOL_MODFILE)
 	go mod verify -modfile=$(GOLANGCI_TOOL_DIR)/$(GOLANGCI_TOOL_MODFILE)
 	go mod verify -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE)
 
@@ -86,11 +93,24 @@ sqlc-install:
 	mkdir -p $(TOOLS_BIN_DIR)
 	GOBIN=$$(pwd)/$(TOOLS_BIN_DIR) go install -C $(SQLC_TOOL_DIR) -modfile=$(SQLC_TOOL_MODFILE) github.com/sqlc-dev/sqlc/cmd/sqlc
 
+tbls-install:
+	mkdir -p $(TOOLS_BIN_DIR)
+	GOBIN=$$(pwd)/$(TOOLS_BIN_DIR) go install -C $(TBLS_TOOL_DIR) -modfile=$(TBLS_TOOL_MODFILE) github.com/k1LoW/tbls
+
 schema-generate:
 	go run ./internal/store/sqlite/cmd/genschema -migrations $(MIGRATIONS_DIR) -out $(SCHEMA_SQL)
 
 sqlc-generate: schema-generate sqlc-install
 	$(SQLC_BIN) generate
+
+db-doc-generate: goose-install tbls-install
+	@tmp_dir=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp_dir"' EXIT; \
+	tmp_db="$$tmp_dir/schema.db"; \
+	echo "Creating clean SQLite database for docs: $$tmp_db"; \
+	$(GOOSE_BIN) -dir $(MIGRATIONS_DIR) sqlite3 "$$tmp_db" up; \
+	echo "Generating database documentation into $(DB_DOC_DIR)"; \
+	TBLS_DSN="sqlite://$$tmp_db" TBLS_DOC_PATH="$(DB_DOC_DIR)" $(TBLS_BIN) doc --rm-dist --config .tbls.yml
 
 db-check: sqlc-generate test
 
