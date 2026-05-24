@@ -74,7 +74,7 @@ func TestEncounterFromLatestRowMapsEncounterFields(t *testing.T) {
 
 	actual := encounterFromLatestRow(dbgen.GetLatestEncounterByCampaignIDRow{
 		ID:         "enc-1",
-		CampaignID: []byte("camp-1"),
+		CampaignID: "camp-1",
 		Name:       "Vault Ambush",
 		Round:      3,
 		TurnIndex:  1,
@@ -128,7 +128,7 @@ func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
 
 	actual := encounterSummaryFromRow(dbgen.ListEncounterSummariesByCampaignIDRow{
 		ID:              "enc-1",
-		CampaignID:      []byte("camp-1"),
+		CampaignID:      "camp-1",
 		Name:            "Vault Ambush",
 		Round:           7,
 		Combatants:      4,

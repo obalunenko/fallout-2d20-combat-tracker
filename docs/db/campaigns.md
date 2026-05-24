@@ -20,14 +20,14 @@ CREATE TABLE "campaigns" (
 
 ## Columns
 
-| Name       | Type     | Default                              | Nullable | Children                                                                                  |
-| ---------- | -------- | ------------------------------------ | -------- | ----------------------------------------------------------------------------------------- |
-| id         | TEXT     |                                      | true     | [players](players.md) [app_state](app_state.md) [player_characters](player_characters.md) |
-| name       | TEXT     |                                      | false    |                                                                                           |
-| start_date | DATETIME |                                      | false    |                                                                                           |
-| created_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                           |
-| updated_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                           |
-| deleted_at | DATETIME |                                      | true     |                                                                                           |
+| Name       | Type     | Default                              | Nullable | Children                                                                                                              |
+| ---------- | -------- | ------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| id         | TEXT     |                                      | true     | [players](players.md) [app_state](app_state.md) [player_characters](player_characters.md) [encounters](encounters.md) |
+| name       | TEXT     |                                      | false    |                                                                                                                       |
+| start_date | DATETIME |                                      | false    |                                                                                                                       |
+| created_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                                                       |
+| updated_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                                                       |
+| deleted_at | DATETIME |                                      | true     |                                                                                                                       |
 
 ## Constraints
 

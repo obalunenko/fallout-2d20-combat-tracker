@@ -8,7 +8,6 @@ Fallout 2d20 Combat Tracker SQLite schema.
 
 | Name                                                                                  | Columns | Comment | Type  |
 | ------------------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [encounters](encounters.md)                                                           | 18      |         | table |
 | [encounter_logs](encounter_logs.md)                                                   | 7       |         | table |
 | [campaigns](campaigns.md)                                                             | 6       |         | table |
 | [players](players.md)                                                                 | 6       |         | table |
@@ -27,6 +26,7 @@ Fallout 2d20 Combat Tracker SQLite schema.
 | [player_character_resistance_by_location](player_character_resistance_by_location.md) | 6       |         | view  |
 | [monster_template_resistance_global](monster_template_resistance_global.md)           | 6       |         | view  |
 | [monster_template_resistance_by_location](monster_template_resistance_by_location.md) | 6       |         | view  |
+| [encounters](encounters.md)                                                           | 18      |         | table |
 
 ---
 

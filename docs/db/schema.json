@@ -3,292 +3,6 @@
   "desc": "Fallout 2d20 Combat Tracker SQLite schema.",
   "tables": [
     {
-      "name": "encounters",
-      "type": "table",
-      "columns": [
-        {
-          "name": "id",
-          "type": "TEXT",
-          "nullable": true
-        },
-        {
-          "name": "campaign_id",
-          "type": "TEXT",
-          "nullable": true
-        },
-        {
-          "name": "name",
-          "type": "TEXT",
-          "nullable": false
-        },
-        {
-          "name": "round",
-          "type": "INTEGER",
-          "nullable": false
-        },
-        {
-          "name": "turn_index",
-          "type": "INTEGER",
-          "nullable": false
-        },
-        {
-          "name": "party_ap",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "gm_threat",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "difficulty_label",
-          "type": "TEXT",
-          "nullable": false,
-          "default": "'Unknown'"
-        },
-        {
-          "name": "difficulty_score",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_count",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_avg_level",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_xp_budget",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_count",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_avg_level",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_total_xp",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "created_at",
-          "type": "DATETIME",
-          "nullable": false,
-          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
-        },
-        {
-          "name": "updated_at",
-          "type": "DATETIME",
-          "nullable": false,
-          "default": "CURRENT_TIMESTAMP"
-        },
-        {
-          "name": "deleted_at",
-          "type": "DATETIME",
-          "nullable": true
-        }
-      ],
-      "indexes": [
-        {
-          "name": "idx_encounters_campaign_deleted_updated",
-          "def": "CREATE INDEX idx_encounters_campaign_deleted_updated\nON encounters(campaign_id, deleted_at, updated_at DESC, id DESC)",
-          "table": "encounters",
-          "columns": [
-            "campaign_id",
-            "deleted_at",
-            "updated_at",
-            "id"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_encounters_1",
-          "def": "PRIMARY KEY (id)",
-          "table": "encounters",
-          "columns": [
-            "id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "id",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "encounters",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_encounters_1",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "encounters",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(id) \u003c\u003e '')",
-          "table": "encounters",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (campaign_id IS NULL OR trim(campaign_id) \u003c\u003e '')",
-          "table": "encounters",
-          "columns": [
-            "id",
-            "campaign_id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(name) \u003c\u003e '')",
-          "table": "encounters",
-          "columns": [
-            "name"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (round \u003e= 1)",
-          "table": "encounters",
-          "columns": [
-            "round"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (turn_index \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "turn_index"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_ap \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_ap"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (gm_threat \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "gm_threat"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly'))",
-          "table": "encounters",
-          "columns": [
-            "difficulty_label"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (difficulty_score \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "difficulty_score"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_count \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_count"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_avg_level \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_avg_level"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_xp_budget \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_xp_budget"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_count \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_count"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_avg_level \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_avg_level"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_total_xp \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_total_xp"
-          ]
-        }
-      ],
-      "def": "CREATE TABLE \"encounters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NULL CHECK (campaign_id IS NULL OR trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    turn_index INTEGER NOT NULL CHECK (turn_index \u003e= 0),\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    difficulty_label TEXT NOT NULL DEFAULT 'Unknown' CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly')),\n    difficulty_score REAL NOT NULL DEFAULT 0 CHECK (difficulty_score \u003e= 0),\n    party_count INTEGER NOT NULL DEFAULT 0 CHECK (party_count \u003e= 0),\n    party_avg_level REAL NOT NULL DEFAULT 0 CHECK (party_avg_level \u003e= 0),\n    party_xp_budget INTEGER NOT NULL DEFAULT 0 CHECK (party_xp_budget \u003e= 0),\n    enemy_count INTEGER NOT NULL DEFAULT 0 CHECK (enemy_count \u003e= 0),\n    enemy_avg_level REAL NOT NULL DEFAULT 0 CHECK (enemy_avg_level \u003e= 0),\n    enemy_total_xp INTEGER NOT NULL DEFAULT 0 CHECK (enemy_total_xp \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    deleted_at DATETIME NULL\n)"
-    },
-    {
       "name": "encounter_logs",
       "type": "table",
       "columns": [
@@ -623,6 +337,12 @@
           "columns": [
             "name"
           ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_players_campaign_update_keeps_characters_consistent",
+          "def": "CREATE TRIGGER trg_players_campaign_update_keeps_characters_consistent\nBEFORE UPDATE OF campaign_id ON players\nWHEN EXISTS (\n    SELECT 1\n    FROM player_characters pc\n    WHERE pc.player_id = NEW.id\n      AND pc.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player campaign update would mismatch player characters');\nEND"
         }
       ],
       "def": "CREATE TABLE \"players\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
@@ -1500,6 +1220,14 @@
         {
           "name": "trg_combatants_delete_stat_profile",
           "def": "CREATE TRIGGER trg_combatants_delete_stat_profile\nAFTER DELETE ON combatants\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
+        },
+        {
+          "name": "trg_combatants_player_character_campaign_insert",
+          "def": "CREATE TRIGGER trg_combatants_player_character_campaign_insert\nBEFORE INSERT ON combatants\nWHEN NEW.player_character_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1\n    FROM encounters e\n    JOIN player_characters pc ON pc.id = NEW.player_character_id\n    WHERE e.id = NEW.encounter_id\n      AND pc.campaign_id = e.campaign_id\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'combatant player character must belong to encounter campaign');\nEND"
+        },
+        {
+          "name": "trg_combatants_player_character_campaign_update",
+          "def": "CREATE TRIGGER trg_combatants_player_character_campaign_update\nBEFORE UPDATE OF encounter_id, player_character_id ON combatants\nWHEN NEW.player_character_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1\n    FROM encounters e\n    JOIN player_characters pc ON pc.id = NEW.player_character_id\n    WHERE e.id = NEW.encounter_id\n      AND pc.campaign_id = e.campaign_id\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'combatant player character must belong to encounter campaign');\nEND"
         }
       ],
       "def": "CREATE TABLE \"combatants\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    player_character_id TEXT NULL,\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    side TEXT NOT NULL CHECK (side IN ('party', 'npc')),\n    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),\n    defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),\n    position INTEGER NOT NULL CHECK (position \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id),\n    FOREIGN KEY (player_character_id) REFERENCES player_characters(id)\n)"
@@ -1736,6 +1464,18 @@
         {
           "name": "trg_player_characters_require_level",
           "def": "CREATE TRIGGER trg_player_characters_require_level\nBEFORE INSERT ON player_characters\nWHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) \u003c 1\nBEGIN\n    SELECT RAISE(ABORT, 'player character level must be at least 1');\nEND"
+        },
+        {
+          "name": "trg_player_characters_campaign_matches_player_insert",
+          "def": "CREATE TRIGGER trg_player_characters_campaign_matches_player_insert\nBEFORE INSERT ON player_characters\nWHEN NOT EXISTS (\n    SELECT 1\n    FROM players p\n    WHERE p.id = NEW.player_id\n      AND p.campaign_id = NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player character campaign must match player campaign');\nEND"
+        },
+        {
+          "name": "trg_player_characters_campaign_matches_player_update",
+          "def": "CREATE TRIGGER trg_player_characters_campaign_matches_player_update\nBEFORE UPDATE OF player_id, campaign_id ON player_characters\nWHEN NOT EXISTS (\n    SELECT 1\n    FROM players p\n    WHERE p.id = NEW.player_id\n      AND p.campaign_id = NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player character campaign must match player campaign');\nEND"
+        },
+        {
+          "name": "trg_player_characters_campaign_update_keeps_combatants_consistent",
+          "def": "CREATE TRIGGER trg_player_characters_campaign_update_keeps_combatants_consistent\nBEFORE UPDATE OF campaign_id ON player_characters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN encounters e ON e.id = c.encounter_id\n    WHERE c.player_character_id = NEW.id\n      AND e.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player character campaign update would mismatch linked combatants');\nEND"
         }
       ],
       "def": "CREATE TABLE \"player_characters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    player_id TEXT NOT NULL CHECK (trim(player_id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n    availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
@@ -2230,6 +1970,311 @@
         "monster_templates",
         "stat_profile_resistance_by_location"
       ]
+    },
+    {
+      "name": "encounters",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "campaign_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "round",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "turn_index",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "party_ap",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "gm_threat",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "difficulty_label",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "'Unknown'"
+        },
+        {
+          "name": "difficulty_score",
+          "type": "REAL",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "party_count",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "party_avg_level",
+          "type": "REAL",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "party_xp_budget",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "enemy_count",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "enemy_avg_level",
+          "type": "REAL",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "enemy_total_xp",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_encounters_campaign_deleted_updated",
+          "def": "CREATE INDEX idx_encounters_campaign_deleted_updated\nON encounters(campaign_id, deleted_at, updated_at DESC, id DESC)",
+          "table": "encounters",
+          "columns": [
+            "campaign_id",
+            "deleted_at",
+            "updated_at",
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounters_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "encounters",
+          "referenced_table": "campaigns",
+          "columns": [
+            "campaign_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounters_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(campaign_id) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "id",
+            "campaign_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (round \u003e= 1)",
+          "table": "encounters",
+          "columns": [
+            "round"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (turn_index \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "turn_index"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (party_ap \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "party_ap"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (gm_threat \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "gm_threat"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly'))",
+          "table": "encounters",
+          "columns": [
+            "difficulty_label"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (difficulty_score \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "difficulty_score"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (party_count \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "party_count"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (party_avg_level \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "party_avg_level"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (party_xp_budget \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "party_xp_budget"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (enemy_count \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "enemy_count"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (enemy_avg_level \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "enemy_avg_level"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (enemy_total_xp \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "enemy_total_xp"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_encounters_campaign_update_keeps_combatants_consistent",
+          "def": "CREATE TRIGGER trg_encounters_campaign_update_keeps_combatants_consistent\nBEFORE UPDATE OF campaign_id ON encounters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN player_characters pc ON pc.id = c.player_character_id\n    WHERE c.encounter_id = NEW.id\n      AND pc.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'encounter campaign update would mismatch linked combatants');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"encounters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    turn_index INTEGER NOT NULL CHECK (turn_index \u003e= 0),\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    difficulty_label TEXT NOT NULL DEFAULT 'Unknown' CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly')),\n    difficulty_score REAL NOT NULL DEFAULT 0 CHECK (difficulty_score \u003e= 0),\n    party_count INTEGER NOT NULL DEFAULT 0 CHECK (party_count \u003e= 0),\n    party_avg_level REAL NOT NULL DEFAULT 0 CHECK (party_avg_level \u003e= 0),\n    party_xp_budget INTEGER NOT NULL DEFAULT 0 CHECK (party_xp_budget \u003e= 0),\n    enemy_count INTEGER NOT NULL DEFAULT 0 CHECK (enemy_count \u003e= 0),\n    enemy_avg_level REAL NOT NULL DEFAULT 0 CHECK (enemy_avg_level \u003e= 0),\n    enemy_total_xp INTEGER NOT NULL DEFAULT 0 CHECK (enemy_total_xp \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
     }
   ],
   "relations": [
@@ -2427,6 +2472,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "encounters",
+      "columns": [
+        "campaign_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "campaigns",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     }
   ],
   "driver": {

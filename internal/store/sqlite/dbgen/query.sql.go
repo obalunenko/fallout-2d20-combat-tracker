@@ -25,7 +25,7 @@ WHERE encounters.id = ?2 AND encounters.deleted_at IS NULL AND encounters.campai
 `
 
 type ActivateEncounterByCampaignParams struct {
-	CampaignID  interface{}
+	CampaignID  string
 	EncounterID string
 }
 
@@ -164,13 +164,13 @@ WHERE deleted_at IS NULL
 `
 
 type GetEncounterByIDByCampaignIDParams struct {
-	CampaignID  interface{}
+	CampaignID  string
 	EncounterID string
 }
 
 type GetEncounterByIDByCampaignIDRow struct {
 	ID              string
-	CampaignID      interface{}
+	CampaignID      string
 	Name            string
 	Round           int64
 	TurnIndex       int64
@@ -222,7 +222,7 @@ LIMIT 1
 
 type GetLatestEncounterByCampaignIDRow struct {
 	ID              string
-	CampaignID      interface{}
+	CampaignID      string
 	Name            string
 	Round           int64
 	TurnIndex       int64
@@ -238,7 +238,7 @@ type GetLatestEncounterByCampaignIDRow struct {
 	EnemyTotalXp    int64
 }
 
-func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID interface{}) (GetLatestEncounterByCampaignIDRow, error) {
+func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID string) (GetLatestEncounterByCampaignIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getLatestEncounterByCampaignID, campaignID)
 	var i GetLatestEncounterByCampaignIDRow
 	err := row.Scan(
@@ -911,7 +911,7 @@ WHERE deleted_at IS NULL AND campaign_id = ?1
 ORDER BY updated_at DESC, id DESC
 `
 
-func (q *Queries) ListEncounterIDsByCampaignID(ctx context.Context, campaignID interface{}) ([]string, error) {
+func (q *Queries) ListEncounterIDsByCampaignID(ctx context.Context, campaignID string) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, listEncounterIDsByCampaignID, campaignID)
 	if err != nil {
 		return nil, err
@@ -1000,7 +1000,7 @@ ORDER BY e.updated_at DESC, e.id DESC
 
 type ListEncounterSummariesByCampaignIDRow struct {
 	ID              string
-	CampaignID      interface{}
+	CampaignID      string
 	Name            string
 	Round           int64
 	Combatants      int64
@@ -1015,7 +1015,7 @@ type ListEncounterSummariesByCampaignIDRow struct {
 	UpdatedAt       time.Time
 }
 
-func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campaignID interface{}) ([]ListEncounterSummariesByCampaignIDRow, error) {
+func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campaignID string) ([]ListEncounterSummariesByCampaignIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, listEncounterSummariesByCampaignID, campaignID)
 	if err != nil {
 		return nil, err
@@ -1416,7 +1416,7 @@ WHERE encounters.id = ?1 AND encounters.deleted_at IS NULL AND encounters.campai
 
 type SoftDeleteEncounterByCampaignParams struct {
 	EncounterID string
-	CampaignID  interface{}
+	CampaignID  string
 }
 
 func (q *Queries) SoftDeleteEncounterByCampaign(ctx context.Context, arg SoftDeleteEncounterByCampaignParams) (int64, error) {
@@ -1536,7 +1536,7 @@ ON CONFLICT(id) DO UPDATE SET
 
 type UpsertEncounterParams struct {
 	ID              string
-	CampaignID      interface{}
+	CampaignID      string
 	Name            string
 	Round           int64
 	TurnIndex       int64

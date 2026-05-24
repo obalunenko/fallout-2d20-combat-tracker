@@ -131,7 +131,7 @@ func monsterTemplateFromRow(r dbgen.ListMonsterTemplatesRow) domain.Combatant {
 
 type encounterDBFields struct {
 	ID         string
-	CampaignID any
+	CampaignID string
 	Name       string
 	Round      int64
 	TurnIndex  int64
@@ -142,7 +142,7 @@ type encounterDBFields struct {
 func encounterFromFields(f encounterDBFields, combatants []domain.Combatant) *domain.Encounter {
 	return &domain.Encounter{
 		ID:         f.ID,
-		CampaignID: interfaceToString(f.CampaignID),
+		CampaignID: f.CampaignID,
 		Name:       f.Name,
 		Round:      int(f.Round),
 		TurnIndex:  int(f.TurnIndex),
@@ -181,7 +181,7 @@ func encounterFromByIDRow(r dbgen.GetEncounterByIDByCampaignIDRow, combatants []
 func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow) domain.EncounterSummary {
 	return domain.EncounterSummary{
 		ID:              r.ID,
-		CampaignID:      interfaceToString(r.CampaignID),
+		CampaignID:      r.CampaignID,
 		Name:            r.Name,
 		Round:           int(r.Round),
 		Combatants:      int(r.Combatants),

@@ -116,6 +116,119 @@ func TestOpenAndMigrateCreatesCriticalEncounterIndexes(t *testing.T) {
 	})
 }
 
+func TestOpenAndMigrateEnforcesCampaignRelationships(t *testing.T) {
+	store := newTestStore(t)
+
+	_, err := store.CreateCampaign(t.Context(), "other-campaign", "Other Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{
+			PlayerName: "Other Player",
+			Character: domain.Combatant{
+				ID:         "other-char",
+				Name:       "Other Character",
+				Side:       domain.SideParty,
+				Level:      1,
+				Initiative: 5,
+				HP:         5,
+				MaxHP:      5,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = store.db.Exec(
+		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+         VALUES (?, ?, ?, ?, ?)`,
+		"null-campaign-encounter",
+		nil,
+		"Null Campaign",
+		1,
+		0,
+	)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(
+		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+         VALUES (?, ?, ?, ?, ?)`,
+		"missing-campaign-encounter",
+		"missing-campaign",
+		"Missing Campaign",
+		1,
+		0,
+	)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(
+		`UPDATE player_characters SET campaign_id = ? WHERE id = ?`,
+		"other-campaign",
+		"repo-char-1",
+	)
+	require.Error(t, err)
+
+	_, err = store.db.Exec(
+		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+         VALUES (?, ?, ?, ?, ?)`,
+		"campaign-rel-encounter",
+		"repo-test-campaign",
+		"Relationship Check",
+		1,
+		0,
+	)
+	require.NoError(t, err)
+	_, err = store.db.Exec(`INSERT INTO stat_profiles (id) VALUES (?)`, statProfileID(statProfileCombatantKind, "cross-campaign-combatant"))
+	require.NoError(t, err)
+	_, err = store.db.Exec(
+		`INSERT INTO combatants (
+            id, encounter_id, stat_profile_id, player_character_id, name, side, position
+         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"cross-campaign-combatant",
+		"campaign-rel-encounter",
+		statProfileID(statProfileCombatantKind, "cross-campaign-combatant"),
+		"other-char",
+		"Cross Campaign Character",
+		string(domain.SideParty),
+		0,
+	)
+	require.Error(t, err)
+}
+
+func TestMigration35BackfillsNullEncounterCampaigns(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "migration-35-legacy.db")
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	goose.SetBaseFS(migrationsFS)
+	require.NoError(t, goose.SetDialect("sqlite3"))
+	require.NoError(t, goose.UpTo(db, "migrations", 34))
+
+	_, err = db.Exec(
+		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+         VALUES (?, ?, ?, ?, ?)`,
+		"legacy-null-campaign",
+		nil,
+		"Legacy Null Campaign",
+		1,
+		0,
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, goose.Up(db, "migrations"))
+	assert.Equal(t, "00000000-0000-0000-0000-000000000001", queryString(t, db, `SELECT campaign_id FROM encounters WHERE id = ?`, "legacy-null-campaign"))
+
+	_, err = db.Exec(
+		`INSERT INTO encounters (id, campaign_id, name, round, turn_index)
+         VALUES (?, ?, ?, ?, ?)`,
+		"still-null-campaign",
+		nil,
+		"Still Null Campaign",
+		1,
+		0,
+	)
+	require.Error(t, err)
+}
+
 func TestMigration33BackfillsStatProfilesAndAddsResistanceCompatibilityViews(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "migration-32-legacy.db")
 	db, err := sql.Open("sqlite", sqliteDSN(dbPath))

@@ -68,7 +68,7 @@ type DamageType struct {
 
 type Encounter struct {
 	ID              string
-	CampaignID      interface{}
+	CampaignID      string
 	Name            string
 	Round           int64
 	TurnIndex       int64
