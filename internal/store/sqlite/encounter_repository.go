@@ -155,11 +155,11 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 	for i, c := range enc.Combatants {
 		domain.NormalizeCombatantHP(&c)
 		enc.Combatants[i] = c
-		if err = qtx.InsertCombatant(ctx, insertCombatantParams(enc.ID, i, c)); err != nil {
-			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
-		}
 		if err = upsertCombatantNormalizedStats(ctx, qtx, ids, c.ID, c.Profile()); err != nil {
 			return fmt.Errorf("sync normalized combatant stats %s: %w", c.ID, err)
+		}
+		if err = qtx.InsertCombatant(ctx, insertCombatantParams(enc.ID, i, c)); err != nil {
+			return fmt.Errorf("insert combatant %s: %w", c.ID, err)
 		}
 	}
 

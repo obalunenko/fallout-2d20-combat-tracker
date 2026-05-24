@@ -14,11 +14,21 @@ const (
 	playerCharacterAvailabilityInactive = "inactive"
 )
 
+const (
+	statProfileCombatantKind       = "combatant"
+	statProfilePlayerCharacterKind = "player_character"
+	statProfileMonsterTemplateKind = "monster_template"
+)
+
 func playerCharacterAvailabilityStatus(inactive bool) string {
 	if inactive {
 		return playerCharacterAvailabilityInactive
 	}
 	return playerCharacterAvailabilityActive
+}
+
+func statProfileID(kind, ownerID string) string {
+	return kind + ":" + ownerID
 }
 
 type combatantDBFields struct {
@@ -191,16 +201,10 @@ func insertCombatantParams(encounterID string, position int, c domain.Combatant)
 	return dbgen.InsertCombatantParams{
 		ID:                c.ID,
 		EncounterID:       encounterID,
+		StatProfileID:     statProfileID(statProfileCombatantKind, c.ID),
 		PlayerCharacterID: nullString(c.PlayerCharacterID),
 		Name:              c.Name,
 		Side:              string(c.Side),
-		TorsoOnly:         boolToInt64(c.TorsoOnly),
-		Level:             int64(c.Level),
-		Xp:                int64(c.XP),
-		Initiative:        int64(c.Initiative),
-		Hp:                int64(c.HP),
-		MaxHp:             int64(c.MaxHP),
-		Defense:           int64(c.Defense),
 		Active:            boolToInt64(c.Active),
 		Defeated:          boolToInt64(c.Defeated),
 		Position:          int64(position),
@@ -217,13 +221,8 @@ func insertPlayerCharacterParams(characterID, playerID, campaignID string, c dom
 		ID:                 characterID,
 		PlayerID:           playerID,
 		CampaignID:         campaignID,
+		StatProfileID:      statProfileID(statProfilePlayerCharacterKind, characterID),
 		Name:               strings.TrimSpace(c.Name),
-		Level:              int64(c.Level),
-		Initiative:         int64(c.Initiative),
-		Hp:                 int64(c.HP),
-		MaxHp:              int64(c.MaxHP),
-		Defense:            int64(c.Defense),
-		TorsoOnly:          boolToInt64(c.TorsoOnly),
 		Active:             1,
 		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
 	}
@@ -234,28 +233,16 @@ func updateActivePlayerCharacterParams(characterID, campaignID string, c domain.
 		CharacterID:        characterID,
 		CampaignID:         campaignID,
 		Name:               strings.TrimSpace(c.Name),
-		Level:              int64(c.Level),
-		Initiative:         int64(c.Initiative),
-		Hp:                 int64(c.HP),
-		MaxHp:              int64(c.MaxHP),
-		Defense:            int64(c.Defense),
-		TorsoOnly:          boolToInt64(c.TorsoOnly),
 		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
 	}
 }
 
-func upsertMonsterTemplateParams(c domain.Combatant) dbgen.UpsertMonsterTemplateParams {
+func upsertMonsterTemplateParams(templateID string, c domain.Combatant) dbgen.UpsertMonsterTemplateParams {
 	return dbgen.UpsertMonsterTemplateParams{
-		ID:         c.ID,
-		Name:       strings.TrimSpace(c.Name),
-		NameKey:    normalizeNameKey(c.Name),
-		TorsoOnly:  boolToInt64(c.TorsoOnly),
-		Level:      int64(c.Level),
-		Xp:         int64(c.XP),
-		Initiative: int64(c.Initiative),
-		Hp:         int64(c.HP),
-		MaxHp:      int64(c.MaxHP),
-		Defense:    int64(c.Defense),
+		ID:            templateID,
+		StatProfileID: statProfileID(statProfileMonsterTemplateKind, templateID),
+		Name:          strings.TrimSpace(c.Name),
+		NameKey:       normalizeNameKey(c.Name),
 	}
 }
 

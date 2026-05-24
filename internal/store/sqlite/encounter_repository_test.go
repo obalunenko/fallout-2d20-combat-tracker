@@ -256,7 +256,10 @@ func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
 	assert.Equal(t, 8, actual.Combatants[1].ResistRadiationRightLeg)
 	assert.True(t, actual.Combatants[1].ImmunePhysical)
 
-	_, err = store.db.Exec(`UPDATE player_characters SET hp = 0 WHERE id = ?`, "repo-char-1")
+	_, err = store.db.Exec(
+		`UPDATE stat_profiles SET hp = 0 WHERE id = ?`,
+		statProfileID(statProfilePlayerCharacterKind, "repo-char-1"),
+	)
 	require.NoError(t, err)
 
 	actual, err = store.Get(t.Context())
@@ -287,7 +290,11 @@ func TestEncounterStoreSaveUpdatesLinkedCampaignCharacterFromPartyCombatant(t *t
 
 	require.NoError(t, store.Save(t.Context(), enc))
 
-	assert.Equal(t, int64(2), queryInt64(t, store.db, `SELECT hp FROM player_characters WHERE id = ?`, "repo-char-1"))
+	assert.Equal(
+		t,
+		int64(2),
+		queryInt64(t, store.db, `SELECT hp FROM stat_profiles WHERE id = ?`, statProfileID(statProfilePlayerCharacterKind, "repo-char-1")),
+	)
 	party, err := store.ListPartyMembers(t.Context())
 	require.NoError(t, err)
 	require.Len(t, party, 1)

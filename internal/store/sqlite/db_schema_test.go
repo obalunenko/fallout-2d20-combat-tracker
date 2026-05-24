@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,6 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSQLCSchemaSeedsEnumDictionaries(t *testing.T) {
+	schema, err := os.ReadFile("sqlc/schema.sql")
+	require.NoError(t, err)
+
+	db, err := sql.Open("sqlite", sqliteDSN(filepath.Join(t.TempDir(), "schema.db")))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	_, err = db.Exec(string(schema))
+	require.NoError(t, err)
+
+	assert.Equal(
+		t,
+		"1:head,2:torso,3:left_arm,4:right_arm,5:left_leg,6:right_leg",
+		queryString(t, db, `SELECT GROUP_CONCAT(id || ':' || code, ',') FROM (SELECT id, code FROM body_locations ORDER BY id)`),
+	)
+	assert.Equal(
+		t,
+		"1:physical,2:energy,3:radiation,4:poison",
+		queryString(t, db, `SELECT GROUP_CONCAT(id || ':' || code, ',') FROM (SELECT id, code FROM damage_types ORDER BY id)`),
+	)
+}
 
 func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "repo-fk-cascade.db")
@@ -50,7 +76,7 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 		}},
 	}))
 	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
-	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, "fk-npc-1"))
+	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 
 	conn1, err := db.Conn(t.Context())
 	require.NoError(t, err)
@@ -73,8 +99,9 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 	require.NoError(t, err)
 
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
-	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, "fk-npc-1"))
-	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, "fk-npc-1"))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 }
 
 func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T) {
@@ -153,39 +180,39 @@ func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.db.Exec(
-		`UPDATE combatant_resistance_global
+		`UPDATE stat_profile_resistance_global
          SET resistance = 1
-         WHERE combatant_id = ?
+         WHERE stat_profile_id = ?
            AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-		"global-resistance-combatant",
+		statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
 		string(domain.DamagePhysical),
 	)
 	require.Error(t, err)
 	_, err = store.db.Exec(
-		`UPDATE player_character_resistance_global
+		`UPDATE stat_profile_resistance_global
          SET resistance = 1
-         WHERE player_character_id = ?
+         WHERE stat_profile_id = ?
            AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-		"repo-char-1",
+		statProfileID(statProfilePlayerCharacterKind, "repo-char-1"),
 		string(domain.DamageEnergy),
 	)
 	require.Error(t, err)
 	_, err = store.db.Exec(
-		`UPDATE monster_template_resistance_global
+		`UPDATE stat_profile_resistance_global
          SET resistance = 1
-         WHERE monster_template_id = ?
+         WHERE stat_profile_id = ?
            AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-		monster.ID,
+		statProfileID(statProfileMonsterTemplateKind, monster.ID),
 		string(domain.DamageRadiation),
 	)
 	require.Error(t, err)
 
 	_, err = store.db.Exec(
-		`UPDATE combatant_resistance_global
+		`UPDATE stat_profile_resistance_global
          SET resistance = 4
-         WHERE combatant_id = ?
+         WHERE stat_profile_id = ?
            AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-		"global-resistance-combatant",
+		statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
 		string(domain.DamagePoison),
 	)
 	require.NoError(t, err)
@@ -196,10 +223,10 @@ func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 			t,
 			store.db,
 			`SELECT resistance
-             FROM combatant_resistance_global
-             WHERE combatant_id = ?
+             FROM stat_profile_resistance_global
+             WHERE stat_profile_id = ?
                AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-			"global-resistance-combatant",
+			statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
 			string(domain.DamagePoison),
 		),
 	)
@@ -255,8 +282,8 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 		},
 		{
 			name: "combatant hp",
-			sql:  `UPDATE combatants SET hp = 7, max_hp = 6 WHERE id = ?`,
-			args: []any{"schema-check-combatant"},
+			sql:  `UPDATE stat_profiles SET hp = 7, max_hp = 6 WHERE id = ?`,
+			args: []any{statProfileID(statProfileCombatantKind, "schema-check-combatant")},
 		},
 		{
 			name: "combatant bool",
@@ -265,18 +292,28 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 		},
 		{
 			name: "player character level",
-			sql:  `UPDATE player_characters SET level = 0 WHERE id = ?`,
-			args: []any{"repo-char-1"},
+			sql:  `UPDATE stat_profiles SET level = 0 WHERE id = ?`,
+			args: []any{statProfileID(statProfilePlayerCharacterKind, "repo-char-1")},
 		},
 		{
 			name: "player character hp",
-			sql:  `UPDATE player_characters SET hp = 8, max_hp = 7 WHERE id = ?`,
-			args: []any{"repo-char-1"},
+			sql:  `UPDATE stat_profiles SET hp = 8, max_hp = 7 WHERE id = ?`,
+			args: []any{statProfileID(statProfilePlayerCharacterKind, "repo-char-1")},
 		},
 		{
 			name: "monster level",
-			sql:  `UPDATE monster_templates SET level = 0 WHERE id = ?`,
-			args: []any{monster.ID},
+			sql:  `UPDATE stat_profiles SET level = 0 WHERE id = ?`,
+			args: []any{statProfileID(statProfileMonsterTemplateKind, monster.ID)},
+		},
+		{
+			name: "body location enum",
+			sql:  `INSERT INTO body_locations (id, code) VALUES (?, ?)`,
+			args: []any{99, "wing"},
+		},
+		{
+			name: "damage type enum",
+			sql:  `INSERT INTO damage_types (id, code) VALUES (?, ?)`,
+			args: []any{99, "fire"},
 		},
 		{
 			name: "encounter log round",
@@ -304,41 +341,38 @@ func TestMigration30BackfillsNullAuditFieldsAndDropsLeftoverTempTables(t *testin
 	require.NoError(t, goose.SetDialect("sqlite3"))
 	require.NoError(t, goose.UpTo(db, "migrations", 29))
 
-	store := NewEncounterStore(db)
-	_, err = store.CreateCampaign(t.Context(), "legacy-campaign", "Legacy Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{{
-		PlayerName: "Legacy Player",
-		Character: domain.Combatant{
-			ID:         "legacy-character",
-			Name:       "Legacy Character",
-			Side:       domain.SideParty,
-			Level:      1,
-			Initiative: 7,
-			HP:         6,
-		},
-	}})
-	require.NoError(t, err)
-	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
-		ID:        "legacy-encounter",
-		Name:      "Legacy Encounter",
-		Round:     1,
-		TurnIndex: 0,
-		Combatants: []domain.Combatant{{
-			ID:         "legacy-combatant",
-			Name:       "Legacy Raider",
-			Side:       domain.SideNPC,
-			Level:      1,
-			Initiative: 5,
-			HP:         4,
-		}},
-	}))
-	require.NoError(t, store.AppendEncounterLog(t.Context(), "legacy-encounter", 1, "Legacy log"))
-	_, err = store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
-		Name:       "Legacy Monster",
-		Level:      1,
-		XP:         10,
-		Initiative: 4,
-		HP:         3,
-	})
+	_, err = db.Exec(`
+		INSERT INTO campaigns (id, name, start_date) VALUES ('legacy-campaign', 'Legacy Campaign', '2026-01-01 00:00:00');
+		INSERT OR IGNORE INTO app_state (id, active_campaign_id) VALUES (1, 'legacy-campaign');
+		INSERT INTO players (id, campaign_id, name) VALUES ('legacy-player', 'legacy-campaign', 'Legacy Player');
+		INSERT INTO player_characters (
+			id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, availability_status
+		) VALUES (
+			'legacy-character', 'legacy-player', 'legacy-campaign', 'Legacy Character', 1, 7, 6, 6, 0, 0, 1, 'active'
+		);
+		INSERT INTO encounters (
+			id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+			difficulty_label, difficulty_score, party_count, party_avg_level, party_xp_budget,
+			enemy_count, enemy_avg_level, enemy_total_xp
+		) VALUES (
+			'legacy-encounter', 'legacy-campaign', 'Legacy Encounter', 1, 0, 0, 0,
+			'Unknown', 0, 0, 0, 0, 0, 0, 0
+		);
+		INSERT INTO combatants (
+			id, encounter_id, player_character_id, name, side, torso_only, initiative,
+			active, defeated, position, hp, max_hp, defense, level, xp
+		) VALUES (
+			'legacy-combatant', 'legacy-encounter', NULL, 'Legacy Raider', 'npc', 0, 5,
+			1, 0, 0, 4, 4, 0, 1, 0
+		);
+		INSERT INTO encounter_logs (id, encounter_id, round, message)
+		VALUES ('legacy-log', 'legacy-encounter', 1, 'Legacy log');
+		INSERT INTO monster_templates (
+			id, name, name_key, torso_only, level, xp, initiative, hp, max_hp, defense
+		) VALUES (
+			'legacy-monster', 'Legacy Monster', 'legacy monster', 1, 1, 10, 4, 3, 3, 0
+		);
+	`)
 	require.NoError(t, err)
 
 	_, err = db.Exec(`

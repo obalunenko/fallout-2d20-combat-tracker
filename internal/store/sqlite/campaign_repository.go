@@ -159,11 +159,11 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 		if charID == "" {
 			charID = uuid.NewString()
 		}
-		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
-			return nil, fmt.Errorf("insert player character: %w", err)
-		}
 		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+		}
+		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
+			return nil, fmt.Errorf("insert player character: %w", err)
 		}
 	}
 
@@ -273,6 +273,9 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			if charID == "" {
 				charID = uuid.NewString()
 			}
+			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
+				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+			}
 			if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
 				return nil, fmt.Errorf("insert player character: %w", err)
 			}
@@ -280,10 +283,9 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			if err = updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character, p.Inactive); err != nil {
 				return nil, fmt.Errorf("update player character: %w", err)
 			}
-		}
-
-		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
-			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
+				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
+			}
 		}
 	}
 

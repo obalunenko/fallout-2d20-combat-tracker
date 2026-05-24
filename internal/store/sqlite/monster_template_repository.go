@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -62,20 +63,24 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 	}()
 
 	qtx := s.q.WithTx(tx)
-	if err = qtx.UpsertMonsterTemplate(ctx, upsertMonsterTemplateParams(monster)); err != nil {
-		return domain.Combatant{}, fmt.Errorf("upsert monster template: %w", err)
-	}
 	ids, err := normalizedDictionaryIDs(ctx, qtx)
 	if err != nil {
 		return domain.Combatant{}, err
 	}
-	templateID, err := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
-	if err != nil {
-		return domain.Combatant{}, fmt.Errorf("get monster template id: %w", err)
+	templateID := monster.ID
+	existingTemplateID, lookupErr := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
+	if lookupErr != nil && lookupErr != sql.ErrNoRows {
+		return domain.Combatant{}, fmt.Errorf("get monster template id: %w", lookupErr)
+	}
+	if lookupErr == nil {
+		templateID = existingTemplateID
 	}
 	monster.ID = templateID
 	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster.Profile()); err != nil {
 		return domain.Combatant{}, fmt.Errorf("sync normalized monster template stats: %w", err)
+	}
+	if err = qtx.UpsertMonsterTemplate(ctx, upsertMonsterTemplateParams(templateID, monster)); err != nil {
+		return domain.Combatant{}, fmt.Errorf("upsert monster template: %w", err)
 	}
 	if err = tx.Commit(); err != nil {
 		return domain.Combatant{}, fmt.Errorf("commit tx: %w", err)

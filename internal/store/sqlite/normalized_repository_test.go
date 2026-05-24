@@ -52,8 +52,8 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 		Combatants: []domain.Combatant{combatant},
 	}))
 
-	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_global WHERE combatant_id = ?`, combatant.ID))
-	assert.Equal(t, int64(18), queryInt64(t, store.db, `SELECT COUNT(*) FROM combatant_resistance_by_location WHERE combatant_id = ?`, combatant.ID))
+	assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, combatant.ID)))
+	assert.Equal(t, int64(18), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, combatant.ID)))
 	assert.Equal(
 		t,
 		int64(1),
@@ -61,10 +61,10 @@ func TestEncounterStoreSaveWritesNormalizedStatsWithoutTriggers(t *testing.T) {
 			t,
 			store.db,
 			`SELECT immune
-             FROM combatant_resistance_global
-             WHERE combatant_id = ?
+             FROM stat_profile_resistance_global
+             WHERE stat_profile_id = ?
                AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-			combatant.ID,
+			statProfileID(statProfileCombatantKind, combatant.ID),
 			string(domain.DamagePhysical),
 		),
 	)
@@ -112,8 +112,8 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_global WHERE player_character_id = ?`, characterID))
-	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM player_character_resistance_by_location WHERE player_character_id = ?`, characterID))
+	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfilePlayerCharacterKind, characterID)))
+	assert.Equal(t, int64(18), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfilePlayerCharacterKind, characterID)))
 	assert.Equal(
 		t,
 		int64(0),
@@ -121,10 +121,10 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 			t,
 			db,
 			`SELECT resistance
-             FROM player_character_resistance_global
-             WHERE player_character_id = ?
+             FROM stat_profile_resistance_global
+             WHERE stat_profile_id = ?
                AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-			characterID,
+			statProfileID(statProfilePlayerCharacterKind, characterID),
 			string(domain.DamageEnergy),
 		),
 	)
@@ -135,10 +135,10 @@ func TestEncounterStoreCreateCampaignWritesNormalizedStatsWithoutTriggers(t *tes
 			t,
 			db,
 			`SELECT immune
-             FROM player_character_resistance_global
-             WHERE player_character_id = ?
+             FROM stat_profile_resistance_global
+             WHERE stat_profile_id = ?
                AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
-			characterID,
+			statProfileID(statProfilePlayerCharacterKind, characterID),
 			string(domain.DamageRadiation),
 		),
 	)

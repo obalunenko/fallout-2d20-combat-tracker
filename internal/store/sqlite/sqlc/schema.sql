@@ -19,54 +19,77 @@ CREATE TABLE IF NOT EXISTS encounters (
     deleted_at DATETIME NULL
 );
 
-CREATE TABLE IF NOT EXISTS combatants (
+CREATE TABLE IF NOT EXISTS stat_profiles (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
-    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) <> ''),
-    player_character_id TEXT NULL,
-    name TEXT NOT NULL CHECK (trim(name) <> ''),
-    side TEXT NOT NULL CHECK (side IN ('party', 'npc')),
     torso_only INTEGER NOT NULL DEFAULT 0 CHECK (torso_only IN (0, 1)),
-    initiative INTEGER NOT NULL CHECK (initiative >= 0),
-    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
-    defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),
-    position INTEGER NOT NULL CHECK (position >= 0),
+    level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 0),
+    xp INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
+    initiative INTEGER NOT NULL DEFAULT 1 CHECK (initiative >= 0),
     hp INTEGER NOT NULL DEFAULT 1 CHECK (hp >= 0),
     max_hp INTEGER NOT NULL DEFAULT 1 CHECK (max_hp >= 1),
     defense INTEGER NOT NULL DEFAULT 0 CHECK (defense >= 0),
-    level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 0),
-    xp INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
-    CHECK (hp <= max_hp),
+    CHECK (hp <= max_hp)
+);
+
+CREATE TABLE IF NOT EXISTS combatants (
+    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
+    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) <> ''),
+    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
+    player_character_id TEXT NULL,
+    name TEXT NOT NULL CHECK (trim(name) <> ''),
+    side TEXT NOT NULL CHECK (side IN ('party', 'npc')),
+    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
+    defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),
+    position INTEGER NOT NULL CHECK (position >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE,
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id),
     FOREIGN KEY (player_character_id) REFERENCES player_characters(id)
 );
 
 CREATE TABLE IF NOT EXISTS body_locations (
     id INTEGER PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE
+    code TEXT NOT NULL UNIQUE CHECK (code IN ('head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'))
 );
+
+INSERT OR IGNORE INTO body_locations (id, code) VALUES
+    (1, 'head'),
+    (2, 'torso'),
+    (3, 'left_arm'),
+    (4, 'right_arm'),
+    (5, 'left_leg'),
+    (6, 'right_leg');
 
 CREATE TABLE IF NOT EXISTS damage_types (
     id INTEGER PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE
+    code TEXT NOT NULL UNIQUE CHECK (code IN ('physical', 'energy', 'radiation', 'poison'))
 );
 
-CREATE TABLE IF NOT EXISTS combatant_resistance_global (
-    combatant_id TEXT NOT NULL,
+INSERT OR IGNORE INTO damage_types (id, code) VALUES
+    (1, 'physical'),
+    (2, 'energy'),
+    (3, 'radiation'),
+    (4, 'poison');
+
+CREATE TABLE IF NOT EXISTS stat_profile_resistance_global (
+    stat_profile_id TEXT NOT NULL,
     damage_type_id INTEGER NOT NULL,
     resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
     immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (combatant_id, damage_type_id),
-    FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
+    PRIMARY KEY (stat_profile_id, damage_type_id),
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
 );
 
-CREATE TRIGGER IF NOT EXISTS trg_combatant_resistance_global_poison_only_insert
-BEFORE INSERT ON combatant_resistance_global
+CREATE TRIGGER IF NOT EXISTS trg_stat_profile_resistance_global_poison_only_insert
+BEFORE INSERT ON stat_profile_resistance_global
 WHEN NEW.resistance <> 0
   AND NOT EXISTS (
     SELECT 1 FROM damage_types dt
@@ -77,8 +100,8 @@ BEGIN
     SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_combatant_resistance_global_poison_only_update
-BEFORE UPDATE OF damage_type_id, resistance ON combatant_resistance_global
+CREATE TRIGGER IF NOT EXISTS trg_stat_profile_resistance_global_poison_only_update
+BEFORE UPDATE OF damage_type_id, resistance ON stat_profile_resistance_global
 WHEN NEW.resistance <> 0
   AND NOT EXISTS (
     SELECT 1 FROM damage_types dt
@@ -89,15 +112,15 @@ BEGIN
     SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
 END;
 
-CREATE TABLE IF NOT EXISTS combatant_resistance_by_location (
-    combatant_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS stat_profile_resistance_by_location (
+    stat_profile_id TEXT NOT NULL,
     damage_type_id INTEGER NOT NULL,
     body_location_id INTEGER NOT NULL,
     resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (combatant_id, damage_type_id, body_location_id),
-    FOREIGN KEY (combatant_id) REFERENCES combatants(id) ON DELETE CASCADE,
+    PRIMARY KEY (stat_profile_id, damage_type_id, body_location_id),
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
     FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
 );
@@ -113,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_encounters_deleted_updated
 ON encounters(deleted_at, updated_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_encounters_campaign_deleted_updated
-ON encounters(campaign_id, deleted_at, updated_at DESC);
+ON encounters(campaign_id, deleted_at DESC, updated_at DESC);
 
 CREATE TABLE IF NOT EXISTS encounter_logs (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
@@ -162,70 +185,16 @@ CREATE TABLE IF NOT EXISTS player_characters (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     player_id TEXT NOT NULL CHECK (trim(player_id) <> ''),
     campaign_id TEXT NOT NULL CHECK (trim(campaign_id) <> ''),
+    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
     name TEXT NOT NULL CHECK (trim(name) <> ''),
-    level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
-    initiative INTEGER NOT NULL DEFAULT 1 CHECK (initiative >= 0),
-    hp INTEGER NOT NULL DEFAULT 1 CHECK (hp >= 0),
-    max_hp INTEGER NOT NULL DEFAULT 1 CHECK (max_hp >= 1),
-    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense >= 0),
-    torso_only INTEGER NOT NULL DEFAULT 0 CHECK (torso_only IN (0, 1)),
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
     availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
-    CHECK (hp <= max_hp),
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
-    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS player_character_resistance_global (
-    player_character_id TEXT NOT NULL,
-    damage_type_id INTEGER NOT NULL,
-    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
-    immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (player_character_id, damage_type_id),
-    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
-    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
-);
-
-CREATE TRIGGER IF NOT EXISTS trg_player_character_resistance_global_poison_only_insert
-BEFORE INSERT ON player_character_resistance_global
-WHEN NEW.resistance <> 0
-  AND NOT EXISTS (
-    SELECT 1 FROM damage_types dt
-    WHERE dt.id = NEW.damage_type_id
-      AND dt.code = 'poison'
-  )
-BEGIN
-    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_player_character_resistance_global_poison_only_update
-BEFORE UPDATE OF damage_type_id, resistance ON player_character_resistance_global
-WHEN NEW.resistance <> 0
-  AND NOT EXISTS (
-    SELECT 1 FROM damage_types dt
-    WHERE dt.id = NEW.damage_type_id
-      AND dt.code = 'poison'
-  )
-BEGIN
-    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
-END;
-
-CREATE TABLE IF NOT EXISTS player_character_resistance_by_location (
-    player_character_id TEXT NOT NULL,
-    damage_type_id INTEGER NOT NULL,
-    body_location_id INTEGER NOT NULL,
-    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (player_character_id, damage_type_id, body_location_id),
-    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
-    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
-    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_player_characters_one_active
@@ -240,69 +209,65 @@ ON player_characters(campaign_id, active, availability_status, name);
 
 CREATE TABLE IF NOT EXISTS monster_templates (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
+    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
     name TEXT NOT NULL CHECK (trim(name) <> ''),
     name_key TEXT NOT NULL UNIQUE CHECK (trim(name_key) <> ''),
-    torso_only INTEGER NOT NULL DEFAULT 1 CHECK (torso_only IN (0, 1)),
-    level INTEGER NOT NULL DEFAULT 1 CHECK (level >= 1),
-    xp INTEGER NOT NULL DEFAULT 0 CHECK (xp >= 0),
-    initiative INTEGER NOT NULL DEFAULT 1 CHECK (initiative >= 0),
-    hp INTEGER NOT NULL DEFAULT 1 CHECK (hp >= 0),
-    max_hp INTEGER NOT NULL DEFAULT 1 CHECK (max_hp >= 1),
-    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
-    CHECK (hp <= max_hp)
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_monster_templates_deleted_name
 ON monster_templates(deleted_at, name COLLATE NOCASE);
 
-CREATE TABLE IF NOT EXISTS monster_template_resistance_global (
-    monster_template_id TEXT NOT NULL,
-    damage_type_id INTEGER NOT NULL,
-    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
-    immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (monster_template_id, damage_type_id),
-    FOREIGN KEY (monster_template_id) REFERENCES monster_templates(id) ON DELETE CASCADE,
-    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id)
-);
-
-CREATE TRIGGER IF NOT EXISTS trg_monster_template_resistance_global_poison_only_insert
-BEFORE INSERT ON monster_template_resistance_global
-WHEN NEW.resistance <> 0
-  AND NOT EXISTS (
-    SELECT 1 FROM damage_types dt
-    WHERE dt.id = NEW.damage_type_id
-      AND dt.code = 'poison'
-  )
+CREATE TRIGGER IF NOT EXISTS trg_combatants_delete_stat_profile
+AFTER DELETE ON combatants
 BEGIN
-    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+    DELETE FROM stat_profiles
+    WHERE id = OLD.stat_profile_id;
 END;
 
-CREATE TRIGGER IF NOT EXISTS trg_monster_template_resistance_global_poison_only_update
-BEFORE UPDATE OF damage_type_id, resistance ON monster_template_resistance_global
-WHEN NEW.resistance <> 0
-  AND NOT EXISTS (
-    SELECT 1 FROM damage_types dt
-    WHERE dt.id = NEW.damage_type_id
-      AND dt.code = 'poison'
-  )
+CREATE TRIGGER IF NOT EXISTS trg_player_characters_delete_stat_profile
+AFTER DELETE ON player_characters
 BEGIN
-    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');
+    DELETE FROM stat_profiles
+    WHERE id = OLD.stat_profile_id;
 END;
 
-CREATE TABLE IF NOT EXISTS monster_template_resistance_by_location (
-    monster_template_id TEXT NOT NULL,
-    damage_type_id INTEGER NOT NULL,
-    body_location_id INTEGER NOT NULL,
-    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance >= 0),
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    PRIMARY KEY (monster_template_id, damage_type_id, body_location_id),
-    FOREIGN KEY (monster_template_id) REFERENCES monster_templates(id) ON DELETE CASCADE,
-    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
-    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
-);
+CREATE TRIGGER IF NOT EXISTS trg_monster_templates_delete_stat_profile
+AFTER DELETE ON monster_templates
+BEGIN
+    DELETE FROM stat_profiles
+    WHERE id = OLD.stat_profile_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_player_characters_require_level
+BEFORE INSERT ON player_characters
+WHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) < 1
+BEGIN
+    SELECT RAISE(ABORT, 'player character level must be at least 1');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_monster_templates_require_level
+BEFORE INSERT ON monster_templates
+WHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) < 1
+BEGIN
+    SELECT RAISE(ABORT, 'monster template level must be at least 1');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_stat_profiles_player_character_level_update
+BEFORE UPDATE OF level ON stat_profiles
+WHEN NEW.level < 1
+  AND EXISTS (SELECT 1 FROM player_characters pc WHERE pc.stat_profile_id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'player character level must be at least 1');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_stat_profiles_monster_template_level_update
+BEFORE UPDATE OF level ON stat_profiles
+WHEN NEW.level < 1
+  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'monster template level must be at least 1');
+END;

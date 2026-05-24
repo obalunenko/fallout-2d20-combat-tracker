@@ -298,7 +298,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, player_character_id, name, side, torso_only, level, xp, initiative, hp, max_hp, defense, active, defeated, position, created_at, updated_at
+	id, encounter_id, stat_profile_id, player_character_id, name, side, active, defeated, position, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -309,31 +309,19 @@ VALUES (
   ?6,
   ?7,
   ?8,
-	  ?9,
-	  ?10,
-	  ?11,
-	  ?12,
-	  ?13,
-	  ?14,
-	  ?15,
-	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
-	  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-	)
+  ?9,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
 `
 
 type InsertCombatantParams struct {
 	ID                string
 	EncounterID       string
+	StatProfileID     string
 	PlayerCharacterID interface{}
 	Name              string
 	Side              string
-	TorsoOnly         int64
-	Level             int64
-	Xp                int64
-	Initiative        int64
-	Hp                int64
-	MaxHp             int64
-	Defense           int64
 	Active            int64
 	Defeated          int64
 	Position          int64
@@ -343,16 +331,10 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 	_, err := q.db.ExecContext(ctx, insertCombatant,
 		arg.ID,
 		arg.EncounterID,
+		arg.StatProfileID,
 		arg.PlayerCharacterID,
 		arg.Name,
 		arg.Side,
-		arg.TorsoOnly,
-		arg.Level,
-		arg.Xp,
-		arg.Initiative,
-		arg.Hp,
-		arg.MaxHp,
-		arg.Defense,
 		arg.Active,
 		arg.Defeated,
 		arg.Position,
@@ -413,7 +395,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, availability_status, created_at, updated_at
+  id, player_id, campaign_id, stat_profile_id, name, active, availability_status, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -423,11 +405,6 @@ VALUES (
   ?5,
   ?6,
   ?7,
-  ?8,
-  ?9,
-  ?10,
-  ?11,
-  ?12,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -437,13 +414,8 @@ type InsertPlayerCharacterParams struct {
 	ID                 string
 	PlayerID           string
 	CampaignID         string
+	StatProfileID      string
 	Name               string
-	Level              int64
-	Initiative         int64
-	Hp                 int64
-	MaxHp              int64
-	Defense            int64
-	TorsoOnly          int64
 	Active             int64
 	AvailabilityStatus string
 }
@@ -453,13 +425,8 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 		arg.ID,
 		arg.PlayerID,
 		arg.CampaignID,
+		arg.StatProfileID,
 		arg.Name,
-		arg.Level,
-		arg.Initiative,
-		arg.Hp,
-		arg.MaxHp,
-		arg.Defense,
-		arg.TorsoOnly,
 		arg.Active,
 		arg.AvailabilityStatus,
 	)
@@ -471,14 +438,15 @@ SELECT
   pc.id,
   p.name AS player_name,
   pc.name AS character_name,
-  pc.level,
-  pc.initiative,
-  pc.hp,
-  pc.max_hp,
-  pc.defense,
-  pc.torso_only,
+  sp.level,
+  sp.initiative,
+  sp.hp,
+  sp.max_hp,
+  sp.defense,
+  sp.torso_only,
   pc.availability_status
 FROM player_characters pc
+JOIN stat_profiles sp ON sp.id = pc.stat_profile_id
 JOIN players p ON p.id = pc.player_id
 WHERE pc.campaign_id = ?1 AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC
@@ -533,14 +501,14 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 
 const listActivePlayerCharacterResistanceByLocationByCampaignID = `-- name: ListActivePlayerCharacterResistanceByLocationByCampaignID :many
 SELECT
-  crl.player_character_id,
+  pc.id AS player_character_id,
   dt.code AS damage_type,
   bl.code AS body_location,
-  crl.resistance
-FROM player_character_resistance_by_location crl
-JOIN player_characters pc ON pc.id = crl.player_character_id
-JOIN damage_types dt ON dt.id = crl.damage_type_id
-JOIN body_locations bl ON bl.id = crl.body_location_id
+  sprl.resistance
+FROM player_characters pc
+JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
+JOIN damage_types dt ON dt.id = sprl.damage_type_id
+JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE pc.campaign_id = ?1
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC
@@ -583,13 +551,13 @@ func (q *Queries) ListActivePlayerCharacterResistanceByLocationByCampaignID(ctx 
 
 const listActivePlayerCharacterResistanceGlobalByCampaignID = `-- name: ListActivePlayerCharacterResistanceGlobalByCampaignID :many
 SELECT
-  crg.player_character_id,
+  pc.id AS player_character_id,
   dt.code AS damage_type,
-  crg.resistance,
-  crg.immune
-FROM player_character_resistance_global crg
-JOIN player_characters pc ON pc.id = crg.player_character_id
-JOIN damage_types dt ON dt.id = crg.damage_type_id
+  sprg.resistance,
+  sprg.immune
+FROM player_characters pc
+JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE pc.campaign_id = ?1
   AND pc.active = 1
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC
@@ -731,14 +699,14 @@ func (q *Queries) ListCombatantIDsByEncounterID(ctx context.Context, encounterID
 
 const listCombatantResistanceByLocationByEncounterID = `-- name: ListCombatantResistanceByLocationByEncounterID :many
 SELECT
-  crl.combatant_id,
+  c.id AS combatant_id,
   dt.code AS damage_type,
   bl.code AS body_location,
-  crl.resistance
-FROM combatant_resistance_by_location crl
-JOIN combatants c ON c.id = crl.combatant_id
-JOIN damage_types dt ON dt.id = crl.damage_type_id
-JOIN body_locations bl ON bl.id = crl.body_location_id
+  sprl.resistance
+FROM combatants c
+JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = c.stat_profile_id
+JOIN damage_types dt ON dt.id = sprl.damage_type_id
+JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC, dt.id ASC, bl.id ASC
 `
@@ -780,13 +748,13 @@ func (q *Queries) ListCombatantResistanceByLocationByEncounterID(ctx context.Con
 
 const listCombatantResistanceGlobalByEncounterID = `-- name: ListCombatantResistanceGlobalByEncounterID :many
 SELECT
-  crg.combatant_id,
+  c.id AS combatant_id,
   dt.code AS damage_type,
-  crg.resistance,
-  crg.immune
-FROM combatant_resistance_global crg
-JOIN combatants c ON c.id = crg.combatant_id
-JOIN damage_types dt ON dt.id = crg.damage_type_id
+  sprg.resistance,
+  sprg.immune
+FROM combatants c
+JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = c.stat_profile_id
+JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC, dt.id ASC
 `
@@ -832,22 +800,24 @@ SELECT
   c.player_character_id,
   CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
   c.side,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.level ELSE c.level END AS INTEGER) AS level,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN 0 ELSE c.xp END AS INTEGER) AS xp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.initiative ELSE c.initiative END AS INTEGER) AS initiative,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.hp ELSE c.hp END AS INTEGER) AS hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.max_hp ELSE c.max_hp END AS INTEGER) AS max_hp,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.defense ELSE c.defense END AS INTEGER) AS defense,
-  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pc.torso_only ELSE c.torso_only END AS INTEGER) AS torso_only,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
+  CAST(CASE WHEN c.side = 'party' AND pc.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
   c.active,
   CAST(CASE
-    WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pc.hp <= 0 THEN 1 ELSE 0 END
+    WHEN c.side = 'party' AND pc.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
     ELSE c.defeated
   END AS INTEGER) AS defeated
 FROM combatants c
+JOIN stat_profiles csp ON csp.id = c.stat_profile_id
 JOIN encounters e ON e.id = c.encounter_id
 LEFT JOIN player_characters pc ON pc.id = c.player_character_id
   AND pc.campaign_id = e.campaign_id
+LEFT JOIN stat_profiles pcsp ON pcsp.id = pc.stat_profile_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC
 `
@@ -1117,17 +1087,17 @@ func (q *Queries) ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx context.
 const listLinkedPlayerCharacterResistanceByLocationByEncounterID = `-- name: ListLinkedPlayerCharacterResistanceByLocationByEncounterID :many
 SELECT
   c.id AS combatant_id,
-  pcrl.player_character_id,
+  pc.id AS player_character_id,
   dt.code AS damage_type,
   bl.code AS body_location,
-  pcrl.resistance
+  sprl.resistance
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
   AND pc.campaign_id = e.campaign_id
-JOIN player_character_resistance_by_location pcrl ON pcrl.player_character_id = pc.id
-JOIN damage_types dt ON dt.id = pcrl.damage_type_id
-JOIN body_locations bl ON bl.id = pcrl.body_location_id
+JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = pc.stat_profile_id
+JOIN damage_types dt ON dt.id = sprl.damage_type_id
+JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE c.encounter_id = ?1
   AND c.side = 'party'
 ORDER BY c.position ASC, dt.id ASC, bl.id ASC
@@ -1173,16 +1143,16 @@ func (q *Queries) ListLinkedPlayerCharacterResistanceByLocationByEncounterID(ctx
 const listLinkedPlayerCharacterResistanceGlobalByEncounterID = `-- name: ListLinkedPlayerCharacterResistanceGlobalByEncounterID :many
 SELECT
   c.id AS combatant_id,
-  pcrg.player_character_id,
+  pc.id AS player_character_id,
   dt.code AS damage_type,
-  pcrg.resistance,
-  pcrg.immune
+  sprg.resistance,
+  sprg.immune
 FROM combatants c
 JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
   AND pc.campaign_id = e.campaign_id
-JOIN player_character_resistance_global pcrg ON pcrg.player_character_id = pc.id
-JOIN damage_types dt ON dt.id = pcrg.damage_type_id
+JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = ?1
   AND c.side = 'party'
 ORDER BY c.position ASC, dt.id ASC
@@ -1227,14 +1197,14 @@ func (q *Queries) ListLinkedPlayerCharacterResistanceGlobalByEncounterID(ctx con
 
 const listMonsterTemplateResistanceByLocation = `-- name: ListMonsterTemplateResistanceByLocation :many
 SELECT
-  mtl.monster_template_id,
+  mt.id AS monster_template_id,
   dt.code AS damage_type,
   bl.code AS body_location,
-  mtl.resistance
-FROM monster_template_resistance_by_location mtl
-JOIN monster_templates mt ON mt.id = mtl.monster_template_id
-JOIN damage_types dt ON dt.id = mtl.damage_type_id
-JOIN body_locations bl ON bl.id = mtl.body_location_id
+  sprl.resistance
+FROM monster_templates mt
+JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = mt.stat_profile_id
+JOIN damage_types dt ON dt.id = sprl.damage_type_id
+JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE mt.deleted_at IS NULL
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC, bl.id ASC
 `
@@ -1276,13 +1246,13 @@ func (q *Queries) ListMonsterTemplateResistanceByLocation(ctx context.Context) (
 
 const listMonsterTemplateResistanceGlobal = `-- name: ListMonsterTemplateResistanceGlobal :many
 SELECT
-  mtg.monster_template_id,
+  mt.id AS monster_template_id,
   dt.code AS damage_type,
-  mtg.resistance,
-  mtg.immune
-FROM monster_template_resistance_global mtg
-JOIN monster_templates mt ON mt.id = mtg.monster_template_id
-JOIN damage_types dt ON dt.id = mtg.damage_type_id
+  sprg.resistance,
+  sprg.immune
+FROM monster_templates mt
+JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = mt.stat_profile_id
+JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE mt.deleted_at IS NULL
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC
 `
@@ -1326,14 +1296,15 @@ const listMonsterTemplates = `-- name: ListMonsterTemplates :many
 SELECT
   mt.id,
   mt.name,
-  mt.level,
-  mt.xp,
-  mt.initiative,
-  mt.hp,
-  mt.max_hp,
-  mt.defense,
-  mt.torso_only
+  sp.level,
+  sp.xp,
+  sp.initiative,
+  sp.hp,
+  sp.max_hp,
+  sp.defense,
+  sp.torso_only
 FROM monster_templates mt
+JOIN stat_profiles sp ON sp.id = mt.stat_profile_id
 WHERE mt.deleted_at IS NULL
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC
 `
@@ -1471,27 +1442,15 @@ const updateActivePlayerCharacterByID = `-- name: UpdateActivePlayerCharacterByI
 UPDATE player_characters
 SET campaign_id = ?1,
     name = ?2,
-    level = ?3,
-    initiative = ?4,
-    hp = ?5,
-    max_hp = ?6,
-    defense = ?7,
-    torso_only = ?8,
     active = 1,
-    availability_status = ?9,
+    availability_status = ?3,
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-WHERE id = ?10
+WHERE id = ?4
 `
 
 type UpdateActivePlayerCharacterByIDParams struct {
 	CampaignID         string
 	Name               string
-	Level              int64
-	Initiative         int64
-	Hp                 int64
-	MaxHp              int64
-	Defense            int64
-	TorsoOnly          int64
 	AvailabilityStatus string
 	CharacterID        string
 }
@@ -1500,12 +1459,6 @@ func (q *Queries) UpdateActivePlayerCharacterByID(ctx context.Context, arg Updat
 	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterByID,
 		arg.CampaignID,
 		arg.Name,
-		arg.Level,
-		arg.Initiative,
-		arg.Hp,
-		arg.MaxHp,
-		arg.Defense,
-		arg.TorsoOnly,
 		arg.AvailabilityStatus,
 		arg.CharacterID,
 	)
@@ -1532,81 +1485,6 @@ func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByID
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const upsertCombatantResistanceByLocation = `-- name: UpsertCombatantResistanceByLocation :exec
-INSERT INTO combatant_resistance_by_location (
-  combatant_id,
-  damage_type_id,
-  body_location_id,
-  resistance,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  ?4,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (combatant_id, damage_type_id, body_location_id) DO UPDATE SET
-  resistance = excluded.resistance,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertCombatantResistanceByLocationParams struct {
-	CombatantID    string
-	DamageTypeID   int64
-	BodyLocationID int64
-	Resistance     int64
-}
-
-func (q *Queries) UpsertCombatantResistanceByLocation(ctx context.Context, arg UpsertCombatantResistanceByLocationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCombatantResistanceByLocation,
-		arg.CombatantID,
-		arg.DamageTypeID,
-		arg.BodyLocationID,
-		arg.Resistance,
-	)
-	return err
-}
-
-const upsertCombatantResistanceGlobal = `-- name: UpsertCombatantResistanceGlobal :exec
-INSERT INTO combatant_resistance_global (
-  combatant_id,
-  damage_type_id,
-  resistance,
-  immune,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  ?4,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (combatant_id, damage_type_id) DO UPDATE SET
-  resistance = excluded.resistance,
-  immune = excluded.immune,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertCombatantResistanceGlobalParams struct {
-	CombatantID  string
-	DamageTypeID int64
-	Resistance   int64
-	Immune       int64
-}
-
-func (q *Queries) UpsertCombatantResistanceGlobal(ctx context.Context, arg UpsertCombatantResistanceGlobalParams) error {
-	_, err := q.db.ExecContext(ctx, upsertCombatantResistanceGlobal,
-		arg.CombatantID,
-		arg.DamageTypeID,
-		arg.Resistance,
-		arg.Immune,
-	)
-	return err
 }
 
 const upsertEncounter = `-- name: UpsertEncounter :exec
@@ -1697,7 +1575,44 @@ func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams
 
 const upsertMonsterTemplate = `-- name: UpsertMonsterTemplate :exec
 INSERT INTO monster_templates (
-  id, name, name_key, torso_only, level, xp, initiative, hp, max_hp, defense, created_at, updated_at, deleted_at
+  id, stat_profile_id, name, name_key, created_at, updated_at, deleted_at
+)
+VALUES (
+  ?1,
+  ?2,
+  ?3,
+  ?4,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  NULL
+)
+ON CONFLICT(name_key) DO UPDATE SET
+  stat_profile_id = excluded.stat_profile_id,
+  name = excluded.name,
+  deleted_at = NULL,
+  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+`
+
+type UpsertMonsterTemplateParams struct {
+	ID            string
+	StatProfileID string
+	Name          string
+	NameKey       string
+}
+
+func (q *Queries) UpsertMonsterTemplate(ctx context.Context, arg UpsertMonsterTemplateParams) error {
+	_, err := q.db.ExecContext(ctx, upsertMonsterTemplate,
+		arg.ID,
+		arg.StatProfileID,
+		arg.Name,
+		arg.NameKey,
+	)
+	return err
+}
+
+const upsertStatProfile = `-- name: UpsertStatProfile :exec
+INSERT INTO stat_profiles (
+  id, torso_only, level, xp, initiative, hp, max_hp, defense, created_at, updated_at, deleted_at
 )
 VALUES (
   ?1,
@@ -1708,14 +1623,11 @@ VALUES (
   ?6,
   ?7,
   ?8,
-  ?9,
-  ?10,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
-ON CONFLICT(name_key) DO UPDATE SET
-  name = excluded.name,
+ON CONFLICT(id) DO UPDATE SET
   torso_only = excluded.torso_only,
   level = excluded.level,
   xp = excluded.xp,
@@ -1727,10 +1639,8 @@ ON CONFLICT(name_key) DO UPDATE SET
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
 
-type UpsertMonsterTemplateParams struct {
+type UpsertStatProfileParams struct {
 	ID         string
-	Name       string
-	NameKey    string
 	TorsoOnly  int64
 	Level      int64
 	Xp         int64
@@ -1740,11 +1650,9 @@ type UpsertMonsterTemplateParams struct {
 	Defense    int64
 }
 
-func (q *Queries) UpsertMonsterTemplate(ctx context.Context, arg UpsertMonsterTemplateParams) error {
-	_, err := q.db.ExecContext(ctx, upsertMonsterTemplate,
+func (q *Queries) UpsertStatProfile(ctx context.Context, arg UpsertStatProfileParams) error {
+	_, err := q.db.ExecContext(ctx, upsertStatProfile,
 		arg.ID,
-		arg.Name,
-		arg.NameKey,
 		arg.TorsoOnly,
 		arg.Level,
 		arg.Xp,
@@ -1756,9 +1664,9 @@ func (q *Queries) UpsertMonsterTemplate(ctx context.Context, arg UpsertMonsterTe
 	return err
 }
 
-const upsertMonsterTemplateResistanceByLocation = `-- name: UpsertMonsterTemplateResistanceByLocation :exec
-INSERT INTO monster_template_resistance_by_location (
-  monster_template_id,
+const upsertStatProfileResistanceByLocation = `-- name: UpsertStatProfileResistanceByLocation :exec
+INSERT INTO stat_profile_resistance_by_location (
+  stat_profile_id,
   damage_type_id,
   body_location_id,
   resistance,
@@ -1771,21 +1679,21 @@ VALUES (
   ?4,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
-ON CONFLICT (monster_template_id, damage_type_id, body_location_id) DO UPDATE SET
+ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET
   resistance = excluded.resistance,
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
 
-type UpsertMonsterTemplateResistanceByLocationParams struct {
-	MonsterTemplateID string
-	DamageTypeID      int64
-	BodyLocationID    int64
-	Resistance        int64
+type UpsertStatProfileResistanceByLocationParams struct {
+	StatProfileID  string
+	DamageTypeID   int64
+	BodyLocationID int64
+	Resistance     int64
 }
 
-func (q *Queries) UpsertMonsterTemplateResistanceByLocation(ctx context.Context, arg UpsertMonsterTemplateResistanceByLocationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertMonsterTemplateResistanceByLocation,
-		arg.MonsterTemplateID,
+func (q *Queries) UpsertStatProfileResistanceByLocation(ctx context.Context, arg UpsertStatProfileResistanceByLocationParams) error {
+	_, err := q.db.ExecContext(ctx, upsertStatProfileResistanceByLocation,
+		arg.StatProfileID,
 		arg.DamageTypeID,
 		arg.BodyLocationID,
 		arg.Resistance,
@@ -1793,9 +1701,9 @@ func (q *Queries) UpsertMonsterTemplateResistanceByLocation(ctx context.Context,
 	return err
 }
 
-const upsertMonsterTemplateResistanceGlobal = `-- name: UpsertMonsterTemplateResistanceGlobal :exec
-INSERT INTO monster_template_resistance_global (
-  monster_template_id,
+const upsertStatProfileResistanceGlobal = `-- name: UpsertStatProfileResistanceGlobal :exec
+INSERT INTO stat_profile_resistance_global (
+  stat_profile_id,
   damage_type_id,
   resistance,
   immune,
@@ -1808,97 +1716,22 @@ VALUES (
   ?4,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
-ON CONFLICT (monster_template_id, damage_type_id) DO UPDATE SET
+ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET
   resistance = excluded.resistance,
   immune = excluded.immune,
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
 
-type UpsertMonsterTemplateResistanceGlobalParams struct {
-	MonsterTemplateID string
-	DamageTypeID      int64
-	Resistance        int64
-	Immune            int64
+type UpsertStatProfileResistanceGlobalParams struct {
+	StatProfileID string
+	DamageTypeID  int64
+	Resistance    int64
+	Immune        int64
 }
 
-func (q *Queries) UpsertMonsterTemplateResistanceGlobal(ctx context.Context, arg UpsertMonsterTemplateResistanceGlobalParams) error {
-	_, err := q.db.ExecContext(ctx, upsertMonsterTemplateResistanceGlobal,
-		arg.MonsterTemplateID,
-		arg.DamageTypeID,
-		arg.Resistance,
-		arg.Immune,
-	)
-	return err
-}
-
-const upsertPlayerCharacterResistanceByLocation = `-- name: UpsertPlayerCharacterResistanceByLocation :exec
-INSERT INTO player_character_resistance_by_location (
-  player_character_id,
-  damage_type_id,
-  body_location_id,
-  resistance,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  ?4,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (player_character_id, damage_type_id, body_location_id) DO UPDATE SET
-  resistance = excluded.resistance,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertPlayerCharacterResistanceByLocationParams struct {
-	PlayerCharacterID string
-	DamageTypeID      int64
-	BodyLocationID    int64
-	Resistance        int64
-}
-
-func (q *Queries) UpsertPlayerCharacterResistanceByLocation(ctx context.Context, arg UpsertPlayerCharacterResistanceByLocationParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPlayerCharacterResistanceByLocation,
-		arg.PlayerCharacterID,
-		arg.DamageTypeID,
-		arg.BodyLocationID,
-		arg.Resistance,
-	)
-	return err
-}
-
-const upsertPlayerCharacterResistanceGlobal = `-- name: UpsertPlayerCharacterResistanceGlobal :exec
-INSERT INTO player_character_resistance_global (
-  player_character_id,
-  damage_type_id,
-  resistance,
-  immune,
-  updated_at
-)
-VALUES (
-  ?1,
-  ?2,
-  ?3,
-  ?4,
-  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-)
-ON CONFLICT (player_character_id, damage_type_id) DO UPDATE SET
-  resistance = excluded.resistance,
-  immune = excluded.immune,
-  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-`
-
-type UpsertPlayerCharacterResistanceGlobalParams struct {
-	PlayerCharacterID string
-	DamageTypeID      int64
-	Resistance        int64
-	Immune            int64
-}
-
-func (q *Queries) UpsertPlayerCharacterResistanceGlobal(ctx context.Context, arg UpsertPlayerCharacterResistanceGlobalParams) error {
-	_, err := q.db.ExecContext(ctx, upsertPlayerCharacterResistanceGlobal,
-		arg.PlayerCharacterID,
+func (q *Queries) UpsertStatProfileResistanceGlobal(ctx context.Context, arg UpsertStatProfileResistanceGlobalParams) error {
+	_, err := q.db.ExecContext(ctx, upsertStatProfileResistanceGlobal,
+		arg.StatProfileID,
 		arg.DamageTypeID,
 		arg.Resistance,
 		arg.Immune,

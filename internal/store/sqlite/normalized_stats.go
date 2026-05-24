@@ -59,69 +59,72 @@ func normalizedDictionaryIDs(ctx context.Context, qtx *dbgen.Queries) (dictionar
 }
 
 func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, combatantID string, profile domain.CombatantProfile) error {
-	return upsertNormalizedStats(
+	return upsertStatProfileNormalizedStats(
+		ctx,
+		qtx,
 		ids,
-		profile.Resistance,
-		func(stat resistanceGlobalStat) error {
-			return qtx.UpsertCombatantResistanceGlobal(ctx, dbgen.UpsertCombatantResistanceGlobalParams{
-				CombatantID:  combatantID,
-				DamageTypeID: stat.damageTypeID,
-				Resistance:   stat.resistance,
-				Immune:       stat.immune,
-			})
-		},
-		func(stat resistanceByLocationStat) error {
-			return qtx.UpsertCombatantResistanceByLocation(ctx, dbgen.UpsertCombatantResistanceByLocationParams{
-				CombatantID:    combatantID,
-				DamageTypeID:   stat.damageTypeID,
-				BodyLocationID: stat.bodyLocationID,
-				Resistance:     stat.resistance,
-			})
-		},
+		statProfileID(statProfileCombatantKind, combatantID),
+		profile,
 	)
 }
 
 func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, playerCharacterID string, profile domain.CombatantProfile) error {
-	return upsertNormalizedStats(
+	return upsertStatProfileNormalizedStats(
+		ctx,
+		qtx,
 		ids,
-		profile.Resistance,
-		func(stat resistanceGlobalStat) error {
-			return qtx.UpsertPlayerCharacterResistanceGlobal(ctx, dbgen.UpsertPlayerCharacterResistanceGlobalParams{
-				PlayerCharacterID: playerCharacterID,
-				DamageTypeID:      stat.damageTypeID,
-				Resistance:        stat.resistance,
-				Immune:            stat.immune,
-			})
-		},
-		func(stat resistanceByLocationStat) error {
-			return qtx.UpsertPlayerCharacterResistanceByLocation(ctx, dbgen.UpsertPlayerCharacterResistanceByLocationParams{
-				PlayerCharacterID: playerCharacterID,
-				DamageTypeID:      stat.damageTypeID,
-				BodyLocationID:    stat.bodyLocationID,
-				Resistance:        stat.resistance,
-			})
-		},
+		statProfileID(statProfilePlayerCharacterKind, playerCharacterID),
+		profile,
 	)
 }
 
 func upsertMonsterTemplateNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, monsterTemplateID string, profile domain.CombatantProfile) error {
+	return upsertStatProfileNormalizedStats(
+		ctx,
+		qtx,
+		ids,
+		statProfileID(statProfileMonsterTemplateKind, monsterTemplateID),
+		profile,
+	)
+}
+
+func upsertStatProfileNormalizedStats(
+	ctx context.Context,
+	qtx *dbgen.Queries,
+	ids dictionaryIDs,
+	statProfileID string,
+	profile domain.CombatantProfile,
+) error {
+	if err := qtx.UpsertStatProfile(ctx, dbgen.UpsertStatProfileParams{
+		ID:         statProfileID,
+		TorsoOnly:  boolToInt64(profile.Stats.TorsoOnly),
+		Level:      int64(profile.Stats.Level),
+		Xp:         int64(profile.Stats.XP),
+		Initiative: int64(profile.Stats.Initiative),
+		Hp:         int64(profile.Stats.HP),
+		MaxHp:      int64(profile.Stats.MaxHP),
+		Defense:    int64(profile.Stats.Defense),
+	}); err != nil {
+		return fmt.Errorf("upsert stat profile: %w", err)
+	}
+
 	return upsertNormalizedStats(
 		ids,
 		profile.Resistance,
 		func(stat resistanceGlobalStat) error {
-			return qtx.UpsertMonsterTemplateResistanceGlobal(ctx, dbgen.UpsertMonsterTemplateResistanceGlobalParams{
-				MonsterTemplateID: monsterTemplateID,
-				DamageTypeID:      stat.damageTypeID,
-				Resistance:        stat.resistance,
-				Immune:            stat.immune,
+			return qtx.UpsertStatProfileResistanceGlobal(ctx, dbgen.UpsertStatProfileResistanceGlobalParams{
+				StatProfileID: statProfileID,
+				DamageTypeID:  stat.damageTypeID,
+				Resistance:    stat.resistance,
+				Immune:        stat.immune,
 			})
 		},
 		func(stat resistanceByLocationStat) error {
-			return qtx.UpsertMonsterTemplateResistanceByLocation(ctx, dbgen.UpsertMonsterTemplateResistanceByLocationParams{
-				MonsterTemplateID: monsterTemplateID,
-				DamageTypeID:      stat.damageTypeID,
-				BodyLocationID:    stat.bodyLocationID,
-				Resistance:        stat.resistance,
+			return qtx.UpsertStatProfileResistanceByLocation(ctx, dbgen.UpsertStatProfileResistanceByLocationParams{
+				StatProfileID:  statProfileID,
+				DamageTypeID:   stat.damageTypeID,
+				BodyLocationID: stat.bodyLocationID,
+				Resistance:     stat.resistance,
 			})
 		},
 	)

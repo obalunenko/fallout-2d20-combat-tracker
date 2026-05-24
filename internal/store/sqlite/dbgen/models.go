@@ -31,40 +31,16 @@ type Campaign struct {
 type Combatant struct {
 	ID                string
 	EncounterID       string
+	StatProfileID     string
 	PlayerCharacterID interface{}
 	Name              string
 	Side              string
-	TorsoOnly         int64
-	Initiative        int64
 	Active            int64
 	Defeated          int64
 	Position          int64
-	Hp                int64
-	MaxHp             int64
-	Defense           int64
-	Level             int64
-	Xp                int64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         interface{}
-}
-
-type CombatantResistanceByLocation struct {
-	CombatantID    string
-	DamageTypeID   int64
-	BodyLocationID int64
-	Resistance     int64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-}
-
-type CombatantResistanceGlobal struct {
-	CombatantID  string
-	DamageTypeID int64
-	Resistance   int64
-	Immune       int64
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
 }
 
 type DamageType struct {
@@ -104,37 +80,13 @@ type EncounterLog struct {
 }
 
 type MonsterTemplate struct {
-	ID         string
-	Name       string
-	NameKey    string
-	TorsoOnly  int64
-	Level      int64
-	Xp         int64
-	Initiative int64
-	Hp         int64
-	MaxHp      int64
-	Defense    int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	DeletedAt  interface{}
-}
-
-type MonsterTemplateResistanceByLocation struct {
-	MonsterTemplateID string
-	DamageTypeID      int64
-	BodyLocationID    int64
-	Resistance        int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
-
-type MonsterTemplateResistanceGlobal struct {
-	MonsterTemplateID string
-	DamageTypeID      int64
-	Resistance        int64
-	Immune            int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID            string
+	StatProfileID string
+	Name          string
+	NameKey       string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     interface{}
 }
 
 type Player struct {
@@ -150,13 +102,8 @@ type PlayerCharacter struct {
 	ID                 string
 	PlayerID           string
 	CampaignID         string
+	StatProfileID      string
 	Name               string
-	Level              int64
-	Initiative         int64
-	Hp                 int64
-	MaxHp              int64
-	Defense            int64
-	TorsoOnly          int64
 	Active             int64
 	AvailabilityStatus string
 	CreatedAt          time.Time
@@ -164,20 +111,34 @@ type PlayerCharacter struct {
 	DeletedAt          interface{}
 }
 
-type PlayerCharacterResistanceByLocation struct {
-	PlayerCharacterID string
-	DamageTypeID      int64
-	BodyLocationID    int64
-	Resistance        int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+type StatProfile struct {
+	ID         string
+	TorsoOnly  int64
+	Level      int64
+	Xp         int64
+	Initiative int64
+	Hp         int64
+	MaxHp      int64
+	Defense    int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
 }
 
-type PlayerCharacterResistanceGlobal struct {
-	PlayerCharacterID string
-	DamageTypeID      int64
-	Resistance        int64
-	Immune            int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+type StatProfileResistanceByLocation struct {
+	StatProfileID  string
+	DamageTypeID   int64
+	BodyLocationID int64
+	Resistance     int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type StatProfileResistanceGlobal struct {
+	StatProfileID string
+	DamageTypeID  int64
+	Resistance    int64
+	Immune        int64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
