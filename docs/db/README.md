@@ -6,21 +6,27 @@ Fallout 2d20 Combat Tracker SQLite schema.
 
 ## Tables
 
-| Name                                                                          | Columns | Comment | Type  |
-| ----------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [encounters](encounters.md)                                                   | 18      |         | table |
-| [encounter_logs](encounter_logs.md)                                           | 7       |         | table |
-| [campaigns](campaigns.md)                                                     | 6       |         | table |
-| [players](players.md)                                                         | 6       |         | table |
-| [app_state](app_state.md)                                                     | 3       |         | table |
-| [body_locations](body_locations.md)                                           | 2       |         | table |
-| [damage_types](damage_types.md)                                               | 2       |         | table |
-| [stat_profiles](stat_profiles.md)                                             | 11      |         | table |
-| [stat_profile_resistance_global](stat_profile_resistance_global.md)           | 6       |         | table |
-| [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) | 6       |         | table |
-| [combatants](combatants.md)                                                   | 12      |         | table |
-| [player_characters](player_characters.md)                                     | 10      |         | table |
-| [monster_templates](monster_templates.md)                                     | 7       |         | table |
+| Name                                                                                  | Columns | Comment | Type  |
+| ------------------------------------------------------------------------------------- | ------- | ------- | ----- |
+| [encounters](encounters.md)                                                           | 18      |         | table |
+| [encounter_logs](encounter_logs.md)                                                   | 7       |         | table |
+| [campaigns](campaigns.md)                                                             | 6       |         | table |
+| [players](players.md)                                                                 | 6       |         | table |
+| [app_state](app_state.md)                                                             | 3       |         | table |
+| [body_locations](body_locations.md)                                                   | 2       |         | table |
+| [damage_types](damage_types.md)                                                       | 2       |         | table |
+| [stat_profiles](stat_profiles.md)                                                     | 11      |         | table |
+| [stat_profile_resistance_global](stat_profile_resistance_global.md)                   | 6       |         | table |
+| [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md)         | 6       |         | table |
+| [combatants](combatants.md)                                                           | 12      |         | table |
+| [player_characters](player_characters.md)                                             | 10      |         | table |
+| [monster_templates](monster_templates.md)                                             | 7       |         | table |
+| [combatant_resistance_global](combatant_resistance_global.md)                         | 6       |         | view  |
+| [combatant_resistance_by_location](combatant_resistance_by_location.md)               | 6       |         | view  |
+| [player_character_resistance_global](player_character_resistance_global.md)           | 6       |         | view  |
+| [player_character_resistance_by_location](player_character_resistance_by_location.md) | 6       |         | view  |
+| [monster_template_resistance_global](monster_template_resistance_global.md)           | 6       |         | view  |
+| [monster_template_resistance_by_location](monster_template_resistance_by_location.md) | 6       |         | view  |
 
 ---
 

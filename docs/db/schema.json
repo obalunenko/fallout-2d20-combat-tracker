@@ -1889,6 +1889,336 @@
         }
       ],
       "def": "CREATE TABLE \"monster_templates\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    name_key TEXT NOT NULL UNIQUE CHECK (trim(name_key) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
+    },
+    {
+      "name": "combatant_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "combatant_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_combatant_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_insert\nINSTEAD OF INSERT ON combatant_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_update\nINSTEAD OF UPDATE ON combatant_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id;\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_delete\nINSTEAD OF DELETE ON combatant_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW combatant_resistance_global AS\nSELECT\n    c.id AS combatant_id,\n    sprg.damage_type_id,\n    sprg.resistance,\n    sprg.immune,\n    sprg.created_at,\n    sprg.updated_at\nFROM combatants c\nJOIN stat_profile_resistance_global sprg\nON sprg.stat_profile_id = c.stat_profile_id",
+      "referenced_tables": [
+        "combatants",
+        "stat_profile_resistance_global"
+      ]
+    },
+    {
+      "name": "combatant_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "combatant_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_combatant_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_insert\nINSTEAD OF INSERT ON combatant_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_update\nINSTEAD OF UPDATE ON combatant_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_delete\nINSTEAD OF DELETE ON combatant_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW combatant_resistance_by_location AS\nSELECT\n    c.id AS combatant_id,\n    sprl.damage_type_id,\n    sprl.body_location_id,\n    sprl.resistance,\n    sprl.created_at,\n    sprl.updated_at\nFROM combatants c\nJOIN stat_profile_resistance_by_location sprl\nON sprl.stat_profile_id = c.stat_profile_id",
+      "referenced_tables": [
+        "combatants",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "player_character_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_player_character_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_insert\nINSTEAD OF INSERT ON player_character_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_update\nINSTEAD OF UPDATE ON player_character_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id;\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_delete\nINSTEAD OF DELETE ON player_character_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW player_character_resistance_global AS\nSELECT\n    pc.id AS player_character_id,\n    sprg.damage_type_id,\n    sprg.resistance,\n    sprg.immune,\n    sprg.created_at,\n    sprg.updated_at\nFROM player_characters pc\nJOIN stat_profile_resistance_global sprg\nON sprg.stat_profile_id = pc.stat_profile_id",
+      "referenced_tables": [
+        "player_characters",
+        "stat_profile_resistance_global"
+      ]
+    },
+    {
+      "name": "player_character_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_player_character_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_insert\nINSTEAD OF INSERT ON player_character_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_update\nINSTEAD OF UPDATE ON player_character_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_delete\nINSTEAD OF DELETE ON player_character_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW player_character_resistance_by_location AS\nSELECT\n    pc.id AS player_character_id,\n    sprl.damage_type_id,\n    sprl.body_location_id,\n    sprl.resistance,\n    sprl.created_at,\n    sprl.updated_at\nFROM player_characters pc\nJOIN stat_profile_resistance_by_location sprl\nON sprl.stat_profile_id = pc.stat_profile_id",
+      "referenced_tables": [
+        "player_characters",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "monster_template_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "monster_template_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_monster_template_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_insert\nINSTEAD OF INSERT ON monster_template_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_update\nINSTEAD OF UPDATE ON monster_template_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id;\n\n    INSERT INTO stat_profile_resistance_global (\n        stat_profile_id, damage_type_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_delete\nINSTEAD OF DELETE ON monster_template_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_global\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW monster_template_resistance_global AS\nSELECT\n    mt.id AS monster_template_id,\n    sprg.damage_type_id,\n    sprg.resistance,\n    sprg.immune,\n    sprg.created_at,\n    sprg.updated_at\nFROM monster_templates mt\nJOIN stat_profile_resistance_global sprg\nON sprg.stat_profile_id = mt.stat_profile_id",
+      "referenced_tables": [
+        "monster_templates",
+        "stat_profile_resistance_global"
+      ]
+    },
+    {
+      "name": "monster_template_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "monster_template_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_insert\nINSTEAD OF INSERT ON monster_template_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_update\nINSTEAD OF UPDATE ON monster_template_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_delete\nINSTEAD OF DELETE ON monster_template_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW monster_template_resistance_by_location AS\nSELECT\n    mt.id AS monster_template_id,\n    sprl.damage_type_id,\n    sprl.body_location_id,\n    sprl.resistance,\n    sprl.created_at,\n    sprl.updated_at\nFROM monster_templates mt\nJOIN stat_profile_resistance_by_location sprl\nON sprl.stat_profile_id = mt.stat_profile_id",
+      "referenced_tables": [
+        "monster_templates",
+        "stat_profile_resistance_by_location"
+      ]
     }
   ],
   "relations": [

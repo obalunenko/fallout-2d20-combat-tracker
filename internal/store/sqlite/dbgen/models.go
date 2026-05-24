@@ -43,6 +43,24 @@ type Combatant struct {
 	DeletedAt         interface{}
 }
 
+type CombatantResistanceByLocation struct {
+	CombatantID    string
+	DamageTypeID   int64
+	BodyLocationID int64
+	Resistance     int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type CombatantResistanceGlobal struct {
+	CombatantID  string
+	DamageTypeID int64
+	Resistance   int64
+	Immune       int64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type DamageType struct {
 	ID   int64
 	Code string
@@ -89,6 +107,24 @@ type MonsterTemplate struct {
 	DeletedAt     interface{}
 }
 
+type MonsterTemplateResistanceByLocation struct {
+	MonsterTemplateID string
+	DamageTypeID      int64
+	BodyLocationID    int64
+	Resistance        int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type MonsterTemplateResistanceGlobal struct {
+	MonsterTemplateID string
+	DamageTypeID      int64
+	Resistance        int64
+	Immune            int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 type Player struct {
 	ID         string
 	CampaignID string
@@ -109,6 +145,24 @@ type PlayerCharacter struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          interface{}
+}
+
+type PlayerCharacterResistanceByLocation struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	BodyLocationID    int64
+	Resistance        int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type PlayerCharacterResistanceGlobal struct {
+	PlayerCharacterID string
+	DamageTypeID      int64
+	Resistance        int64
+	Immune            int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type StatProfile struct {

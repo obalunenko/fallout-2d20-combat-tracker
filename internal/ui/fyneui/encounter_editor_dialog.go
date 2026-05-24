@@ -349,6 +349,6 @@ func formatMonsterTemplateOption(c domain.Combatant) string {
 		c.HP,
 		c.MaxHP,
 		c.Defense,
-		formatDRValue(c.ResistPoison, c.ImmunePoison),
+		formatCombatantGlobalResistance(c, domain.DamagePoison),
 	)
 }

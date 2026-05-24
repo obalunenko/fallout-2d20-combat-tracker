@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -102,6 +103,227 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
+}
+
+func TestMigration33BackfillsStatProfilesAndAddsResistanceCompatibilityViews(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "migration-32-legacy.db")
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	goose.SetBaseFS(migrationsFS)
+	require.NoError(t, goose.SetDialect("sqlite3"))
+	require.NoError(t, goose.UpTo(db, "migrations", 31))
+
+	_, err = db.Exec(`
+		INSERT INTO campaigns (id, name, start_date) VALUES ('legacy-campaign', 'Legacy Campaign', '2026-01-01 00:00:00');
+		INSERT OR IGNORE INTO app_state (id, active_campaign_id) VALUES (1, 'legacy-campaign');
+		INSERT INTO players (id, campaign_id, name) VALUES ('legacy-player', 'legacy-campaign', 'Legacy Player');
+		INSERT INTO player_characters (
+			id, player_id, campaign_id, name, level, initiative, hp, max_hp, defense, torso_only, active, availability_status
+		) VALUES (
+			'legacy-character', 'legacy-player', 'legacy-campaign', 'Legacy Character', 2, 7, 6, 8, 1, 0, 1, 'active'
+		);
+		INSERT INTO encounters (
+			id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+			difficulty_label, difficulty_score, party_count, party_avg_level, party_xp_budget,
+			enemy_count, enemy_avg_level, enemy_total_xp
+		) VALUES (
+			'legacy-encounter', 'legacy-campaign', 'Legacy Encounter', 1, 0, 0, 0,
+			'Unknown', 0, 0, 0, 0, 0, 0, 0
+		);
+		INSERT INTO combatants (
+			id, encounter_id, player_character_id, name, side, torso_only, initiative,
+			active, defeated, position, hp, max_hp, defense, level, xp
+		) VALUES (
+			'legacy-combatant', 'legacy-encounter', NULL, 'Legacy Raider', 'npc', 1, 5,
+			1, 0, 0, 4, 6, 2, 3, 25
+		);
+		INSERT INTO monster_templates (
+			id, name, name_key, torso_only, level, xp, initiative, hp, max_hp, defense
+		) VALUES (
+			'legacy-monster', 'Legacy Monster', 'legacy monster', 0, 4, 30, 4, 3, 5, 3
+		);
+	`)
+	require.NoError(t, err)
+
+	poisonID := queryInt64(t, db, `SELECT id FROM damage_types WHERE code = 'poison'`)
+	energyID := queryInt64(t, db, `SELECT id FROM damage_types WHERE code = 'energy'`)
+	headID := queryInt64(t, db, `SELECT id FROM body_locations WHERE code = 'head'`)
+	_, err = db.Exec(
+		`INSERT INTO combatant_resistance_global (combatant_id, damage_type_id, resistance, immune)
+         VALUES (?, ?, ?, ?)`,
+		"legacy-combatant",
+		poisonID,
+		3,
+		1,
+	)
+	require.NoError(t, err)
+	_, err = db.Exec(
+		`INSERT INTO player_character_resistance_by_location (player_character_id, damage_type_id, body_location_id, resistance)
+         VALUES (?, ?, ?, ?)`,
+		"legacy-character",
+		energyID,
+		headID,
+		4,
+	)
+	require.NoError(t, err)
+	_, err = db.Exec(
+		`INSERT INTO monster_template_resistance_global (monster_template_id, damage_type_id, resistance, immune)
+         VALUES (?, ?, ?, ?)`,
+		"legacy-monster",
+		poisonID,
+		5,
+		0,
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, goose.Up(db, "migrations"))
+
+	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT level FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "legacy-combatant")))
+	assert.Equal(t, int64(25), queryInt64(t, db, `SELECT xp FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "legacy-combatant")))
+	assert.Equal(t, int64(6), queryInt64(t, db, `SELECT hp FROM stat_profiles WHERE id = ?`, statProfileID(statProfilePlayerCharacterKind, "legacy-character")))
+	assert.Equal(t, int64(30), queryInt64(t, db, `SELECT xp FROM stat_profiles WHERE id = ?`, statProfileID(statProfileMonsterTemplateKind, "legacy-monster")))
+	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, statProfileID(statProfileCombatantKind, "legacy-combatant"), poisonID))
+	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, statProfileID(statProfilePlayerCharacterKind, "legacy-character"), energyID, headID))
+	assert.Equal(t, int64(5), queryInt64(t, db, `SELECT resistance FROM monster_template_resistance_global WHERE monster_template_id = ? AND damage_type_id = ?`, "legacy-monster", poisonID))
+	assert.Equal(t, "view", queryString(t, db, `SELECT type FROM sqlite_schema WHERE name = ?`, "combatant_resistance_global"))
+}
+
+func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "compat-encounter",
+		Name: "Compatibility Views",
+		Combatants: []domain.Combatant{{
+			ID:         "compat-combatant",
+			Name:       "Raider",
+			Side:       domain.SideNPC,
+			Initiative: 5,
+			HP:         5,
+			MaxHP:      5,
+		}},
+	}))
+	monster, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
+		ID:         "compat-monster",
+		Name:       "Compat Monster",
+		Level:      1,
+		Initiative: 4,
+		HP:         4,
+		MaxHP:      4,
+	})
+	require.NoError(t, err)
+
+	for _, viewName := range []string{
+		"combatant_resistance_global",
+		"combatant_resistance_by_location",
+		"player_character_resistance_global",
+		"player_character_resistance_by_location",
+		"monster_template_resistance_global",
+		"monster_template_resistance_by_location",
+	} {
+		assert.Equal(t, "view", queryString(t, store.db, `SELECT type FROM sqlite_schema WHERE name = ?`, viewName))
+	}
+
+	poisonID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = 'poison'`)
+	energyID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = 'energy'`)
+	headID := queryInt64(t, store.db, `SELECT id FROM body_locations WHERE code = 'head'`)
+	owners := []struct {
+		globalView   string
+		locationView string
+		ownerColumn  string
+		ownerID      string
+		profileID    string
+	}{
+		{
+			globalView:   "combatant_resistance_global",
+			locationView: "combatant_resistance_by_location",
+			ownerColumn:  "combatant_id",
+			ownerID:      "compat-combatant",
+			profileID:    statProfileID(statProfileCombatantKind, "compat-combatant"),
+		},
+		{
+			globalView:   "player_character_resistance_global",
+			locationView: "player_character_resistance_by_location",
+			ownerColumn:  "player_character_id",
+			ownerID:      "repo-char-1",
+			profileID:    statProfileID(statProfilePlayerCharacterKind, "repo-char-1"),
+		},
+		{
+			globalView:   "monster_template_resistance_global",
+			locationView: "monster_template_resistance_by_location",
+			ownerColumn:  "monster_template_id",
+			ownerID:      monster.ID,
+			profileID:    statProfileID(statProfileMonsterTemplateKind, monster.ID),
+		},
+	}
+
+	for _, owner := range owners {
+		t.Run(owner.globalView, func(t *testing.T) {
+			_, err := store.db.Exec(
+				fmt.Sprintf(`INSERT INTO %s (%s, damage_type_id, resistance, immune) VALUES (?, ?, ?, ?)`, owner.globalView, owner.ownerColumn),
+				owner.ownerID,
+				poisonID,
+				4,
+				1,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+			assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+
+			_, err = store.db.Exec(
+				fmt.Sprintf(`UPDATE %s SET resistance = ?, immune = ? WHERE %s = ? AND damage_type_id = ?`, owner.globalView, owner.ownerColumn),
+				6,
+				0,
+				owner.ownerID,
+				poisonID,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+
+			_, err = store.db.Exec(
+				fmt.Sprintf(`DELETE FROM %s WHERE %s = ? AND damage_type_id = ?`, owner.globalView, owner.ownerColumn),
+				owner.ownerID,
+				poisonID,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+		})
+
+		t.Run(owner.locationView, func(t *testing.T) {
+			_, err := store.db.Exec(
+				fmt.Sprintf(`INSERT INTO %s (%s, damage_type_id, body_location_id, resistance) VALUES (?, ?, ?, ?)`, owner.locationView, owner.ownerColumn),
+				owner.ownerID,
+				energyID,
+				headID,
+				3,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(3), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, energyID, headID))
+
+			_, err = store.db.Exec(
+				fmt.Sprintf(`UPDATE %s SET resistance = ? WHERE %s = ? AND damage_type_id = ? AND body_location_id = ?`, owner.locationView, owner.ownerColumn),
+				8,
+				owner.ownerID,
+				energyID,
+				headID,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(8), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, energyID, headID))
+
+			_, err = store.db.Exec(
+				fmt.Sprintf(`DELETE FROM %s WHERE %s = ? AND damage_type_id = ? AND body_location_id = ?`, owner.locationView, owner.ownerColumn),
+				owner.ownerID,
+				energyID,
+				headID,
+			)
+			require.NoError(t, err)
+			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, energyID, headID))
+		})
+	}
 }
 
 func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T) {
