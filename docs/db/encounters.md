@@ -77,9 +77,10 @@ CREATE TABLE "encounters" (
 
 ## Indexes
 
-| Name                          | Definition       |
-| ----------------------------- | ---------------- |
-| sqlite_autoindex_encounters_1 | PRIMARY KEY (id) |
+| Name                                    | Definition                                                                                                                 |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| idx_encounters_campaign_deleted_updated | CREATE INDEX idx_encounters_campaign_deleted_updated<br />ON encounters(campaign_id, deleted_at, updated_at DESC, id DESC) |
+| sqlite_autoindex_encounters_1           | PRIMARY KEY (id)                                                                                                           |
 
 ---
 

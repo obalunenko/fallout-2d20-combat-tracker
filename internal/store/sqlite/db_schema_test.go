@@ -105,6 +105,17 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 }
 
+func TestOpenAndMigrateCreatesCriticalEncounterIndexes(t *testing.T) {
+	store := newTestStore(t)
+
+	assertIndexColumns(t, store.db, "idx_encounters_campaign_deleted_updated", []indexColumn{
+		{name: "campaign_id"},
+		{name: "deleted_at"},
+		{name: "updated_at", desc: true},
+		{name: "id", desc: true},
+	})
+}
+
 func TestMigration33BackfillsStatProfilesAndAddsResistanceCompatibilityViews(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "migration-32-legacy.db")
 	db, err := sql.Open("sqlite", sqliteDSN(dbPath))

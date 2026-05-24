@@ -196,3 +196,47 @@ func queryColumnNames(t *testing.T, db *sql.DB, table string) []string {
 	require.NoError(t, rows.Err())
 	return columns
 }
+
+type indexColumn struct {
+	name string
+	desc bool
+}
+
+func assertIndexColumns(t *testing.T, db *sql.DB, indexName string, want []indexColumn) {
+	t.Helper()
+
+	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'index' AND name = ?`, indexName))
+	assert.Equal(t, want, queryIndexColumns(t, db, indexName))
+}
+
+func queryIndexColumns(t *testing.T, db *sql.DB, indexName string) []indexColumn {
+	t.Helper()
+
+	rows, err := db.Query(fmt.Sprintf(`PRAGMA index_xinfo(%s)`, indexName))
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, rows.Close())
+	}()
+
+	var columns []indexColumn
+	for rows.Next() {
+		var (
+			seqno int
+			cid   int
+			name  sql.NullString
+			desc  int
+			coll  sql.NullString
+			key   int
+		)
+		require.NoError(t, rows.Scan(&seqno, &cid, &name, &desc, &coll, &key))
+		if key != 1 {
+			continue
+		}
+		columns = append(columns, indexColumn{
+			name: name.String,
+			desc: desc == 1,
+		})
+	}
+	require.NoError(t, rows.Err())
+	return columns
+}

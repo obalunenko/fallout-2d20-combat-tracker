@@ -266,6 +266,9 @@ ON player_characters(campaign_id, active, availability_status, name);
 CREATE INDEX idx_monster_templates_deleted_name
 ON monster_templates(deleted_at, name COLLATE NOCASE);
 
+CREATE INDEX idx_encounters_campaign_deleted_updated
+ON encounters(campaign_id, deleted_at, updated_at DESC, id DESC);
+
 CREATE TRIGGER trg_stat_profile_resistance_global_poison_only_insert
 BEFORE INSERT ON stat_profile_resistance_global
 WHEN NEW.resistance <> 0
