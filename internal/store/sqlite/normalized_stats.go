@@ -58,10 +58,10 @@ func normalizedDictionaryIDs(ctx context.Context, qtx *dbgen.Queries) (dictionar
 	return ids, nil
 }
 
-func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, combatantID string, c domain.Combatant) error {
+func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, combatantID string, profile domain.CombatantProfile) error {
 	return upsertNormalizedStats(
 		ids,
-		c,
+		profile.Resistance,
 		func(stat resistanceGlobalStat) error {
 			return qtx.UpsertCombatantResistanceGlobal(ctx, dbgen.UpsertCombatantResistanceGlobalParams{
 				CombatantID:  combatantID,
@@ -81,10 +81,10 @@ func upsertCombatantNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids
 	)
 }
 
-func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, playerCharacterID string, c domain.Combatant) error {
+func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, playerCharacterID string, profile domain.CombatantProfile) error {
 	return upsertNormalizedStats(
 		ids,
-		c,
+		profile.Resistance,
 		func(stat resistanceGlobalStat) error {
 			return qtx.UpsertPlayerCharacterResistanceGlobal(ctx, dbgen.UpsertPlayerCharacterResistanceGlobalParams{
 				PlayerCharacterID: playerCharacterID,
@@ -104,10 +104,10 @@ func upsertPlayerCharacterNormalizedStats(ctx context.Context, qtx *dbgen.Querie
 	)
 }
 
-func upsertMonsterTemplateNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, monsterTemplateID string, c domain.Combatant) error {
+func upsertMonsterTemplateNormalizedStats(ctx context.Context, qtx *dbgen.Queries, ids dictionaryIDs, monsterTemplateID string, profile domain.CombatantProfile) error {
 	return upsertNormalizedStats(
 		ids,
-		c,
+		profile.Resistance,
 		func(stat resistanceGlobalStat) error {
 			return qtx.UpsertMonsterTemplateResistanceGlobal(ctx, dbgen.UpsertMonsterTemplateResistanceGlobalParams{
 				MonsterTemplateID: monsterTemplateID,
@@ -129,11 +129,11 @@ func upsertMonsterTemplateNormalizedStats(ctx context.Context, qtx *dbgen.Querie
 
 func upsertNormalizedStats(
 	ids dictionaryIDs,
-	c domain.Combatant,
+	profile domain.ResistanceProfile,
 	upsertGlobalResistance func(resistanceGlobalStat) error,
 	upsertLocationResistance func(resistanceByLocationStat) error,
 ) error {
-	globalStats, err := globalResistanceStats(ids, c)
+	globalStats, err := globalResistanceStats(ids, profile)
 	if err != nil {
 		return fmt.Errorf("build global resistance stats: %w", err)
 	}
@@ -143,7 +143,7 @@ func upsertNormalizedStats(
 		}
 	}
 
-	locationStats, err := resistanceStatsByLocation(ids, c)
+	locationStats, err := resistanceStatsByLocation(ids, profile)
 	if err != nil {
 		return fmt.Errorf("build location resistance stats: %w", err)
 	}
@@ -156,8 +156,7 @@ func upsertNormalizedStats(
 	return nil
 }
 
-func globalResistanceStats(ids dictionaryIDs, c domain.Combatant) ([]resistanceGlobalStat, error) {
-	profile := c.ResistanceProfile()
+func globalResistanceStats(ids dictionaryIDs, profile domain.ResistanceProfile) ([]resistanceGlobalStat, error) {
 	stats := make([]resistanceGlobalStat, 0, len(domain.DamageTypes()))
 	for _, damageType := range domain.DamageTypes() {
 		damageTypeID, ok := ids.damageTypes[damageType]
@@ -177,8 +176,7 @@ func globalResistanceStats(ids dictionaryIDs, c domain.Combatant) ([]resistanceG
 	return stats, nil
 }
 
-func resistanceStatsByLocation(ids dictionaryIDs, c domain.Combatant) ([]resistanceByLocationStat, error) {
-	profile := c.ResistanceProfile()
+func resistanceStatsByLocation(ids dictionaryIDs, profile domain.ResistanceProfile) ([]resistanceByLocationStat, error) {
 	stats := make([]resistanceByLocationStat, 0, len(domain.LocationDamageTypes())*len(domain.BodyLocations()))
 	for _, damageType := range domain.LocationDamageTypes() {
 		damageTypeID, ok := ids.damageTypes[damageType]

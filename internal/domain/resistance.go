@@ -22,6 +22,11 @@ type ResistanceProfile struct {
 	ByLocation map[DamageType]map[BodyLocation]int
 }
 
+type CombatantProfile struct {
+	Stats      CombatantStats
+	Resistance ResistanceProfile
+}
+
 func DamageTypes() []DamageType {
 	return []DamageType{
 		DamagePhysical,
@@ -75,6 +80,21 @@ func (c *Combatant) SetStats(stats CombatantStats) {
 	c.Defense = stats.Defense
 }
 
+func (c Combatant) Profile() CombatantProfile {
+	return CombatantProfile{
+		Stats:      c.Stats(),
+		Resistance: c.ResistanceProfile(),
+	}
+}
+
+func (c *Combatant) SetProfile(profile CombatantProfile) {
+	if c == nil {
+		return
+	}
+	c.SetStats(profile.Stats)
+	c.SetResistanceProfile(profile.Resistance)
+}
+
 func (c Combatant) ResistanceProfile() ResistanceProfile {
 	return c.resistanceProfile(true)
 }
@@ -106,13 +126,19 @@ func (c Combatant) damageResistance(damageType DamageType, location BodyLocation
 }
 
 func (c Combatant) HasNegativeResistance() bool {
-	profile := c.resistanceProfile(false)
-	if profile.Global[DamagePoison].Value < 0 {
+	return c.resistanceProfile(false).HasNegativeValues()
+}
+
+func (p ResistanceProfile) HasNegativeValues() bool {
+	if p.Global != nil && p.Global[DamagePoison].Value < 0 {
 		return true
 	}
 	for _, damageType := range LocationDamageTypes() {
+		if p.ByLocation == nil || p.ByLocation[damageType] == nil {
+			continue
+		}
 		for _, location := range BodyLocations() {
-			if profile.ByLocation[damageType][location] < 0 {
+			if p.ByLocation[damageType][location] < 0 {
 				return true
 			}
 		}
@@ -204,6 +230,9 @@ func (p ResistanceProfile) GlobalResistance(damageType DamageType) (int, bool, e
 		return 0, false, fmt.Errorf("unknown damage type: %q", damageType)
 	}
 	value, immune := p.globalValue(damageType)
+	if damageType != DamagePoison {
+		return 0, immune, nil
+	}
 	return value, immune, nil
 }
 

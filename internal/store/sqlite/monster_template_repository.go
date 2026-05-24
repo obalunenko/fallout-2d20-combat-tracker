@@ -74,7 +74,7 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 		return domain.Combatant{}, fmt.Errorf("get monster template id: %w", err)
 	}
 	monster.ID = templateID
-	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster); err != nil {
+	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster.Profile()); err != nil {
 		return domain.Combatant{}, fmt.Errorf("sync normalized monster template stats: %w", err)
 	}
 	if err = tx.Commit(); err != nil {

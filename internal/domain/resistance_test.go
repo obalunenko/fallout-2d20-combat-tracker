@@ -25,6 +25,49 @@ func TestCombatantStatsRoundTrip(t *testing.T) {
 	assert.Equal(t, stats, combatant.Stats())
 }
 
+func TestCombatantProfileRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	profile := CombatantProfile{
+		Stats: CombatantStats{
+			TorsoOnly:  true,
+			Level:      3,
+			XP:         50,
+			Initiative: 7,
+			HP:         9,
+			MaxHP:      10,
+			Defense:    2,
+		},
+		Resistance: ResistanceProfile{
+			Global: map[DamageType]Resistance{
+				DamagePhysical: {Immune: true},
+				DamagePoison:   {Value: 4},
+			},
+			ByLocation: map[DamageType]map[BodyLocation]int{
+				DamagePhysical: {
+					BodyTorso: 6,
+				},
+			},
+		},
+	}
+
+	var combatant Combatant
+	combatant.SetProfile(profile)
+	actual := combatant.Profile()
+
+	assert.Equal(t, profile.Stats, actual.Stats)
+	resistance, immune, err := actual.Resistance.GlobalResistance(DamagePhysical)
+	require.NoError(t, err)
+	assert.Equal(t, 0, resistance)
+	assert.True(t, immune)
+	resistance, _, err = actual.Resistance.GlobalResistance(DamagePoison)
+	require.NoError(t, err)
+	assert.Equal(t, 4, resistance)
+	locationResistance, err := actual.Resistance.LocationResistance(DamagePhysical, BodyTorso)
+	require.NoError(t, err)
+	assert.Equal(t, 6, locationResistance)
+}
+
 func TestResistanceProfileReadsCombatantFields(t *testing.T) {
 	t.Parallel()
 
@@ -90,6 +133,29 @@ func TestCombatantHasNegativeResistance(t *testing.T) {
 	assert.False(t, Combatant{ResistPhysical: -1, ResistEnergyTorso: 2}.HasNegativeResistance())
 	assert.True(t, Combatant{ResistPoison: -1}.HasNegativeResistance())
 	assert.True(t, Combatant{ResistRadiationRightLeg: -1}.HasNegativeResistance())
+}
+
+func TestValidateResistanceProfileChecksMeaningfulResistanceValues(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateResistanceProfile(ResistanceProfile{
+		Global: map[DamageType]Resistance{
+			DamagePoison: {Value: -1},
+		},
+	})
+	require.Error(t, err)
+
+	err = ValidateResistanceProfile(ResistanceProfile{
+		Global: map[DamageType]Resistance{
+			DamagePhysical: {Value: -1},
+		},
+		ByLocation: map[DamageType]map[BodyLocation]int{
+			DamagePhysical: {
+				BodyTorso: 1,
+			},
+		},
+	})
+	require.NoError(t, err)
 }
 
 func TestSetResistanceProfileWritesCombatantFields(t *testing.T) {

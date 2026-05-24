@@ -10,13 +10,13 @@ import (
 
 func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 	ids := testDictionaryIDs()
-	actual, err := globalResistanceStats(ids, domain.Combatant{
-		ResistPhysical:  1,
-		ResistEnergy:    2,
-		ResistRadiation: 3,
-		ResistPoison:    4,
-		ImmunePhysical:  true,
-		ImmuneRadiation: true,
+	actual, err := globalResistanceStats(ids, domain.ResistanceProfile{
+		Global: map[domain.DamageType]domain.Resistance{
+			domain.DamagePhysical:  {Value: 1, Immune: true},
+			domain.DamageEnergy:    {Value: 2},
+			domain.DamageRadiation: {Value: 3, Immune: true},
+			domain.DamagePoison:    {Value: 4},
+		},
 	})
 	require.NoError(t, err)
 
@@ -30,25 +30,33 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 
 func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing.T) {
 	ids := testDictionaryIDs()
-	actual, err := resistanceStatsByLocation(ids, domain.Combatant{
-		ResistPhysicalHead:      1,
-		ResistPhysicalTorso:     2,
-		ResistPhysicalLeftArm:   3,
-		ResistPhysicalRightArm:  4,
-		ResistPhysicalLeftLeg:   5,
-		ResistPhysicalRightLeg:  6,
-		ResistEnergyHead:        7,
-		ResistEnergyTorso:       8,
-		ResistEnergyLeftArm:     9,
-		ResistEnergyRightArm:    10,
-		ResistEnergyLeftLeg:     11,
-		ResistEnergyRightLeg:    12,
-		ResistRadiationHead:     13,
-		ResistRadiationTorso:    14,
-		ResistRadiationLeftArm:  15,
-		ResistRadiationRightArm: 16,
-		ResistRadiationLeftLeg:  17,
-		ResistRadiationRightLeg: 18,
+	actual, err := resistanceStatsByLocation(ids, domain.ResistanceProfile{
+		ByLocation: map[domain.DamageType]map[domain.BodyLocation]int{
+			domain.DamagePhysical: {
+				domain.BodyHead:     1,
+				domain.BodyTorso:    2,
+				domain.BodyLeftArm:  3,
+				domain.BodyRightArm: 4,
+				domain.BodyLeftLeg:  5,
+				domain.BodyRightLeg: 6,
+			},
+			domain.DamageEnergy: {
+				domain.BodyHead:     7,
+				domain.BodyTorso:    8,
+				domain.BodyLeftArm:  9,
+				domain.BodyRightArm: 10,
+				domain.BodyLeftLeg:  11,
+				domain.BodyRightLeg: 12,
+			},
+			domain.DamageRadiation: {
+				domain.BodyHead:     13,
+				domain.BodyTorso:    14,
+				domain.BodyLeftArm:  15,
+				domain.BodyRightArm: 16,
+				domain.BodyLeftLeg:  17,
+				domain.BodyRightLeg: 18,
+			},
+		},
 	})
 	require.NoError(t, err)
 
@@ -79,7 +87,7 @@ func TestNormalizedStatsFailsWhenDictionaryIDsAreMissing(t *testing.T) {
 	ids := testDictionaryIDs()
 	delete(ids.damageTypes, domain.DamagePoison)
 
-	_, err := globalResistanceStats(ids, domain.Combatant{})
+	_, err := globalResistanceStats(ids, domain.ResistanceProfile{})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown damage type id")

@@ -43,8 +43,15 @@ func ValidateCombatant(c Combatant, opts CombatantValidationOptions) error {
 	if c.Defense < 0 {
 		return fmt.Errorf("%sinvalid defense", prefix)
 	}
-	if c.HasNegativeResistance() {
-		return fmt.Errorf("%sinvalid resistance", prefix)
+	if err := ValidateResistanceProfile(c.resistanceProfile(false)); err != nil {
+		return fmt.Errorf("%s%w", prefix, err)
+	}
+	return nil
+}
+
+func ValidateResistanceProfile(profile ResistanceProfile) error {
+	if profile.HasNegativeValues() {
+		return fmt.Errorf("invalid resistance")
 	}
 	return nil
 }
