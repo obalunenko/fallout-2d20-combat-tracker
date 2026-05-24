@@ -48,25 +48,9 @@ func (s *EncounterStore) Save(ctx context.Context, enc *domain.Encounter) error 
 		enc.CampaignID = campaignID
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	qtx := s.q.WithTx(tx)
-	if err = saveEncounter(ctx, qtx, enc); err != nil {
-		return err
-	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-	return nil
+	return s.runInTx(ctx, func(qtx *dbgen.Queries) error {
+		return saveEncounter(ctx, qtx, enc)
+	})
 }
 
 func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounter) error {

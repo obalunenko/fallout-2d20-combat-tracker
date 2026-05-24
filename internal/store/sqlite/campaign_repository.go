@@ -116,71 +116,61 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 		return nil, fmt.Errorf("campaign start date is required")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
+	if err := s.runInTx(ctx, func(qtx *dbgen.Queries) error {
+		if err := qtx.EnsureAppStateRow(ctx); err != nil {
+			return fmt.Errorf("ensure app state: %w", err)
 		}
-	}()
-
-	qtx := s.q.WithTx(tx)
-	if err = qtx.EnsureAppStateRow(ctx); err != nil {
-		return nil, fmt.Errorf("ensure app state: %w", err)
-	}
-	if err = qtx.InsertCampaign(ctx, dbgen.InsertCampaignParams{
-		ID:        campaignID,
-		Name:      name,
-		StartDate: formatCampaignStartDateForDB(startDate),
-	}); err != nil {
-		return nil, fmt.Errorf("insert campaign: %w", err)
-	}
-	ids, err := normalizedDictionaryIDs(ctx, qtx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, p := range players {
-		if err = normalizeCampaignPlayerForSave(&p); err != nil {
-			return nil, err
-		}
-		playerID := uuid.NewString()
-		if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
-			ID:         playerID,
-			CampaignID: campaignID,
-			Name:       strings.TrimSpace(p.PlayerName),
+		if err := qtx.InsertCampaign(ctx, dbgen.InsertCampaignParams{
+			ID:        campaignID,
+			Name:      name,
+			StartDate: formatCampaignStartDateForDB(startDate),
 		}); err != nil {
-			return nil, fmt.Errorf("insert player: %w", err)
+			return fmt.Errorf("insert campaign: %w", err)
+		}
+		ids, err := normalizedDictionaryIDs(ctx, qtx)
+		if err != nil {
+			return err
 		}
 
-		charID := strings.TrimSpace(p.Character.ID)
-		if charID == "" {
-			charID = uuid.NewString()
-		}
-		if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
-			return nil, fmt.Errorf("sync normalized player character stats: %w", err)
-		}
-		if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
-			return nil, fmt.Errorf("insert player character: %w", err)
-		}
-	}
+		for _, p := range players {
+			if err := normalizeCampaignPlayerForSave(&p); err != nil {
+				return err
+			}
+			playerID := uuid.NewString()
+			if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
+				ID:         playerID,
+				CampaignID: campaignID,
+				Name:       strings.TrimSpace(p.PlayerName),
+			}); err != nil {
+				return fmt.Errorf("insert player: %w", err)
+			}
 
-	if _, activeErr := qtx.GetActiveCampaign(ctx); activeErr == sql.ErrNoRows {
-		affected, setErr := qtx.SetActiveCampaign(ctx, campaignID)
-		if setErr != nil {
-			return nil, fmt.Errorf("set active campaign: %w", setErr)
+			charID := strings.TrimSpace(p.Character.ID)
+			if charID == "" {
+				charID = uuid.NewString()
+			}
+			if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
+				return fmt.Errorf("sync normalized player character stats: %w", err)
+			}
+			if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
+				return fmt.Errorf("insert player character: %w", err)
+			}
 		}
-		if affected == 0 {
-			return nil, domain.ErrCampaignNotFound
-		}
-	} else if activeErr != nil {
-		return nil, fmt.Errorf("check active campaign: %w", activeErr)
-	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
+		if _, activeErr := qtx.GetActiveCampaign(ctx); activeErr == sql.ErrNoRows {
+			affected, err := qtx.SetActiveCampaign(ctx, campaignID)
+			if err != nil {
+				return fmt.Errorf("set active campaign: %w", err)
+			}
+			if affected == 0 {
+				return domain.ErrCampaignNotFound
+			}
+		} else if activeErr != nil {
+			return fmt.Errorf("check active campaign: %w", activeErr)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return &domain.Campaign{
@@ -198,110 +188,102 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 	if startDate.IsZero() {
 		return nil, fmt.Errorf("campaign start date is required")
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
+	if err := s.runInTx(ctx, func(qtx *dbgen.Queries) error {
+		affected, err := qtx.UpdateCampaignByID(ctx, dbgen.UpdateCampaignByIDParams{
+			Name:       name,
+			StartDate:  formatCampaignStartDateForDB(startDate),
+			CampaignID: campaignID,
+		})
 		if err != nil {
-			_ = tx.Rollback()
+			return fmt.Errorf("update campaign: %w", err)
 		}
-	}()
-	qtx := s.q.WithTx(tx)
-	affected, err := qtx.UpdateCampaignByID(ctx, dbgen.UpdateCampaignByIDParams{
-		Name:       name,
-		StartDate:  formatCampaignStartDateForDB(startDate),
-		CampaignID: campaignID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("update campaign: %w", err)
-	}
-	if affected == 0 {
-		return nil, domain.ErrCampaignNotFound
-	}
+		if affected == 0 {
+			return domain.ErrCampaignNotFound
+		}
 
-	playerIDsByName, err := listCampaignPlayerIDsByName(ctx, qtx, campaignID)
-	if err != nil {
-		return nil, fmt.Errorf("list campaign players: %w", err)
-	}
-	ids, err := normalizedDictionaryIDs(ctx, qtx)
-	if err != nil {
+		playerIDsByName, err := listCampaignPlayerIDsByName(ctx, qtx, campaignID)
+		if err != nil {
+			return fmt.Errorf("list campaign players: %w", err)
+		}
+		ids, err := normalizedDictionaryIDs(ctx, qtx)
+		if err != nil {
+			return err
+		}
+
+		updatedPlayers := make(map[string]struct{}, len(players))
+		for _, p := range players {
+			if err := normalizeCampaignPlayerForSave(&p); err != nil {
+				return err
+			}
+			playerName := strings.TrimSpace(p.PlayerName)
+			playerKey := normalizeNameKey(playerName)
+			if playerKey == "" {
+				return fmt.Errorf("player name is required")
+			}
+			if _, exists := updatedPlayers[playerKey]; exists {
+				return fmt.Errorf("player %q already has an active character in this campaign", playerName)
+			}
+			updatedPlayers[playerKey] = struct{}{}
+
+			playerID, exists := playerIDsByName[playerKey]
+			if !exists {
+				playerID = uuid.NewString()
+				if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
+					ID:         playerID,
+					CampaignID: campaignID,
+					Name:       playerName,
+				}); err != nil {
+					return fmt.Errorf("insert player: %w", err)
+				}
+				playerIDsByName[playerKey] = playerID
+			}
+
+			activeChar, err := getActivePlayerCharacterByPlayerID(ctx, qtx, playerID)
+			if err != nil {
+				return fmt.Errorf("load active player character: %w", err)
+			}
+
+			targetCharacterName := strings.TrimSpace(p.Character.Name)
+			charID := activeChar.ID
+			shouldInsertNewCharacter := activeChar.ID == "" || normalizeNameKey(activeChar.Name) != normalizeNameKey(targetCharacterName)
+			if shouldInsertNewCharacter {
+				if err := deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
+					return fmt.Errorf("deactivate player characters: %w", err)
+				}
+				charID = strings.TrimSpace(p.Character.ID)
+				if charID == "" {
+					charID = uuid.NewString()
+				}
+				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
+					return fmt.Errorf("sync normalized player character stats: %w", err)
+				}
+				if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
+					return fmt.Errorf("insert player character: %w", err)
+				}
+			} else {
+				if err := updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character, p.Inactive); err != nil {
+					return fmt.Errorf("update player character: %w", err)
+				}
+				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
+					return fmt.Errorf("sync normalized player character stats: %w", err)
+				}
+			}
+		}
+
+		for playerKey, playerID := range playerIDsByName {
+			if _, keep := updatedPlayers[playerKey]; keep {
+				continue
+			}
+			if err := deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
+				return fmt.Errorf("deactivate removed campaign players: %w", err)
+			}
+		}
+		if err := removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
 		return nil, err
-	}
-
-	updatedPlayers := make(map[string]struct{}, len(players))
-	for _, p := range players {
-		if err = normalizeCampaignPlayerForSave(&p); err != nil {
-			return nil, err
-		}
-		playerName := strings.TrimSpace(p.PlayerName)
-		playerKey := normalizeNameKey(playerName)
-		if playerKey == "" {
-			return nil, fmt.Errorf("player name is required")
-		}
-		if _, exists := updatedPlayers[playerKey]; exists {
-			return nil, fmt.Errorf("player %q already has an active character in this campaign", playerName)
-		}
-		updatedPlayers[playerKey] = struct{}{}
-
-		playerID, exists := playerIDsByName[playerKey]
-		if !exists {
-			playerID = uuid.NewString()
-			if err = qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
-				ID:         playerID,
-				CampaignID: campaignID,
-				Name:       playerName,
-			}); err != nil {
-				return nil, fmt.Errorf("insert player: %w", err)
-			}
-			playerIDsByName[playerKey] = playerID
-		}
-
-		activeChar, activeErr := getActivePlayerCharacterByPlayerID(ctx, qtx, playerID)
-		if activeErr != nil {
-			return nil, fmt.Errorf("load active player character: %w", activeErr)
-		}
-
-		targetCharacterName := strings.TrimSpace(p.Character.Name)
-		charID := activeChar.ID
-		shouldInsertNewCharacter := activeChar.ID == "" || normalizeNameKey(activeChar.Name) != normalizeNameKey(targetCharacterName)
-		if shouldInsertNewCharacter {
-			if err = deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
-				return nil, fmt.Errorf("deactivate player characters: %w", err)
-			}
-			charID = strings.TrimSpace(p.Character.ID)
-			if charID == "" {
-				charID = uuid.NewString()
-			}
-			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
-				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
-			}
-			if err = qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, campaignID, p.Character, p.Inactive)); err != nil {
-				return nil, fmt.Errorf("insert player character: %w", err)
-			}
-		} else {
-			if err = updateActivePlayerCharacter(ctx, qtx, charID, campaignID, p.Character, p.Inactive); err != nil {
-				return nil, fmt.Errorf("update player character: %w", err)
-			}
-			if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
-				return nil, fmt.Errorf("sync normalized player character stats: %w", err)
-			}
-		}
-	}
-
-	for playerKey, playerID := range playerIDsByName {
-		if _, keep := updatedPlayers[playerKey]; keep {
-			continue
-		}
-		if err = deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
-			return nil, fmt.Errorf("deactivate removed campaign players: %w", err)
-		}
-	}
-	if err = removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID); err != nil {
-		return nil, err
-	}
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 	return &domain.Campaign{
 		ID:        campaignID,

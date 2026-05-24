@@ -238,13 +238,6 @@ func enableCombatantInputRowStats(row *combatantInputRow) {
 	row.xp.Enable()
 }
 
-func combatantResistanceEntries(row *combatantInputRow) []*widget.Entry {
-	if row == nil {
-		return nil
-	}
-	return row.resistance.entries()
-}
-
 func collectCombatantsPreviewFromRows(rows []*combatantInputRow) []domain.Combatant {
 	preview := make([]domain.Combatant, 0, len(rows))
 	for _, row := range rows {

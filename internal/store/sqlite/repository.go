@@ -32,6 +32,33 @@ func normalizeContext(ctx context.Context) context.Context {
 	return ctx
 }
 
+func (s *EncounterStore) runInTx(ctx context.Context, run func(*dbgen.Queries) error) error {
+	if run == nil {
+		return fmt.Errorf("transaction callback cannot be nil")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := run(s.q.WithTx(tx)); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	committed = true
+	return nil
+}
+
 func (s *EncounterStore) activeCampaignID(ctx context.Context) (string, error) {
 	if err := s.q.EnsureAppStateRow(ctx); err != nil {
 		return "", fmt.Errorf("ensure app state: %w", err)

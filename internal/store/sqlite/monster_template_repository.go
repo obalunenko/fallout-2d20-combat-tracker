@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
+	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
 
 func (s *EncounterStore) ListMonsterTemplates(ctx context.Context) ([]domain.Combatant, error) {
@@ -52,38 +53,29 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 	monster.PlayerCharacterID = ""
 	domain.NormalizeCombatantHP(&monster)
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return domain.Combatant{}, fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
+	if err := s.runInTx(ctx, func(qtx *dbgen.Queries) error {
+		ids, err := normalizedDictionaryIDs(ctx, qtx)
 		if err != nil {
-			_ = tx.Rollback()
+			return err
 		}
-	}()
-
-	qtx := s.q.WithTx(tx)
-	ids, err := normalizedDictionaryIDs(ctx, qtx)
-	if err != nil {
+		templateID := monster.ID
+		existingTemplateID, err := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
+		if err != nil && err != sql.ErrNoRows {
+			return fmt.Errorf("get monster template id: %w", err)
+		}
+		if err == nil {
+			templateID = existingTemplateID
+		}
+		monster.ID = templateID
+		if err := upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster.Profile()); err != nil {
+			return fmt.Errorf("sync normalized monster template stats: %w", err)
+		}
+		if err := qtx.UpsertMonsterTemplate(ctx, upsertMonsterTemplateParams(templateID, monster)); err != nil {
+			return fmt.Errorf("upsert monster template: %w", err)
+		}
+		return nil
+	}); err != nil {
 		return domain.Combatant{}, err
-	}
-	templateID := monster.ID
-	existingTemplateID, lookupErr := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
-	if lookupErr != nil && lookupErr != sql.ErrNoRows {
-		return domain.Combatant{}, fmt.Errorf("get monster template id: %w", lookupErr)
-	}
-	if lookupErr == nil {
-		templateID = existingTemplateID
-	}
-	monster.ID = templateID
-	if err = upsertMonsterTemplateNormalizedStats(ctx, qtx, ids, templateID, monster.Profile()); err != nil {
-		return domain.Combatant{}, fmt.Errorf("sync normalized monster template stats: %w", err)
-	}
-	if err = qtx.UpsertMonsterTemplate(ctx, upsertMonsterTemplateParams(templateID, monster)); err != nil {
-		return domain.Combatant{}, fmt.Errorf("upsert monster template: %w", err)
-	}
-	if err = tx.Commit(); err != nil {
-		return domain.Combatant{}, fmt.Errorf("commit tx: %w", err)
 	}
 	return monster, nil
 }
