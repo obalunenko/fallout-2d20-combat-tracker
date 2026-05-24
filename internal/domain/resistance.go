@@ -27,6 +27,13 @@ type CombatantProfile struct {
 	Resistance ResistanceProfile
 }
 
+func NewResistanceProfile() ResistanceProfile {
+	return ResistanceProfile{
+		Global:     make(map[DamageType]Resistance),
+		ByLocation: make(map[DamageType]map[BodyLocation]int),
+	}
+}
+
 func DamageTypes() []DamageType {
 	return []DamageType{
 		DamagePhysical,
@@ -99,30 +106,40 @@ func (c Combatant) ResistanceProfile() ResistanceProfile {
 	return c.resistanceProfile(true)
 }
 
-func (c Combatant) damageResistance(damageType DamageType, location BodyLocation) (int, bool, error) {
+func (c Combatant) GlobalResistance(damageType DamageType) (int, bool, error) {
+	return c.ResistanceProfile().GlobalResistance(damageType)
+}
+
+func (c Combatant) LocationResistance(damageType DamageType, location BodyLocation) (int, error) {
+	return c.ResistanceProfile().LocationResistance(damageType, location)
+}
+
+func (c *Combatant) SetGlobalResistance(damageType DamageType, value int, immune bool) error {
+	if c == nil {
+		return nil
+	}
 	profile := c.ResistanceProfile()
-	poisonResistance, immune, err := profile.GlobalResistance(damageType)
-	if err != nil {
-		return 0, false, err
+	if err := profile.SetGlobalResistance(damageType, Resistance{Value: value, Immune: immune}); err != nil {
+		return err
 	}
-	if damageType == DamagePoison {
-		return poisonResistance, immune, nil
+	c.SetResistanceProfile(profile)
+	return nil
+}
+
+func (c *Combatant) SetLocationResistance(damageType DamageType, location BodyLocation, value int) error {
+	if c == nil {
+		return nil
 	}
-	if !isKnownBodyLocation(location) {
-		return 0, false, fmt.Errorf("unknown body location: %q", location)
+	profile := c.ResistanceProfile()
+	if err := profile.SetLocationResistance(damageType, location, value); err != nil {
+		return err
 	}
-	if c.TorsoOnly {
-		torsoResistance, err := profile.LocationResistance(damageType, BodyTorso)
-		if err != nil {
-			return 0, false, err
-		}
-		return torsoResistance, immune, nil
-	}
-	locationResistance, err := profile.LocationResistance(damageType, location)
-	if err != nil {
-		return 0, false, err
-	}
-	return locationResistance, immune, nil
+	c.SetResistanceProfile(profile)
+	return nil
+}
+
+func (c Combatant) damageResistance(damageType DamageType, location BodyLocation) (int, bool, error) {
+	return c.ResistanceProfile().EffectiveResistance(damageType, location, c.TorsoOnly)
 }
 
 func (c Combatant) HasNegativeResistance() bool {
@@ -236,6 +253,20 @@ func (p ResistanceProfile) GlobalResistance(damageType DamageType) (int, bool, e
 	return value, immune, nil
 }
 
+func (p *ResistanceProfile) SetGlobalResistance(damageType DamageType, resistance Resistance) error {
+	if !isKnownDamageType(damageType) {
+		return fmt.Errorf("unknown damage type: %q", damageType)
+	}
+	if p.Global == nil {
+		p.Global = make(map[DamageType]Resistance)
+	}
+	if damageType != DamagePoison {
+		resistance.Value = 0
+	}
+	p.Global[damageType] = resistance
+	return nil
+}
+
 func (p ResistanceProfile) LocationResistance(damageType DamageType, location BodyLocation) (int, error) {
 	if !isKnownDamageType(damageType) {
 		return 0, fmt.Errorf("unknown damage type: %q", damageType)
@@ -247,6 +278,64 @@ func (p ResistanceProfile) LocationResistance(damageType DamageType, location Bo
 		return 0, nil
 	}
 	return p.locationValue(damageType, location), nil
+}
+
+func (p *ResistanceProfile) SetLocationResistance(damageType DamageType, location BodyLocation, value int) error {
+	if !isKnownDamageType(damageType) {
+		return fmt.Errorf("unknown damage type: %q", damageType)
+	}
+	if !isKnownBodyLocation(location) {
+		return fmt.Errorf("unknown body location: %q", location)
+	}
+	if damageType == DamagePoison {
+		return fmt.Errorf("poison resistance is global-only")
+	}
+	if p.ByLocation == nil {
+		p.ByLocation = make(map[DamageType]map[BodyLocation]int)
+	}
+	byLocation := p.ByLocation[damageType]
+	if byLocation == nil {
+		byLocation = make(map[BodyLocation]int)
+		p.ByLocation[damageType] = byLocation
+	}
+	byLocation[location] = value
+	return nil
+}
+
+func (p ResistanceProfile) EffectiveResistance(damageType DamageType, location BodyLocation, torsoOnly bool) (int, bool, error) {
+	poisonResistance, immune, err := p.GlobalResistance(damageType)
+	if err != nil {
+		return 0, false, err
+	}
+	if damageType == DamagePoison {
+		return poisonResistance, immune, nil
+	}
+	if !isKnownBodyLocation(location) {
+		return 0, false, fmt.Errorf("unknown body location: %q", location)
+	}
+	if torsoOnly {
+		location = BodyTorso
+	}
+	locationResistance, err := p.LocationResistance(damageType, location)
+	if err != nil {
+		return 0, false, err
+	}
+	return locationResistance, immune, nil
+}
+
+func (p ResistanceProfile) Clone() ResistanceProfile {
+	clone := NewResistanceProfile()
+	for damageType, resistance := range p.Global {
+		clone.Global[damageType] = resistance
+	}
+	for damageType, byLocation := range p.ByLocation {
+		cloneByLocation := make(map[BodyLocation]int, len(byLocation))
+		for location, resistance := range byLocation {
+			cloneByLocation[location] = resistance
+		}
+		clone.ByLocation[damageType] = cloneByLocation
+	}
+	return clone
 }
 
 func (p ResistanceProfile) globalValue(damageType DamageType) (int, bool) {

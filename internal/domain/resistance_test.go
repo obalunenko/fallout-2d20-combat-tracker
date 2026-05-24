@@ -68,6 +68,102 @@ func TestCombatantProfileRoundTrip(t *testing.T) {
 	assert.Equal(t, 6, locationResistance)
 }
 
+func TestResistanceProfileSettersInitializeMapsAndClone(t *testing.T) {
+	t.Parallel()
+
+	profile := NewResistanceProfile()
+	require.NoError(t, profile.SetGlobalResistance(DamagePhysical, Resistance{Value: 99, Immune: true}))
+	require.NoError(t, profile.SetGlobalResistance(DamagePoison, Resistance{Value: 4, Immune: true}))
+	require.NoError(t, profile.SetLocationResistance(DamageEnergy, BodyLeftArm, 7))
+
+	resistance, immune, err := profile.GlobalResistance(DamagePhysical)
+	require.NoError(t, err)
+	assert.Equal(t, 0, resistance)
+	assert.True(t, immune)
+
+	resistance, immune, err = profile.GlobalResistance(DamagePoison)
+	require.NoError(t, err)
+	assert.Equal(t, 4, resistance)
+	assert.True(t, immune)
+
+	locationResistance, err := profile.LocationResistance(DamageEnergy, BodyLeftArm)
+	require.NoError(t, err)
+	assert.Equal(t, 7, locationResistance)
+
+	clone := profile.Clone()
+	require.NoError(t, clone.SetLocationResistance(DamageEnergy, BodyLeftArm, 9))
+
+	locationResistance, err = profile.LocationResistance(DamageEnergy, BodyLeftArm)
+	require.NoError(t, err)
+	assert.Equal(t, 7, locationResistance)
+	locationResistance, err = clone.LocationResistance(DamageEnergy, BodyLeftArm)
+	require.NoError(t, err)
+	assert.Equal(t, 9, locationResistance)
+}
+
+func TestResistanceProfileSettersValidateKeys(t *testing.T) {
+	t.Parallel()
+
+	profile := NewResistanceProfile()
+
+	require.Error(t, profile.SetGlobalResistance(DamageType("fire"), Resistance{}))
+	require.Error(t, profile.SetLocationResistance(DamageEnergy, BodyLocation("wing"), 1))
+	require.Error(t, profile.SetLocationResistance(DamagePoison, BodyTorso, 1))
+}
+
+func TestResistanceProfileEffectiveResistance(t *testing.T) {
+	t.Parallel()
+
+	profile := NewResistanceProfile()
+	require.NoError(t, profile.SetGlobalResistance(DamagePhysical, Resistance{Immune: true}))
+	require.NoError(t, profile.SetGlobalResistance(DamagePoison, Resistance{Value: 3}))
+	require.NoError(t, profile.SetLocationResistance(DamagePhysical, BodyHead, 2))
+	require.NoError(t, profile.SetLocationResistance(DamagePhysical, BodyTorso, 5))
+
+	resistance, immune, err := profile.EffectiveResistance(DamagePhysical, BodyHead, false)
+	require.NoError(t, err)
+	assert.Equal(t, 2, resistance)
+	assert.True(t, immune)
+
+	resistance, immune, err = profile.EffectiveResistance(DamagePhysical, BodyHead, true)
+	require.NoError(t, err)
+	assert.Equal(t, 5, resistance)
+	assert.True(t, immune)
+
+	resistance, immune, err = profile.EffectiveResistance(DamagePoison, BodyHead, false)
+	require.NoError(t, err)
+	assert.Equal(t, 3, resistance)
+	assert.False(t, immune)
+}
+
+func TestCombatantResistanceProfileAdapters(t *testing.T) {
+	t.Parallel()
+
+	var combatant Combatant
+	require.NoError(t, combatant.SetGlobalResistance(DamageEnergy, 12, true))
+	require.NoError(t, combatant.SetGlobalResistance(DamagePoison, 4, false))
+	require.NoError(t, combatant.SetLocationResistance(DamageEnergy, BodyRightLeg, 8))
+
+	resistance, immune, err := combatant.GlobalResistance(DamageEnergy)
+	require.NoError(t, err)
+	assert.Equal(t, 0, resistance)
+	assert.True(t, immune)
+
+	resistance, immune, err = combatant.GlobalResistance(DamagePoison)
+	require.NoError(t, err)
+	assert.Equal(t, 4, resistance)
+	assert.False(t, immune)
+
+	locationResistance, err := combatant.LocationResistance(DamageEnergy, BodyRightLeg)
+	require.NoError(t, err)
+	assert.Equal(t, 8, locationResistance)
+
+	assert.Equal(t, 0, combatant.ResistEnergy)
+	assert.True(t, combatant.ImmuneEnergy)
+	assert.Equal(t, 4, combatant.ResistPoison)
+	assert.Equal(t, 8, combatant.ResistEnergyRightLeg)
+}
+
 func TestResistanceProfileReadsCombatantFields(t *testing.T) {
 	t.Parallel()
 
