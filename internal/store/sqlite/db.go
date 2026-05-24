@@ -3,12 +3,14 @@ package sqlite
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/obalunenko/getenv"
 	_ "modernc.org/sqlite"
 
 	"github.com/pressly/goose/v3"
@@ -16,6 +18,22 @@ import (
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
+
+const dbPathEnvKey = "FALLOUT_TRACKER_DB_PATH"
+
+func ResolveDBPath() (string, error) {
+	dbPath, err := getenv.Env[string](dbPathEnvKey)
+	if err == nil {
+		if err := ensureDBPathDir(dbPath); err != nil {
+			return "", err
+		}
+		return dbPath, nil
+	}
+	if !errors.Is(err, getenv.ErrNotSet) {
+		return "", fmt.Errorf("read %s: %w", dbPathEnvKey, err)
+	}
+	return DefaultDBPath()
+}
 
 func DefaultDBPath() (string, error) {
 	configDir, err := os.UserConfigDir()
@@ -28,6 +46,22 @@ func DefaultDBPath() (string, error) {
 		return "", fmt.Errorf("create app config dir: %w", err)
 	}
 	return filepath.Join(appDir, "tracker.db"), nil
+}
+
+func ensureDBPathDir(dbPath string) error {
+	if strings.HasPrefix(dbPath, "file:") {
+		return nil
+	}
+
+	dbDir := filepath.Dir(dbPath)
+	if dbDir == "." {
+		return nil
+	}
+
+	if err := os.MkdirAll(dbDir, 0o755); err != nil {
+		return fmt.Errorf("create db dir: %w", err)
+	}
+	return nil
 }
 
 func OpenAndMigrate(dbPath string) (*sql.DB, error) {

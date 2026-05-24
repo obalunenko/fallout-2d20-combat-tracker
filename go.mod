@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	fyne.io/fyne/v2 v2.7.4
 	github.com/google/uuid v1.6.0
+	github.com/obalunenko/getenv v1.14.2
 	github.com/pressly/goose/v3 v3.27.1
 	github.com/stretchr/testify v1.11.1
 	modernc.org/sqlite v1.50.1

@@ -33,7 +33,8 @@ Use `NEW ENCOUNTER` in the app header, then:
 
 ## Storage
 
-- DB path: `~/.config/fallout-tracker/tracker.db`
+- DB path: `~/.config/fallout-tracker/tracker.db` by default
+- Override DB path: `FALLOUT_TRACKER_DB_PATH=/path/to/tracker.db`
 - Migrations: `internal/store/sqlite/migrations`
 - Migrations are applied automatically on startup via Goose
 - sqlc schema/queries:
