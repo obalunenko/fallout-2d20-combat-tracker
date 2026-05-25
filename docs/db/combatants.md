@@ -13,7 +13,6 @@ CREATE TABLE "combatants" (
     player_character_id TEXT NULL,
     name TEXT NOT NULL CHECK (trim(name) <> ''),
     side TEXT NOT NULL CHECK (side IN ('party', 'npc')),
-    active INTEGER NOT NULL DEFAULT 0 CHECK (active IN (0, 1)),
     defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),
     position INTEGER NOT NULL CHECK (position >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
@@ -37,7 +36,6 @@ CREATE TABLE "combatants" (
 | player_character_id | TEXT     |                                      | true     | [player_characters](player_characters.md) |
 | name                | TEXT     |                                      | false    |                                           |
 | side                | TEXT     |                                      | false    |                                           |
-| active              | INTEGER  | 0                                    | false    |                                           |
 | defeated            | INTEGER  | 0                                    | false    |                                           |
 | position            | INTEGER  |                                      | false    |                                           |
 | created_at          | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                           |
@@ -58,7 +56,6 @@ CREATE TABLE "combatants" (
 | -                             | CHECK       | CHECK (trim(stat_profile_id) <> '')                                                                                    |
 | -                             | CHECK       | CHECK (trim(name) <> '')                                                                                               |
 | -                             | CHECK       | CHECK (side IN ('party', 'npc'))                                                                                       |
-| -                             | CHECK       | CHECK (active IN (0, 1))                                                                                               |
 | -                             | CHECK       | CHECK (defeated IN (0, 1))                                                                                             |
 | -                             | CHECK       | CHECK (position >= 0)                                                                                                  |
 
@@ -66,7 +63,6 @@ CREATE TABLE "combatants" (
 
 | Name                                      | Definition                                                                                                                                                     |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| idx_combatants_one_active_per_encounter   | CREATE UNIQUE INDEX idx_combatants_one_active_per_encounter<br />ON combatants(encounter_id)<br />WHERE active = 1                                             |
 | idx_combatants_encounter_player_character | CREATE UNIQUE INDEX idx_combatants_encounter_player_character<br />ON combatants(encounter_id, player_character_id)<br />WHERE player_character_id IS NOT NULL |
 | idx_combatants_encounter_position         | CREATE INDEX idx_combatants_encounter_position<br />ON combatants(encounter_id, position)                                                                      |
 | sqlite_autoindex_combatants_1             | PRIMARY KEY (id)                                                                                                                                               |

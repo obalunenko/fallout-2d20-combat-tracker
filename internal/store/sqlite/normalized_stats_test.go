@@ -22,7 +22,6 @@ func TestGlobalResistanceStatsIncludesImmunityFlags(t *testing.T) {
 
 	assert.Equal(t, []resistanceGlobalStat{
 		{ids.damageTypes[domain.DamagePhysical], 0, 1},
-		{ids.damageTypes[domain.DamageEnergy], 0, 0},
 		{ids.damageTypes[domain.DamageRadiation], 0, 1},
 		{ids.damageTypes[domain.DamagePoison], 4, 0},
 	}, actual)
@@ -80,6 +79,47 @@ func TestResistanceStatsByLocationPreservesDamageAndBodyLocationOrder(t *testing
 		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightArm], 16},
 		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyLeftLeg], 17},
 		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightLeg], 18},
+	}, actual)
+}
+
+func TestResistanceStatsByLocationSkipsDamageTypeWithGlobalResistance(t *testing.T) {
+	ids := testDictionaryIDs()
+	actual, err := resistanceStatsByLocation(ids, domain.ResistanceProfile{
+		Global: map[domain.DamageType]domain.Resistance{
+			domain.DamagePhysical: {Immune: true},
+		},
+		ByLocation: map[domain.DamageType]map[domain.BodyLocation]int{
+			domain.DamagePhysical: {
+				domain.BodyHead:  1,
+				domain.BodyTorso: 2,
+			},
+			domain.DamageEnergy: {
+				domain.BodyHead: 3,
+			},
+			domain.DamageRadiation: {
+				domain.BodyRightLeg: 4,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	require.Len(t, actual, 12)
+	for _, stat := range actual {
+		assert.NotEqual(t, ids.damageTypes[domain.DamagePhysical], stat.damageTypeID)
+	}
+	assert.Equal(t, []resistanceByLocationStat{
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyHead], 3},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyTorso], 0},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyLeftArm], 0},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyRightArm], 0},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyLeftLeg], 0},
+		{ids.damageTypes[domain.DamageEnergy], ids.bodyLocations[domain.BodyRightLeg], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyHead], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyTorso], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyLeftArm], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightArm], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyLeftLeg], 0},
+		{ids.damageTypes[domain.DamageRadiation], ids.bodyLocations[domain.BodyRightLeg], 4},
 	}, actual)
 }
 

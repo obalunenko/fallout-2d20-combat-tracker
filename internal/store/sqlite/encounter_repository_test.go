@@ -40,7 +40,6 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 			{
 				ID: "n1", Name: "Radscorpion", Side: domain.SideNPC,
 				Level: 5, XP: 80, Initiative: 9, HP: 18, MaxHP: 18, Defense: 1,
-				ResistPhysicalHead: 1, ResistPhysicalTorso: 1, ResistPhysicalLeftArm: 1, ResistPhysicalRightArm: 1, ResistPhysicalLeftLeg: 1, ResistPhysicalRightLeg: 1,
 				ResistPoison:   3,
 				ImmunePhysical: true, Active: true, Defeated: false,
 			},

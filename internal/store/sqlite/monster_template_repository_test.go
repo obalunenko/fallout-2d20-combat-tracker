@@ -40,7 +40,7 @@ func TestEncounterStoreListMonsterTemplatesReadsNormalizedResistances(t *testing
 	assert.Equal(t, 0, monsters[0].ResistEnergy)
 	assert.Equal(t, 0, monsters[0].ResistRadiation)
 	assert.Equal(t, 5, monsters[0].ResistPoison)
-	assert.Equal(t, 6, monsters[0].ResistPhysicalTorso)
+	assert.Equal(t, 0, monsters[0].ResistPhysicalTorso)
 	assert.Equal(t, 7, monsters[0].ResistEnergyLeftArm)
 	assert.Equal(t, 8, monsters[0].ResistRadiationRightLeg)
 	assert.True(t, monsters[0].ImmunePhysical)

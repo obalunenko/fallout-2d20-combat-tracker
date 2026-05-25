@@ -8,6 +8,8 @@ import (
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
 
+const globalBodyLocation = domain.BodyLocation("global")
+
 type dictionaryIDs struct {
 	damageTypes   map[domain.DamageType]int64
 	bodyLocations map[domain.BodyLocation]int64
@@ -54,6 +56,9 @@ func normalizedDictionaryIDs(ctx context.Context, qtx *dbgen.Queries) (dictionar
 		if _, ok := ids.bodyLocations[bodyLocation]; !ok {
 			return dictionaryIDs{}, fmt.Errorf("missing body location dictionary row: %q", bodyLocation)
 		}
+	}
+	if _, ok := ids.bodyLocations[globalBodyLocation]; !ok {
+		return dictionaryIDs{}, fmt.Errorf("missing body location dictionary row: %q", globalBodyLocation)
 	}
 	return ids, nil
 }
@@ -106,6 +111,9 @@ func upsertStatProfileNormalizedStats(
 		Defense:    int64(profile.Stats.Defense),
 	}); err != nil {
 		return fmt.Errorf("upsert stat profile: %w", err)
+	}
+	if err := qtx.DeleteStatProfileResistancesByProfileID(ctx, statProfileID); err != nil {
+		return fmt.Errorf("clear stat profile resistances: %w", err)
 	}
 
 	return upsertNormalizedStats(
@@ -170,6 +178,9 @@ func globalResistanceStats(ids dictionaryIDs, profile domain.ResistanceProfile) 
 		if err != nil {
 			return nil, err
 		}
+		if resistance == 0 && !immune {
+			continue
+		}
 		stats = append(stats, resistanceGlobalStat{
 			damageTypeID: damageTypeID,
 			resistance:   int64(resistance),
@@ -185,6 +196,9 @@ func resistanceStatsByLocation(ids dictionaryIDs, profile domain.ResistanceProfi
 		damageTypeID, ok := ids.damageTypes[damageType]
 		if !ok {
 			return nil, fmt.Errorf("unknown damage type id: %q", damageType)
+		}
+		if hasMeaningfulGlobalResistance(profile, damageType) {
+			continue
 		}
 		for _, bodyLocation := range domain.BodyLocations() {
 			bodyLocationID, ok := ids.bodyLocations[bodyLocation]
@@ -203,4 +217,12 @@ func resistanceStatsByLocation(ids dictionaryIDs, profile domain.ResistanceProfi
 		}
 	}
 	return stats, nil
+}
+
+func hasMeaningfulGlobalResistance(profile domain.ResistanceProfile, damageType domain.DamageType) bool {
+	resistance, immune, err := profile.GlobalResistance(damageType)
+	if err != nil {
+		return false
+	}
+	return resistance != 0 || immune
 }

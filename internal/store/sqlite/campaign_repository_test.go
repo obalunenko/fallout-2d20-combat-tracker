@@ -249,7 +249,7 @@ func TestEncounterStoreListCampaignPlayersReadsNormalizedResistances(t *testing.
 	assert.Equal(t, 0, character.ResistEnergy)
 	assert.Equal(t, 0, character.ResistRadiation)
 	assert.Equal(t, 5, character.ResistPoison)
-	assert.Equal(t, 6, character.ResistPhysicalTorso)
+	assert.Equal(t, 0, character.ResistPhysicalTorso)
 	assert.Equal(t, 7, character.ResistEnergyLeftArm)
 	assert.Equal(t, 8, character.ResistRadiationRightLeg)
 	assert.True(t, character.ImmunePhysical)

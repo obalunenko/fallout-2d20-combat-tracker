@@ -70,6 +70,16 @@ func (q *Queries) DeletePlayersByCampaignID(ctx context.Context, campaignID stri
 	return err
 }
 
+const deleteStatProfileResistancesByProfileID = `-- name: DeleteStatProfileResistancesByProfileID :exec
+DELETE FROM stat_profile_resistance_by_location
+WHERE stat_profile_id = ?1
+`
+
+func (q *Queries) DeleteStatProfileResistancesByProfileID(ctx context.Context, statProfileID string) error {
+	_, err := q.db.ExecContext(ctx, deleteStatProfileResistancesByProfileID, statProfileID)
+	return err
+}
+
 const ensureAppStateRow = `-- name: EnsureAppStateRow :exec
 INSERT OR IGNORE INTO app_state (id, active_campaign_id)
 VALUES (1, NULL)
@@ -298,7 +308,7 @@ func (q *Queries) InsertCampaign(ctx context.Context, arg InsertCampaignParams) 
 
 const insertCombatant = `-- name: InsertCombatant :exec
 INSERT INTO combatants (
-	id, encounter_id, stat_profile_id, player_character_id, name, side, active, defeated, position, created_at, updated_at
+	id, encounter_id, stat_profile_id, player_character_id, name, side, defeated, position, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -309,7 +319,6 @@ VALUES (
   ?6,
   ?7,
   ?8,
-  ?9,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -322,7 +331,6 @@ type InsertCombatantParams struct {
 	PlayerCharacterID interface{}
 	Name              string
 	Side              string
-	Active            int64
 	Defeated          int64
 	Position          int64
 }
@@ -335,7 +343,6 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 		arg.PlayerCharacterID,
 		arg.Name,
 		arg.Side,
-		arg.Active,
 		arg.Defeated,
 		arg.Position,
 	)
@@ -509,6 +516,7 @@ JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE p.campaign_id = ?1
   AND pc.active = 1
+  AND bl.code <> 'global'
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC
 `
 
@@ -555,7 +563,9 @@ SELECT
   sprg.immune
 FROM player_characters pc
 JOIN players p ON p.id = pc.player_id
-JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN stat_profile_resistance_by_location sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN body_locations bl ON bl.id = sprg.body_location_id
+  AND bl.code = 'global'
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE p.campaign_id = ?1
   AND pc.active = 1
@@ -707,6 +717,7 @@ JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = c.stat_p
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE c.encounter_id = ?1
+  AND bl.code <> 'global'
 ORDER BY c.position ASC, dt.id ASC, bl.id ASC
 `
 
@@ -752,7 +763,9 @@ SELECT
   sprg.resistance,
   sprg.immune
 FROM combatants c
-JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = c.stat_profile_id
+JOIN stat_profile_resistance_by_location sprg ON sprg.stat_profile_id = c.stat_profile_id
+JOIN body_locations bl ON bl.id = sprg.body_location_id
+  AND bl.code = 'global'
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC, dt.id ASC
@@ -806,7 +819,7 @@ SELECT
   CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
   CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
   CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
-  c.active,
+  CAST(CASE WHEN c.position = e.turn_index THEN 1 ELSE 0 END AS INTEGER) AS active,
   CAST(CASE
     WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
     ELSE c.defeated
@@ -1102,6 +1115,7 @@ JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE c.encounter_id = ?1
   AND c.side = 'party'
+  AND bl.code <> 'global'
 ORDER BY c.position ASC, dt.id ASC, bl.id ASC
 `
 
@@ -1154,7 +1168,9 @@ JOIN encounters e ON e.id = c.encounter_id
 JOIN player_characters pc ON pc.id = c.player_character_id
 JOIN players p ON p.id = pc.player_id
   AND p.campaign_id = e.campaign_id
-JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN stat_profile_resistance_by_location sprg ON sprg.stat_profile_id = pc.stat_profile_id
+JOIN body_locations bl ON bl.id = sprg.body_location_id
+  AND bl.code = 'global'
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE c.encounter_id = ?1
   AND c.side = 'party'
@@ -1209,6 +1225,7 @@ JOIN stat_profile_resistance_by_location sprl ON sprl.stat_profile_id = mt.stat_
 JOIN damage_types dt ON dt.id = sprl.damage_type_id
 JOIN body_locations bl ON bl.id = sprl.body_location_id
 WHERE mt.deleted_at IS NULL
+  AND bl.code <> 'global'
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC, bl.id ASC
 `
 
@@ -1254,7 +1271,9 @@ SELECT
   sprg.resistance,
   sprg.immune
 FROM monster_templates mt
-JOIN stat_profile_resistance_global sprg ON sprg.stat_profile_id = mt.stat_profile_id
+JOIN stat_profile_resistance_by_location sprg ON sprg.stat_profile_id = mt.stat_profile_id
+JOIN body_locations bl ON bl.id = sprg.body_location_id
+  AND bl.code = 'global'
 JOIN damage_types dt ON dt.id = sprg.damage_type_id
 WHERE mt.deleted_at IS NULL
 ORDER BY mt.name COLLATE NOCASE ASC, mt.id DESC, dt.id ASC
@@ -1700,9 +1719,10 @@ func (q *Queries) UpsertStatProfileResistanceByLocation(ctx context.Context, arg
 }
 
 const upsertStatProfileResistanceGlobal = `-- name: UpsertStatProfileResistanceGlobal :exec
-INSERT INTO stat_profile_resistance_global (
+INSERT INTO stat_profile_resistance_by_location (
   stat_profile_id,
   damage_type_id,
+  body_location_id,
   resistance,
   immune,
   updated_at
@@ -1710,11 +1730,12 @@ INSERT INTO stat_profile_resistance_global (
 VALUES (
   ?1,
   ?2,
+  (SELECT id FROM body_locations WHERE code = 'global'),
   ?3,
   ?4,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
-ON CONFLICT (stat_profile_id, damage_type_id) DO UPDATE SET
+ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET
   resistance = excluded.resistance,
   immune = excluded.immune,
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')

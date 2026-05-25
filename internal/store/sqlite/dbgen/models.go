@@ -35,7 +35,6 @@ type Combatant struct {
 	PlayerCharacterID interface{}
 	Name              string
 	Side              string
-	Active            int64
 	Defeated          int64
 	Position          int64
 	CreatedAt         time.Time
@@ -45,8 +44,8 @@ type Combatant struct {
 
 type CombatantResistanceByLocation struct {
 	CombatantID    string
-	DamageTypeID   int64
 	BodyLocationID int64
+	DamageTypeID   int64
 	Resistance     int64
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -109,8 +108,8 @@ type MonsterTemplate struct {
 
 type MonsterTemplateResistanceByLocation struct {
 	MonsterTemplateID string
-	DamageTypeID      int64
 	BodyLocationID    int64
+	DamageTypeID      int64
 	Resistance        int64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
@@ -148,8 +147,8 @@ type PlayerCharacter struct {
 
 type PlayerCharacterResistanceByLocation struct {
 	PlayerCharacterID string
-	DamageTypeID      int64
 	BodyLocationID    int64
+	DamageTypeID      int64
 	Resistance        int64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
@@ -183,15 +182,7 @@ type StatProfileResistanceByLocation struct {
 	DamageTypeID   int64
 	BodyLocationID int64
 	Resistance     int64
+	Immune         int64
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-}
-
-type StatProfileResistanceGlobal struct {
-	StatProfileID string
-	DamageTypeID  int64
-	Resistance    int64
-	Immune        int64
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
 }

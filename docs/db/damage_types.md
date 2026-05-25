@@ -16,10 +16,10 @@ CREATE TABLE "damage_types" (
 
 ## Columns
 
-| Name | Type    | Default | Nullable | Children                                                                                                                                          |
-| ---- | ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id   | INTEGER |         | true     | [stat_profile_resistance_global](stat_profile_resistance_global.md) [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) |
-| code | TEXT    |         | false    |                                                                                                                                                   |
+| Name | Type    | Default | Nullable | Children                                                                      |
+| ---- | ------- | ------- | -------- | ----------------------------------------------------------------------------- |
+| id   | INTEGER |         | true     | [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) |
+| code | TEXT    |         | false    |                                                                               |
 
 ## Constraints
 

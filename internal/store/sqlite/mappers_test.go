@@ -184,7 +184,6 @@ func TestInsertCombatantParamsMapsDomainCombatant(t *testing.T) {
 		PlayerCharacterID: nullString(""),
 		Name:              "Raider",
 		Side:              string(domain.SideNPC),
-		Active:            1,
 		Defeated:          1,
 		Position:          2,
 	}, actual)

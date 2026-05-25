@@ -205,7 +205,6 @@ func insertCombatantParams(encounterID string, position int, c domain.Combatant)
 		PlayerCharacterID: nullString(c.PlayerCharacterID),
 		Name:              c.Name,
 		Side:              string(c.Side),
-		Active:            boolToInt64(c.Active),
 		Defeated:          boolToInt64(c.Defeated),
 		Position:          int64(position),
 	}

@@ -28,7 +28,7 @@ func TestSQLCSchemaSeedsEnumDictionaries(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"1:head,2:torso,3:left_arm,4:right_arm,5:left_leg,6:right_leg",
+		"0:global,1:head,2:torso,3:left_arm,4:right_arm,5:left_leg,6:right_leg",
 		queryString(t, db, `SELECT GROUP_CONCAT(id || ':' || code, ',') FROM (SELECT id, code FROM body_locations ORDER BY id)`),
 	)
 	assert.Equal(
@@ -78,7 +78,12 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 		}},
 	}))
 	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
-	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
+	assert.Equal(t, int64(1), queryInt64(t, db, `
+		SELECT COUNT(*)
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND body_location_id = (SELECT id FROM body_locations WHERE code = 'global')
+	`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 
 	conn1, err := db.Conn(t.Context())
 	require.NoError(t, err)
@@ -102,7 +107,6 @@ func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T
 
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ?`, "fk-encounter"))
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
-	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, statProfileID(statProfileCombatantKind, "fk-npc-1")))
 }
 
@@ -114,9 +118,6 @@ func TestOpenAndMigrateCreatesCriticalEncounterIndexes(t *testing.T) {
 		{name: "deleted_at"},
 		{name: "updated_at", desc: true},
 		{name: "id", desc: true},
-	})
-	assertIndexColumns(t, store.db, "idx_combatants_one_active_per_encounter", []indexColumn{
-		{name: "encounter_id"},
 	})
 }
 
@@ -311,11 +312,12 @@ func TestOpenAndMigrateEnforcesCoreRelationshipInvariants(t *testing.T) {
 	})
 }
 
-func TestOpenAndMigrateEnforcesSingleActiveCombatantPerEncounter(t *testing.T) {
+func TestOpenAndMigrateDerivesActiveCombatantFromTurnIndex(t *testing.T) {
 	store := newTestStore(t)
 	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
-		ID:   "single-active",
-		Name: "Single Active",
+		ID:        "single-active",
+		Name:      "Single Active",
+		TurnIndex: 1,
 		Combatants: []domain.Combatant{
 			{
 				ID:         "active-1",
@@ -333,12 +335,18 @@ func TestOpenAndMigrateEnforcesSingleActiveCombatantPerEncounter(t *testing.T) {
 				Initiative: 9,
 				HP:         5,
 				MaxHP:      5,
+				Active:     false,
 			},
 		},
 	}))
 
-	_, err := store.db.Exec(`UPDATE combatants SET active = 1 WHERE id = ?`, "inactive-1")
-	require.Error(t, err)
+	assert.NotContains(t, queryColumnNames(t, store.db, "combatants"), "active")
+
+	encounter, err := store.GetEncounterByID(t.Context(), "single-active")
+	require.NoError(t, err)
+	require.Len(t, encounter.Combatants, 2)
+	assert.False(t, encounter.Combatants[0].Active)
+	assert.True(t, encounter.Combatants[1].Active)
 }
 
 func TestOpenAndMigrateCascadesOwnedStatProfiles(t *testing.T) {
@@ -351,7 +359,6 @@ func TestOpenAndMigrateCascadesOwnedStatProfiles(t *testing.T) {
 	_, err = store.db.Exec(`DELETE FROM player_characters WHERE id = ?`, "repo-char-1")
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, playerCharacterProfileID))
-	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, playerCharacterProfileID))
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, playerCharacterProfileID))
 
 	monster, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
@@ -374,7 +381,6 @@ func TestOpenAndMigrateCascadesOwnedStatProfiles(t *testing.T) {
 	_, err = store.db.Exec(`DELETE FROM monster_templates WHERE id = ?`, monster.ID)
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profiles WHERE id = ?`, monsterProfileID))
-	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ?`, monsterProfileID))
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ?`, monsterProfileID))
 }
 
@@ -447,11 +453,88 @@ func TestMigration36BackfillsDuplicateActiveCombatants(t *testing.T) {
 
 	require.NoError(t, goose.Up(db, "migrations"))
 
-	assert.Equal(t, int64(1), queryInt64(t, db, `SELECT COUNT(*) FROM combatants WHERE encounter_id = ? AND active = 1`, "legacy-active-encounter"))
-	assert.Equal(t, "active-b", queryString(t, db, `SELECT id FROM combatants WHERE encounter_id = ? AND active = 1`, "legacy-active-encounter"))
+	assert.NotContains(t, queryColumnNames(t, db, "combatants"), "active")
+	assert.Equal(t, "active-b", queryString(t, db, `
+		SELECT c.id
+		FROM combatants c
+		JOIN encounters e ON e.id = c.encounter_id
+		WHERE c.encounter_id = ? AND c.position = e.turn_index
+	`, "legacy-active-encounter"))
+}
 
-	_, err = db.Exec(`UPDATE combatants SET active = 1 WHERE id = ?`, "active-a")
-	require.Error(t, err)
+func TestMigration39MovesGlobalResistanceIntoLocationRows(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "migration-39-legacy.db")
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	goose.SetBaseFS(migrationsFS)
+	require.NoError(t, goose.SetDialect("sqlite3"))
+	require.NoError(t, goose.UpTo(db, "migrations", 38))
+
+	poisonID := queryInt64(t, db, `SELECT id FROM damage_types WHERE code = 'poison'`)
+	physicalID := queryInt64(t, db, `SELECT id FROM damage_types WHERE code = 'physical'`)
+	energyID := queryInt64(t, db, `SELECT id FROM damage_types WHERE code = 'energy'`)
+	headID := queryInt64(t, db, `SELECT id FROM body_locations WHERE code = 'head'`)
+
+	_, err = db.Exec(`
+		INSERT INTO stat_profiles (id)
+		VALUES ('migration-39-profile')
+	`)
+	require.NoError(t, err)
+	_, err = db.Exec(`
+		INSERT INTO stat_profile_resistance_global (
+			stat_profile_id, damage_type_id, resistance, immune
+		) VALUES
+			('migration-39-profile', ?, 7, 1),
+			('migration-39-profile', ?, 0, 1)
+	`, poisonID, physicalID)
+	require.NoError(t, err)
+	_, err = db.Exec(`
+		INSERT INTO stat_profile_resistance_by_location (
+			stat_profile_id, damage_type_id, body_location_id, resistance
+		) VALUES
+			('migration-39-profile', ?, ?, 3),
+			('migration-39-profile', ?, ?, 9)
+	`, energyID, headID, physicalID, headID)
+	require.NoError(t, err)
+
+	require.NoError(t, goose.Up(db, "migrations"))
+
+	assert.Equal(t, int64(0), queryInt64(t, db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name = 'stat_profile_resistance_global'`))
+	assert.Contains(t, queryColumnNames(t, db, "stat_profile_resistance_by_location"), "immune")
+	globalID := queryInt64(t, db, `SELECT id FROM body_locations WHERE code = 'global'`)
+	assert.Equal(t, int64(7), queryInt64(t, db, `
+		SELECT resistance
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND damage_type_id = ?
+		  AND body_location_id = ?
+	`, "migration-39-profile", poisonID, globalID))
+	assert.Equal(t, int64(1), queryInt64(t, db, `
+		SELECT immune
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND damage_type_id = ?
+		  AND body_location_id = ?
+	`, "migration-39-profile", physicalID, globalID))
+	assert.Equal(t, int64(0), queryInt64(t, db, `
+		SELECT COUNT(*)
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND damage_type_id = ?
+		  AND body_location_id <> ?
+	`, "migration-39-profile", physicalID, globalID))
+	assert.Equal(t, int64(3), queryInt64(t, db, `
+		SELECT resistance
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND damage_type_id = ?
+		  AND body_location_id = ?
+		  AND immune = 0
+	`, "migration-39-profile", energyID, headID))
 }
 
 func TestMigration33BackfillsStatProfilesAndAddsResistanceCompatibilityViews(t *testing.T) {
@@ -535,7 +618,13 @@ func TestMigration33BackfillsStatProfilesAndAddsResistanceCompatibilityViews(t *
 	assert.Equal(t, int64(25), queryInt64(t, db, `SELECT xp FROM stat_profiles WHERE id = ?`, statProfileID(statProfileCombatantKind, "legacy-combatant")))
 	assert.Equal(t, int64(6), queryInt64(t, db, `SELECT hp FROM stat_profiles WHERE id = ?`, statProfileID(statProfilePlayerCharacterKind, "legacy-character")))
 	assert.Equal(t, int64(30), queryInt64(t, db, `SELECT xp FROM stat_profiles WHERE id = ?`, statProfileID(statProfileMonsterTemplateKind, "legacy-monster")))
-	assert.Equal(t, int64(3), queryInt64(t, db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, statProfileID(statProfileCombatantKind, "legacy-combatant"), poisonID))
+	assert.Equal(t, int64(3), queryInt64(t, db, `
+		SELECT resistance
+		FROM stat_profile_resistance_by_location
+		WHERE stat_profile_id = ?
+		  AND damage_type_id = ?
+		  AND body_location_id = (SELECT id FROM body_locations WHERE code = 'global')
+	`, statProfileID(statProfileCombatantKind, "legacy-combatant"), poisonID))
 	assert.Equal(t, int64(4), queryInt64(t, db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, statProfileID(statProfilePlayerCharacterKind, "legacy-character"), energyID, headID))
 	assert.Equal(t, int64(5), queryInt64(t, db, `SELECT resistance FROM monster_template_resistance_global WHERE monster_template_id = ? AND damage_type_id = ?`, "legacy-monster", poisonID))
 	assert.Equal(t, "view", queryString(t, db, `SELECT type FROM sqlite_schema WHERE name = ?`, "combatant_resistance_global"))
@@ -578,6 +667,7 @@ func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
 
 	poisonID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = 'poison'`)
 	energyID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = 'energy'`)
+	globalID := queryInt64(t, store.db, `SELECT id FROM body_locations WHERE code = 'global'`)
 	headID := queryInt64(t, store.db, `SELECT id FROM body_locations WHERE code = 'head'`)
 	owners := []struct {
 		globalView   string
@@ -619,8 +709,8 @@ func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
 				1,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
-			assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+			assert.Equal(t, int64(4), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, poisonID, globalID))
+			assert.Equal(t, int64(1), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, poisonID, globalID))
 
 			_, err = store.db.Exec(
 				fmt.Sprintf(`UPDATE %s SET resistance = ?, immune = ? WHERE %s = ? AND damage_type_id = ?`, owner.globalView, owner.ownerColumn),
@@ -630,8 +720,8 @@ func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
 				poisonID,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
-			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+			assert.Equal(t, int64(6), queryInt64(t, store.db, `SELECT resistance FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, poisonID, globalID))
+			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT immune FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, poisonID, globalID))
 
 			_, err = store.db.Exec(
 				fmt.Sprintf(`DELETE FROM %s WHERE %s = ? AND damage_type_id = ?`, owner.globalView, owner.ownerColumn),
@@ -639,7 +729,7 @@ func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
 				poisonID,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_global WHERE stat_profile_id = ? AND damage_type_id = ?`, owner.profileID, poisonID))
+			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, poisonID, globalID))
 		})
 
 		t.Run(owner.locationView, func(t *testing.T) {
@@ -673,6 +763,82 @@ func TestResistanceCompatibilityViewsWriteThroughStatProfiles(t *testing.T) {
 			assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM stat_profile_resistance_by_location WHERE stat_profile_id = ? AND damage_type_id = ? AND body_location_id = ?`, owner.profileID, energyID, headID))
 		})
 	}
+}
+
+func TestOpenAndMigratePreventsMixedGlobalAndLocationResistanceForSameDamageType(t *testing.T) {
+	store := newTestStore(t)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "exclusive-resistance-encounter",
+		Name: "Exclusive Resistance",
+		Combatants: []domain.Combatant{{
+			ID:         "exclusive-resistance-combatant",
+			Name:       "Raider",
+			Side:       domain.SideNPC,
+			Initiative: 8,
+			HP:         6,
+			MaxHP:      6,
+		}},
+	}))
+
+	physicalID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = 'physical'`)
+	headID := queryInt64(t, store.db, `SELECT id FROM body_locations WHERE code = 'head'`)
+	profileID := statProfileID(statProfileCombatantKind, "exclusive-resistance-combatant")
+	_, err := store.db.Exec(
+		`DELETE FROM stat_profile_resistance_by_location
+	     WHERE stat_profile_id = ?
+	       AND damage_type_id = ?`,
+		profileID,
+		physicalID,
+	)
+	require.NoError(t, err)
+
+	_, err = store.db.Exec(
+		`INSERT INTO combatant_resistance_global (combatant_id, damage_type_id, resistance, immune)
+	     VALUES (?, ?, ?, ?)`,
+		"exclusive-resistance-combatant",
+		physicalID,
+		0,
+		1,
+	)
+	require.NoError(t, err)
+	_, err = store.db.Exec(
+		`INSERT INTO combatant_resistance_by_location (combatant_id, damage_type_id, body_location_id, resistance)
+	     VALUES (?, ?, ?, ?)`,
+		"exclusive-resistance-combatant",
+		physicalID,
+		headID,
+		3,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "location resistance conflicts with global resistance")
+
+	_, err = store.db.Exec(
+		`DELETE FROM combatant_resistance_global
+	     WHERE combatant_id = ?
+	       AND damage_type_id = ?`,
+		"exclusive-resistance-combatant",
+		physicalID,
+	)
+	require.NoError(t, err)
+	_, err = store.db.Exec(
+		`INSERT INTO combatant_resistance_by_location (combatant_id, damage_type_id, body_location_id, resistance)
+	     VALUES (?, ?, ?, ?)`,
+		"exclusive-resistance-combatant",
+		physicalID,
+		headID,
+		3,
+	)
+	require.NoError(t, err)
+	_, err = store.db.Exec(
+		`INSERT INTO combatant_resistance_global (combatant_id, damage_type_id, resistance, immune)
+	     VALUES (?, ?, ?, ?)`,
+		"exclusive-resistance-combatant",
+		physicalID,
+		0,
+		1,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "global resistance conflicts with location resistance")
 }
 
 func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T) {
@@ -749,42 +915,69 @@ func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 		ResistPoison:        3,
 	})
 	require.NoError(t, err)
+	globalID := queryInt64(t, store.db, `SELECT id FROM body_locations WHERE code = 'global'`)
+	physicalID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = ?`, string(domain.DamagePhysical))
+	energyID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = ?`, string(domain.DamageEnergy))
+	radiationID := queryInt64(t, store.db, `SELECT id FROM damage_types WHERE code = ?`, string(domain.DamageRadiation))
+
+	for _, row := range []struct {
+		profileID    string
+		damageTypeID int64
+	}{
+		{statProfileID(statProfileCombatantKind, "global-resistance-combatant"), physicalID},
+		{statProfileID(statProfilePlayerCharacterKind, "repo-char-1"), energyID},
+		{statProfileID(statProfileMonsterTemplateKind, monster.ID), radiationID},
+	} {
+		_, err = store.db.Exec(
+			`DELETE FROM stat_profile_resistance_by_location
+		     WHERE stat_profile_id = ?
+		       AND damage_type_id = ?`,
+			row.profileID,
+			row.damageTypeID,
+		)
+		require.NoError(t, err)
+	}
 
 	_, err = store.db.Exec(
-		`UPDATE stat_profile_resistance_global
-         SET resistance = 1
-         WHERE stat_profile_id = ?
-           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		`INSERT INTO stat_profile_resistance_by_location (
+	         stat_profile_id, damage_type_id, body_location_id, resistance
+	     ) VALUES (?, ?, ?, 1)`,
 		statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
-		string(domain.DamagePhysical),
+		physicalID,
+		globalID,
 	)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-poison global resistance must be zero")
 	_, err = store.db.Exec(
-		`UPDATE stat_profile_resistance_global
-         SET resistance = 1
-         WHERE stat_profile_id = ?
-           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		`INSERT INTO stat_profile_resistance_by_location (
+	         stat_profile_id, damage_type_id, body_location_id, resistance
+	     ) VALUES (?, ?, ?, 1)`,
 		statProfileID(statProfilePlayerCharacterKind, "repo-char-1"),
-		string(domain.DamageEnergy),
+		energyID,
+		globalID,
 	)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-poison global resistance must be zero")
 	_, err = store.db.Exec(
-		`UPDATE stat_profile_resistance_global
-         SET resistance = 1
-         WHERE stat_profile_id = ?
-           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+		`INSERT INTO stat_profile_resistance_by_location (
+	         stat_profile_id, damage_type_id, body_location_id, resistance
+	     ) VALUES (?, ?, ?, 1)`,
 		statProfileID(statProfileMonsterTemplateKind, monster.ID),
-		string(domain.DamageRadiation),
+		radiationID,
+		globalID,
 	)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-poison global resistance must be zero")
 
 	_, err = store.db.Exec(
-		`UPDATE stat_profile_resistance_global
+		`UPDATE stat_profile_resistance_by_location
          SET resistance = 4
          WHERE stat_profile_id = ?
-           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+           AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)
+           AND body_location_id = ?`,
 		statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
 		string(domain.DamagePoison),
+		globalID,
 	)
 	require.NoError(t, err)
 	assert.Equal(
@@ -794,11 +987,13 @@ func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 			t,
 			store.db,
 			`SELECT resistance
-             FROM stat_profile_resistance_global
+             FROM stat_profile_resistance_by_location
              WHERE stat_profile_id = ?
-               AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)`,
+               AND damage_type_id = (SELECT id FROM damage_types WHERE code = ?)
+               AND body_location_id = ?`,
 			statProfileID(statProfileCombatantKind, "global-resistance-combatant"),
 			string(domain.DamagePoison),
+			globalID,
 		),
 	)
 }
@@ -855,11 +1050,6 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 			name: "combatant hp",
 			sql:  `UPDATE stat_profiles SET hp = 7, max_hp = 6 WHERE id = ?`,
 			args: []any{statProfileID(statProfileCombatantKind, "schema-check-combatant")},
-		},
-		{
-			name: "combatant bool",
-			sql:  `UPDATE combatants SET active = 2 WHERE id = ?`,
-			args: []any{"schema-check-combatant"},
 		},
 		{
 			name: "player character level",

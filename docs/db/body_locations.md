@@ -8,7 +8,7 @@
 ```sql
 CREATE TABLE "body_locations" (
     id INTEGER PRIMARY KEY,
-    code TEXT NOT NULL UNIQUE CHECK (code IN ('head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'))
+    code TEXT NOT NULL UNIQUE CHECK (code IN ('global', 'head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'))
 )
 ```
 
@@ -23,11 +23,11 @@ CREATE TABLE "body_locations" (
 
 ## Constraints
 
-| Name                              | Type        | Definition                                                                          |
-| --------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
-| id                                | PRIMARY KEY | PRIMARY KEY (id)                                                                    |
-| sqlite_autoindex_body_locations_1 | UNIQUE      | UNIQUE (code)                                                                       |
-| -                                 | CHECK       | CHECK (code IN ('head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg')) |
+| Name                              | Type        | Definition                                                                                    |
+| --------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| id                                | PRIMARY KEY | PRIMARY KEY (id)                                                                              |
+| sqlite_autoindex_body_locations_1 | UNIQUE      | UNIQUE (code)                                                                                 |
+| -                                 | CHECK       | CHECK (code IN ('global', 'head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg')) |
 
 ## Indexes
 
