@@ -302,7 +302,7 @@ func TestEncounterStoreSaveUpdatesLinkedCampaignCharacterFromPartyCombatant(t *t
 	assert.Equal(t, 2, party[0].ResistPoison)
 }
 
-func TestEncounterStorePersistsDifficultyMetrics(t *testing.T) {
+func TestEncounterStoreListCalculatesDifficultyMetrics(t *testing.T) {
 	store := newTestStore(t)
 
 	require.NoError(t, store.Save(t.Context(), &domain.Encounter{

@@ -14,14 +14,6 @@ CREATE TABLE "encounters" (
     turn_index INTEGER NOT NULL CHECK (turn_index >= 0),
     party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0),
     gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
-    difficulty_label TEXT NOT NULL DEFAULT 'Unknown' CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly')),
-    difficulty_score REAL NOT NULL DEFAULT 0 CHECK (difficulty_score >= 0),
-    party_count INTEGER NOT NULL DEFAULT 0 CHECK (party_count >= 0),
-    party_avg_level REAL NOT NULL DEFAULT 0 CHECK (party_avg_level >= 0),
-    party_xp_budget INTEGER NOT NULL DEFAULT 0 CHECK (party_xp_budget >= 0),
-    enemy_count INTEGER NOT NULL DEFAULT 0 CHECK (enemy_count >= 0),
-    enemy_avg_level REAL NOT NULL DEFAULT 0 CHECK (enemy_avg_level >= 0),
-    enemy_total_xp INTEGER NOT NULL DEFAULT 0 CHECK (enemy_total_xp >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -33,26 +25,18 @@ CREATE TABLE "encounters" (
 
 ## Columns
 
-| Name             | Type     | Default                              | Nullable | Children                                                        | Parents                   |
-| ---------------- | -------- | ------------------------------------ | -------- | --------------------------------------------------------------- | ------------------------- |
-| id               | TEXT     |                                      | true     | [encounter_logs](encounter_logs.md) [combatants](combatants.md) |                           |
-| campaign_id      | TEXT     |                                      | false    |                                                                 | [campaigns](campaigns.md) |
-| name             | TEXT     |                                      | false    |                                                                 |                           |
-| round            | INTEGER  |                                      | false    |                                                                 |                           |
-| turn_index       | INTEGER  |                                      | false    |                                                                 |                           |
-| party_ap         | INTEGER  | 0                                    | false    |                                                                 |                           |
-| gm_threat        | INTEGER  | 0                                    | false    |                                                                 |                           |
-| difficulty_label | TEXT     | 'Unknown'                            | false    |                                                                 |                           |
-| difficulty_score | REAL     | 0                                    | false    |                                                                 |                           |
-| party_count      | INTEGER  | 0                                    | false    |                                                                 |                           |
-| party_avg_level  | REAL     | 0                                    | false    |                                                                 |                           |
-| party_xp_budget  | INTEGER  | 0                                    | false    |                                                                 |                           |
-| enemy_count      | INTEGER  | 0                                    | false    |                                                                 |                           |
-| enemy_avg_level  | REAL     | 0                                    | false    |                                                                 |                           |
-| enemy_total_xp   | INTEGER  | 0                                    | false    |                                                                 |                           |
-| created_at       | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                 |                           |
-| updated_at       | DATETIME | CURRENT_TIMESTAMP                    | false    |                                                                 |                           |
-| deleted_at       | DATETIME |                                      | true     |                                                                 |                           |
+| Name        | Type     | Default                              | Nullable | Children                                                        | Parents                   |
+| ----------- | -------- | ------------------------------------ | -------- | --------------------------------------------------------------- | ------------------------- |
+| id          | TEXT     |                                      | true     | [encounter_logs](encounter_logs.md) [combatants](combatants.md) |                           |
+| campaign_id | TEXT     |                                      | false    |                                                                 | [campaigns](campaigns.md) |
+| name        | TEXT     |                                      | false    |                                                                 |                           |
+| round       | INTEGER  |                                      | false    |                                                                 |                           |
+| turn_index  | INTEGER  |                                      | false    |                                                                 |                           |
+| party_ap    | INTEGER  | 0                                    | false    |                                                                 |                           |
+| gm_threat   | INTEGER  | 0                                    | false    |                                                                 |                           |
+| created_at  | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                 |                           |
+| updated_at  | DATETIME | CURRENT_TIMESTAMP                    | false    |                                                                 |                           |
+| deleted_at  | DATETIME |                                      | true     |                                                                 |                           |
 
 ## Constraints
 
@@ -68,14 +52,6 @@ CREATE TABLE "encounters" (
 | -                             | CHECK       | CHECK (turn_index >= 0)                                                                              |
 | -                             | CHECK       | CHECK (party_ap >= 0)                                                                                |
 | -                             | CHECK       | CHECK (gm_threat >= 0)                                                                               |
-| -                             | CHECK       | CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly'))               |
-| -                             | CHECK       | CHECK (difficulty_score >= 0)                                                                        |
-| -                             | CHECK       | CHECK (party_count >= 0)                                                                             |
-| -                             | CHECK       | CHECK (party_avg_level >= 0)                                                                         |
-| -                             | CHECK       | CHECK (party_xp_budget >= 0)                                                                         |
-| -                             | CHECK       | CHECK (enemy_count >= 0)                                                                             |
-| -                             | CHECK       | CHECK (enemy_avg_level >= 0)                                                                         |
-| -                             | CHECK       | CHECK (enemy_total_xp >= 0)                                                                          |
 
 ## Indexes
 

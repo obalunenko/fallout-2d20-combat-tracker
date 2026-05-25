@@ -643,12 +643,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_stat_profiles_monster_template_level_update",
-          "def": "CREATE TRIGGER trg_stat_profiles_monster_template_level_update\nBEFORE UPDATE OF level ON stat_profiles\nWHEN NEW.level \u003c 1\n  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
-        },
-        {
           "name": "trg_stat_profiles_player_character_level_update",
           "def": "CREATE TRIGGER trg_stat_profiles_player_character_level_update\nBEFORE UPDATE OF level ON stat_profiles\nWHEN NEW.level \u003c 1\n  AND EXISTS (SELECT 1 FROM player_characters pc WHERE pc.stat_profile_id = NEW.id)\nBEGIN\n    SELECT RAISE(ABORT, 'player character level must be at least 1');\nEND"
+        },
+        {
+          "name": "trg_stat_profiles_monster_template_level_update",
+          "def": "CREATE TRIGGER trg_stat_profiles_monster_template_level_update\nBEFORE UPDATE OF level ON stat_profiles\nWHEN NEW.level \u003c 1\n  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
         }
       ],
       "def": "CREATE TABLE \"stat_profiles\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    torso_only INTEGER NOT NULL DEFAULT 0 CHECK (torso_only IN (0, 1)),\n    level INTEGER NOT NULL DEFAULT 1 CHECK (level \u003e= 0),\n    xp INTEGER NOT NULL DEFAULT 0 CHECK (xp \u003e= 0),\n    initiative INTEGER NOT NULL DEFAULT 1 CHECK (initiative \u003e= 0),\n    hp INTEGER NOT NULL DEFAULT 1 CHECK (hp \u003e= 0),\n    max_hp INTEGER NOT NULL DEFAULT 1 CHECK (max_hp \u003e= 1),\n    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    CHECK (hp \u003c= max_hp)\n)"
@@ -886,167 +886,6 @@
       "def": "CREATE TABLE \"combatants\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    player_character_id TEXT NULL,\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    side TEXT NOT NULL CHECK (side IN ('party', 'npc')),\n    defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),\n    position INTEGER NOT NULL CHECK (position \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id),\n    FOREIGN KEY (player_character_id) REFERENCES player_characters(id)\n)"
     },
     {
-      "name": "monster_templates",
-      "type": "table",
-      "columns": [
-        {
-          "name": "id",
-          "type": "TEXT",
-          "nullable": true
-        },
-        {
-          "name": "stat_profile_id",
-          "type": "TEXT",
-          "nullable": false
-        },
-        {
-          "name": "name",
-          "type": "TEXT",
-          "nullable": false
-        },
-        {
-          "name": "name_key",
-          "type": "TEXT",
-          "nullable": false
-        },
-        {
-          "name": "created_at",
-          "type": "DATETIME",
-          "nullable": false,
-          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
-        },
-        {
-          "name": "updated_at",
-          "type": "DATETIME",
-          "nullable": false,
-          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
-        },
-        {
-          "name": "deleted_at",
-          "type": "DATETIME",
-          "nullable": true
-        }
-      ],
-      "indexes": [
-        {
-          "name": "idx_monster_templates_deleted_name",
-          "def": "CREATE INDEX idx_monster_templates_deleted_name\nON monster_templates(deleted_at, name COLLATE NOCASE)",
-          "table": "monster_templates",
-          "columns": [
-            "deleted_at",
-            "name"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_monster_templates_2",
-          "def": "UNIQUE (name_key)",
-          "table": "monster_templates",
-          "columns": [
-            "name_key"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_monster_templates_1",
-          "def": "PRIMARY KEY (id)",
-          "table": "monster_templates",
-          "columns": [
-            "id"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "id",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "monster_templates",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "- (Foreign key ID: 0)",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
-          "table": "monster_templates",
-          "referenced_table": "stat_profiles",
-          "columns": [
-            "stat_profile_id"
-          ],
-          "referenced_columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_monster_templates_2",
-          "type": "UNIQUE",
-          "def": "UNIQUE (name_key)",
-          "table": "monster_templates",
-          "columns": [
-            "name_key"
-          ]
-        },
-        {
-          "name": "sqlite_autoindex_monster_templates_1",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "monster_templates",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(id) \u003c\u003e '')",
-          "table": "monster_templates",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(stat_profile_id) \u003c\u003e '')",
-          "table": "monster_templates",
-          "columns": [
-            "id",
-            "stat_profile_id"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(name) \u003c\u003e '')",
-          "table": "monster_templates",
-          "columns": [
-            "name"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (trim(name_key) \u003c\u003e '')",
-          "table": "monster_templates",
-          "columns": [
-            "name",
-            "name_key"
-          ]
-        }
-      ],
-      "triggers": [
-        {
-          "name": "trg_monster_templates_delete_stat_profile",
-          "def": "CREATE TRIGGER trg_monster_templates_delete_stat_profile\nAFTER DELETE ON monster_templates\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
-        },
-        {
-          "name": "trg_monster_templates_require_level",
-          "def": "CREATE TRIGGER trg_monster_templates_require_level\nBEFORE INSERT ON monster_templates\nWHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) \u003c 1\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
-        }
-      ],
-      "def": "CREATE TABLE \"monster_templates\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    name_key TEXT NOT NULL UNIQUE CHECK (trim(name_key) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
-    },
-    {
       "name": "encounters",
       "type": "table",
       "columns": [
@@ -1083,54 +922,6 @@
         },
         {
           "name": "gm_threat",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "difficulty_label",
-          "type": "TEXT",
-          "nullable": false,
-          "default": "'Unknown'"
-        },
-        {
-          "name": "difficulty_score",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_count",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_avg_level",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "party_xp_budget",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_count",
-          "type": "INTEGER",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_avg_level",
-          "type": "REAL",
-          "nullable": false,
-          "default": "0"
-        },
-        {
-          "name": "enemy_total_xp",
           "type": "INTEGER",
           "nullable": false,
           "default": "0"
@@ -1269,78 +1060,6 @@
           "columns": [
             "gm_threat"
           ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly'))",
-          "table": "encounters",
-          "columns": [
-            "difficulty_label"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (difficulty_score \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "difficulty_score"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_count \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_count"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_avg_level \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_avg_level"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (party_xp_budget \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "party_xp_budget"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_count \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_count"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_avg_level \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_avg_level"
-          ]
-        },
-        {
-          "name": "-",
-          "type": "CHECK",
-          "def": "CHECK (enemy_total_xp \u003e= 0)",
-          "table": "encounters",
-          "columns": [
-            "enemy_total_xp"
-          ]
         }
       ],
       "triggers": [
@@ -1349,7 +1068,7 @@
           "def": "CREATE TRIGGER trg_encounters_campaign_update_keeps_combatants_consistent\nBEFORE UPDATE OF campaign_id ON encounters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN player_characters pc ON pc.id = c.player_character_id\n    JOIN players p ON p.id = pc.player_id\n    WHERE c.encounter_id = NEW.id\n      AND p.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'encounter campaign update would mismatch linked combatants');\nEND"
         }
       ],
-      "def": "CREATE TABLE \"encounters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    turn_index INTEGER NOT NULL CHECK (turn_index \u003e= 0),\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    difficulty_label TEXT NOT NULL DEFAULT 'Unknown' CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly')),\n    difficulty_score REAL NOT NULL DEFAULT 0 CHECK (difficulty_score \u003e= 0),\n    party_count INTEGER NOT NULL DEFAULT 0 CHECK (party_count \u003e= 0),\n    party_avg_level REAL NOT NULL DEFAULT 0 CHECK (party_avg_level \u003e= 0),\n    party_xp_budget INTEGER NOT NULL DEFAULT 0 CHECK (party_xp_budget \u003e= 0),\n    enemy_count INTEGER NOT NULL DEFAULT 0 CHECK (enemy_count \u003e= 0),\n    enemy_avg_level REAL NOT NULL DEFAULT 0 CHECK (enemy_avg_level \u003e= 0),\n    enemy_total_xp INTEGER NOT NULL DEFAULT 0 CHECK (enemy_total_xp \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
+      "def": "CREATE TABLE \"encounters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    turn_index INTEGER NOT NULL CHECK (turn_index \u003e= 0),\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
     },
     {
       "name": "player_characters",
@@ -2135,6 +1854,141 @@
         "player_characters",
         "stat_profile_resistance_by_location"
       ]
+    },
+    {
+      "name": "monster_templates",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "stat_profile_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_monster_templates_deleted_name",
+          "def": "CREATE INDEX idx_monster_templates_deleted_name\nON monster_templates(deleted_at, name COLLATE NOCASE)",
+          "table": "monster_templates",
+          "columns": [
+            "deleted_at",
+            "name"
+          ]
+        },
+        {
+          "name": "idx_monster_templates_name_normalized",
+          "def": "CREATE UNIQUE INDEX idx_monster_templates_name_normalized\nON monster_templates(lower(trim(name)))",
+          "table": "monster_templates",
+          "columns": null
+        },
+        {
+          "name": "sqlite_autoindex_monster_templates_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "monster_templates",
+          "referenced_table": "stat_profiles",
+          "columns": [
+            "stat_profile_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_monster_templates_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(stat_profile_id) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "id",
+            "stat_profile_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_monster_templates_delete_stat_profile",
+          "def": "CREATE TRIGGER trg_monster_templates_delete_stat_profile\nAFTER DELETE ON monster_templates\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
+        },
+        {
+          "name": "trg_monster_templates_require_level",
+          "def": "CREATE TRIGGER trg_monster_templates_require_level\nBEFORE INSERT ON monster_templates\nWHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) \u003c 1\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"monster_templates\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
     }
   ],
   "relations": [
@@ -2217,19 +2071,6 @@
       "def": "FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     },
     {
-      "table": "monster_templates",
-      "columns": [
-        "stat_profile_id"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "stat_profiles",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
-    },
-    {
       "table": "encounters",
       "columns": [
         "campaign_id"
@@ -2306,6 +2147,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "monster_templates",
+      "columns": [
+        "stat_profile_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "stat_profiles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
     }
   ],
   "driver": {

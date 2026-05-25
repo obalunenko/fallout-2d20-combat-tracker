@@ -48,3 +48,34 @@ func TestEncounterStoreListMonsterTemplatesReadsNormalizedResistances(t *testing
 	assert.False(t, monsters[0].ImmuneRadiation)
 	assert.True(t, monsters[0].ImmunePoison)
 }
+
+func TestEncounterStoreUpsertMonsterTemplateMatchesTrimmedCaseInsensitiveName(t *testing.T) {
+	store := newTestStore(t)
+
+	first, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
+		Name:       "Sentry Bot",
+		Level:      4,
+		XP:         120,
+		Initiative: 8,
+		HP:         14,
+		MaxHP:      14,
+	})
+	require.NoError(t, err)
+	second, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
+		Name:       "  sentry bot  ",
+		Level:      5,
+		XP:         140,
+		Initiative: 9,
+		HP:         16,
+		MaxHP:      16,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, first.ID, second.ID)
+	monsters, err := store.ListMonsterTemplates(t.Context())
+	require.NoError(t, err)
+	require.Len(t, monsters, 1)
+	assert.Equal(t, "sentry bot", monsters[0].Name)
+	assert.Equal(t, 5, monsters[0].Level)
+	assert.Equal(t, 140, monsters[0].XP)
+}

@@ -249,20 +249,14 @@ WHERE p.campaign_id = sqlc.arg(campaign_id)
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC;
 
 -- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-       difficulty_label, difficulty_score,
-       party_count, party_avg_level, party_xp_budget,
-       enemy_count, enemy_avg_level, enemy_total_xp
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
 FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
 ORDER BY updated_at DESC, id DESC
 LIMIT 1;
 
 -- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-       difficulty_label, difficulty_score,
-       party_count, party_avg_level, party_xp_budget,
-       enemy_count, enemy_avg_level, enemy_total_xp
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
 FROM encounters
 WHERE deleted_at IS NULL
   AND campaign_id = sqlc.arg(campaign_id)
@@ -375,14 +369,9 @@ FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
 ORDER BY updated_at DESC, id DESC;
 
--- Difficulty and party/enemy metrics are an intentional encounter-summary cache.
--- The repository recomputes them from the in-memory encounter before every save.
 -- name: UpsertEncounter :exec
 INSERT INTO encounters (
   id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-  difficulty_label, difficulty_score,
-  party_count, party_avg_level, party_xp_budget,
-  enemy_count, enemy_avg_level, enemy_total_xp,
   created_at, updated_at, deleted_at
 )
 VALUES (
@@ -393,14 +382,6 @@ VALUES (
   sqlc.arg(turn_index),
   sqlc.arg(party_ap),
   sqlc.arg(gm_threat),
-  sqlc.arg(difficulty_label),
-  sqlc.arg(difficulty_score),
-  sqlc.arg(party_count),
-  sqlc.arg(party_avg_level),
-  sqlc.arg(party_xp_budget),
-  sqlc.arg(enemy_count),
-  sqlc.arg(enemy_avg_level),
-  sqlc.arg(enemy_total_xp),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
@@ -412,14 +393,6 @@ ON CONFLICT(id) DO UPDATE SET
 	turn_index = excluded.turn_index,
 	party_ap = excluded.party_ap,
 	gm_threat = excluded.gm_threat,
-	difficulty_label = excluded.difficulty_label,
-	difficulty_score = excluded.difficulty_score,
-	party_count = excluded.party_count,
-	party_avg_level = excluded.party_avg_level,
-	party_xp_budget = excluded.party_xp_budget,
-	enemy_count = excluded.enemy_count,
-	enemy_avg_level = excluded.enemy_avg_level,
-	enemy_total_xp = excluded.enemy_total_xp,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
@@ -451,24 +424,12 @@ SELECT
   e.name,
   e.round,
   COUNT(c.id) AS combatants,
-  e.difficulty_label,
-  e.difficulty_score,
-  e.party_count,
-  e.party_avg_level,
-  e.party_xp_budget,
-  e.enemy_count,
-  e.enemy_avg_level,
-  e.enemy_total_xp,
   e.updated_at
 FROM encounters e
 LEFT JOIN combatants c ON c.encounter_id = e.id
 WHERE e.deleted_at IS NULL AND e.campaign_id = sqlc.arg(campaign_id)
 GROUP BY
-  e.id, e.campaign_id, e.name, e.round,
-  e.difficulty_label, e.difficulty_score,
-  e.party_count, e.party_avg_level, e.party_xp_budget,
-  e.enemy_count, e.enemy_avg_level, e.enemy_total_xp,
-  e.updated_at
+  e.id, e.campaign_id, e.name, e.round, e.updated_at
 ORDER BY e.updated_at DESC, e.id DESC;
 
 -- name: ActivateEncounterByCampaign :execrows
@@ -509,27 +470,26 @@ ORDER BY created_at DESC, rowid DESC;
 
 -- name: UpsertMonsterTemplate :exec
 INSERT INTO monster_templates (
-  id, stat_profile_id, name, name_key, created_at, updated_at, deleted_at
+  id, stat_profile_id, name, created_at, updated_at, deleted_at
 )
 VALUES (
   sqlc.arg(id),
   sqlc.arg(stat_profile_id),
   sqlc.arg(name),
-  sqlc.arg(name_key),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
-ON CONFLICT(name_key) DO UPDATE SET
+ON CONFLICT(id) DO UPDATE SET
   stat_profile_id = excluded.stat_profile_id,
   name = excluded.name,
   deleted_at = NULL,
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
--- name: GetMonsterTemplateIDByNameKey :one
+-- name: GetMonsterTemplateIDByName :one
 SELECT id
 FROM monster_templates
-WHERE name_key = sqlc.arg(name_key);
+WHERE lower(trim(name)) = lower(trim(sqlc.arg(name)));
 
 -- name: ListMonsterTemplates :many
 SELECT

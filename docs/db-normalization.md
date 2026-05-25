@@ -43,11 +43,9 @@ from other tables:
 
 | Field(s) | Type | Reason | Refresh path |
 | -------- | ---- | ------ | ------------ |
-| `encounters.difficulty_label`, `difficulty_score`, `party_count`, `party_avg_level`, `party_xp_budget`, `enemy_count`, `enemy_avg_level`, `enemy_total_xp` | Summary cache | Encounter lists need difficulty metrics without rebuilding every combatant profile for each row. | Recomputed by `saveEncounter` through `domain.EvaluateEncounterDifficulty`. |
 | `combatants.position` | Ordered snapshot | Preserves encounter initiative order without depending on mutable stats or names. | Rewritten whenever an encounter is saved. |
 | `combatants.name` for linked party combatants | Snapshot/fallback | Keeps a combatant-readable name if the party character link is removed or the row is inspected directly. Normal app reads prefer the linked player character name. | Rewritten whenever an encounter is saved. |
 | `combatants.stat_profile_id` for linked party combatants | Snapshot/fallback | Every combatant owns a profile for uniform lifecycle and fallback reads. Normal app reads prefer the linked player character profile when `player_character_id` is present. | Rewritten whenever an encounter is saved. |
-| `monster_templates.name_key` | Derived lookup key | Provides stable case-insensitive upsert behavior for template names. | Written by repository mappers from normalized names. |
 
 ## Consistency Rules
 
@@ -56,10 +54,6 @@ rows directly must also refresh dependent cache rows, or should use the
 repository APIs instead.
 
 The current schema enforces many relationship invariants with foreign keys,
-unique indexes, and triggers, but not every cached value can be validated by
-SQLite constraints. In particular, `encounters` difficulty metrics are trusted
-to be refreshed by the application on save.
-
-If stricter normalization becomes more important than summary-read speed, the
-encounter difficulty cache should be replaced with a view or query-level
-calculation.
+unique indexes, and triggers. Encounter difficulty metrics are calculated at
+read time from combatant profiles with `domain.EvaluateEncounterDifficulty`
+rather than stored in `encounters`.

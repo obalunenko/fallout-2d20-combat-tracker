@@ -66,24 +66,16 @@ type DamageType struct {
 }
 
 type Encounter struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int64
-	TurnIndex       int64
-	PartyAp         int64
-	GmThreat        int64
-	DifficultyLabel string
-	DifficultyScore float64
-	PartyCount      int64
-	PartyAvgLevel   float64
-	PartyXpBudget   int64
-	EnemyCount      int64
-	EnemyAvgLevel   float64
-	EnemyTotalXp    int64
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       interface{}
+	ID         string
+	CampaignID string
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  interface{}
 }
 
 type EncounterLog struct {
@@ -100,7 +92,6 @@ type MonsterTemplate struct {
 	ID            string
 	StatProfileID string
 	Name          string
-	NameKey       string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     interface{}

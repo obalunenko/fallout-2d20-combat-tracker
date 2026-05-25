@@ -889,6 +889,42 @@ func TestOpenAndMigrateDropsLegacyCombatStatsColumnsAndSyncTriggers(t *testing.T
 	assert.Equal(t, int64(0), queryInt64(t, store.db, `SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table' AND name IN ('combatant_defense_by_location', 'player_character_defense_by_location')`))
 }
 
+func TestOpenAndMigrateDropsEncounterDifficultyCacheColumns(t *testing.T) {
+	store := newTestStore(t)
+	columns := queryColumnNames(t, store.db, "encounters")
+	for _, column := range []string{
+		"difficulty_label",
+		"difficulty_score",
+		"party_count",
+		"party_avg_level",
+		"party_xp_budget",
+		"enemy_count",
+		"enemy_avg_level",
+		"enemy_total_xp",
+	} {
+		assert.NotContains(t, columns, column)
+	}
+}
+
+func TestOpenAndMigrateDropsMonsterTemplateNameKey(t *testing.T) {
+	store := newTestStore(t)
+	assert.NotContains(t, queryColumnNames(t, store.db, "monster_templates"), "name_key")
+	assert.Equal(t, "index", queryString(t, store.db, `SELECT type FROM sqlite_schema WHERE name = ?`, "idx_monster_templates_name_normalized"))
+
+	_, err := store.db.Exec(`
+		INSERT INTO stat_profiles (id, level)
+		VALUES ('monster_template:name-key-a', 1), ('monster_template:name-key-b', 1);
+	`)
+	require.NoError(t, err)
+	_, err = store.db.Exec(`
+		INSERT INTO monster_templates (id, stat_profile_id, name)
+		VALUES
+			('name-key-a', 'monster_template:name-key-a', 'Name Key Mutant'),
+			('name-key-b', 'monster_template:name-key-b', ' name key mutant ');
+	`)
+	require.Error(t, err)
+}
+
 func TestOpenAndMigrateRestrictsGlobalResistanceToPoison(t *testing.T) {
 	store := newTestStore(t)
 	require.NoError(t, store.Save(t.Context(), &domain.Encounter{

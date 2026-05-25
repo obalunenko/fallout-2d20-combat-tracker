@@ -59,7 +59,7 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 			return err
 		}
 		templateID := monster.ID
-		existingTemplateID, err := qtx.GetMonsterTemplateIDByNameKey(ctx, normalizeNameKey(monster.Name))
+		existingTemplateID, err := qtx.GetMonsterTemplateIDByName(ctx, monster.Name)
 		if err != nil && err != sql.ErrNoRows {
 			return fmt.Errorf("get monster template id: %w", err)
 		}

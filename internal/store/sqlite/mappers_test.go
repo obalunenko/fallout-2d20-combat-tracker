@@ -126,22 +126,26 @@ func TestEncounterFromByIDRowMapsEncounterFields(t *testing.T) {
 func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
 	updatedAt := time.Date(2026, 5, 22, 12, 13, 14, 123000000, time.UTC)
 
-	actual := encounterSummaryFromRow(dbgen.ListEncounterSummariesByCampaignIDRow{
-		ID:              "enc-1",
-		CampaignID:      "camp-1",
-		Name:            "Vault Ambush",
-		Round:           7,
-		Combatants:      4,
-		DifficultyLabel: "challenging",
-		DifficultyScore: 1.25,
-		PartyCount:      2,
-		PartyAvgLevel:   3.5,
-		PartyXpBudget:   120,
-		EnemyCount:      2,
-		EnemyAvgLevel:   4.5,
-		EnemyTotalXp:    150,
-		UpdatedAt:       updatedAt,
-	})
+	actual := encounterSummaryFromRow(
+		dbgen.ListEncounterSummariesByCampaignIDRow{
+			ID:         "enc-1",
+			CampaignID: "camp-1",
+			Name:       "Vault Ambush",
+			Round:      7,
+			Combatants: 4,
+			UpdatedAt:  updatedAt,
+		},
+		domain.EncounterDifficultyMetrics{
+			Label:         domain.EncounterDifficultyHard,
+			Score:         1.25,
+			PartyCount:    2,
+			PartyAvgLevel: 3.5,
+			PartyXPBudget: 120,
+			EnemyCount:    2,
+			EnemyAvgLevel: 4.5,
+			EnemyTotalXP:  150,
+		},
+	)
 
 	assert.Equal(t, domain.EncounterSummary{
 		ID:              "enc-1",
@@ -149,7 +153,7 @@ func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
 		Name:            "Vault Ambush",
 		Round:           7,
 		Combatants:      4,
-		Difficulty:      "challenging",
+		Difficulty:      "Hard",
 		DifficultyScore: 1.25,
 		PartyCount:      2,
 		PartyAvgLevel:   3.5,

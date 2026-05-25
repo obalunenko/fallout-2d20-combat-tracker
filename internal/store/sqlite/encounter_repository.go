@@ -111,23 +111,14 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 		return err
 	}
 
-	metrics := domain.EvaluateEncounterDifficulty(enc.Combatants)
 	if err = qtx.UpsertEncounter(ctx, dbgen.UpsertEncounterParams{
-		ID:              enc.ID,
-		CampaignID:      enc.CampaignID,
-		Name:            enc.Name,
-		Round:           int64(enc.Round),
-		TurnIndex:       int64(enc.TurnIndex),
-		PartyAp:         int64(enc.Resources.PartyAP),
-		GmThreat:        int64(enc.Resources.GMThreat),
-		DifficultyLabel: string(metrics.Label),
-		DifficultyScore: metrics.Score,
-		PartyCount:      int64(metrics.PartyCount),
-		PartyAvgLevel:   metrics.PartyAvgLevel,
-		PartyXpBudget:   int64(metrics.PartyXPBudget),
-		EnemyCount:      int64(metrics.EnemyCount),
-		EnemyAvgLevel:   metrics.EnemyAvgLevel,
-		EnemyTotalXp:    int64(metrics.EnemyTotalXP),
+		ID:         enc.ID,
+		CampaignID: enc.CampaignID,
+		Name:       enc.Name,
+		Round:      int64(enc.Round),
+		TurnIndex:  int64(enc.TurnIndex),
+		PartyAp:    int64(enc.Resources.PartyAP),
+		GmThreat:   int64(enc.Resources.GMThreat),
 	}); err != nil {
 		return fmt.Errorf("upsert encounter: %w", err)
 	}
@@ -255,7 +246,11 @@ func (s *EncounterStore) List(ctx context.Context) ([]domain.EncounterSummary, e
 
 	summaries := make([]domain.EncounterSummary, 0, len(rows))
 	for _, r := range rows {
-		summaries = append(summaries, encounterSummaryFromRow(r))
+		encounter, err := encounterByIDByCampaign(ctx, s.q, campaignID, r.ID)
+		if err != nil {
+			return nil, fmt.Errorf("load encounter summary %s: %w", r.ID, err)
+		}
+		summaries = append(summaries, encounterSummaryFromRow(r, domain.EvaluateEncounterDifficulty(encounter.Combatants)))
 	}
 	return summaries, nil
 }

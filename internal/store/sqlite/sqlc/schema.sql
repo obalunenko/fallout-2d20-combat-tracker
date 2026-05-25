@@ -81,17 +81,6 @@ CREATE TABLE "combatants" (
     FOREIGN KEY (player_character_id) REFERENCES player_characters(id)
 );
 
-CREATE TABLE "monster_templates" (
-    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
-    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
-    name TEXT NOT NULL CHECK (trim(name) <> ''),
-    name_key TEXT NOT NULL UNIQUE CHECK (trim(name_key) <> ''),
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL,
-    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
-);
-
 CREATE TABLE "encounters" (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     campaign_id TEXT NOT NULL CHECK (trim(campaign_id) <> ''),
@@ -100,14 +89,6 @@ CREATE TABLE "encounters" (
     turn_index INTEGER NOT NULL CHECK (turn_index >= 0),
     party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0),
     gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
-    difficulty_label TEXT NOT NULL DEFAULT 'Unknown' CHECK (difficulty_label IN ('Unknown', 'Trivial', 'Easy', 'Normal', 'Hard', 'Deadly')),
-    difficulty_score REAL NOT NULL DEFAULT 0 CHECK (difficulty_score >= 0),
-    party_count INTEGER NOT NULL DEFAULT 0 CHECK (party_count >= 0),
-    party_avg_level REAL NOT NULL DEFAULT 0 CHECK (party_avg_level >= 0),
-    party_xp_budget INTEGER NOT NULL DEFAULT 0 CHECK (party_xp_budget >= 0),
-    enemy_count INTEGER NOT NULL DEFAULT 0 CHECK (enemy_count >= 0),
-    enemy_avg_level REAL NOT NULL DEFAULT 0 CHECK (enemy_avg_level >= 0),
-    enemy_total_xp INTEGER NOT NULL DEFAULT 0 CHECK (enemy_total_xp >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -154,6 +135,16 @@ CREATE TABLE stat_profile_resistance_by_location (
     FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),
     FOREIGN KEY (body_location_id) REFERENCES body_locations(id)
+);
+
+CREATE TABLE "monster_templates" (
+    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
+    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
+    name TEXT NOT NULL CHECK (trim(name) <> ''),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
+    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
 );
 
 CREATE VIEW combatant_resistance_global AS
@@ -247,9 +238,6 @@ CREATE UNIQUE INDEX idx_combatants_encounter_player_character
 ON combatants(encounter_id, player_character_id)
 WHERE player_character_id IS NOT NULL;
 
-CREATE INDEX idx_monster_templates_deleted_name
-ON monster_templates(deleted_at, name COLLATE NOCASE);
-
 CREATE INDEX idx_encounters_campaign_deleted_updated
 ON encounters(campaign_id, deleted_at, updated_at DESC, id DESC);
 
@@ -260,33 +248,17 @@ WHERE active = 1;
 CREATE INDEX idx_player_characters_player_active_availability
 ON player_characters(player_id, active, availability_status, name);
 
+CREATE UNIQUE INDEX idx_monster_templates_name_normalized
+ON monster_templates(lower(trim(name)));
+
+CREATE INDEX idx_monster_templates_deleted_name
+ON monster_templates(deleted_at, name COLLATE NOCASE);
+
 CREATE TRIGGER trg_combatants_delete_stat_profile
 AFTER DELETE ON combatants
 BEGIN
     DELETE FROM stat_profiles
     WHERE id = OLD.stat_profile_id;
-END;
-
-CREATE TRIGGER trg_monster_templates_delete_stat_profile
-AFTER DELETE ON monster_templates
-BEGIN
-    DELETE FROM stat_profiles
-    WHERE id = OLD.stat_profile_id;
-END;
-
-CREATE TRIGGER trg_monster_templates_require_level
-BEFORE INSERT ON monster_templates
-WHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) < 1
-BEGIN
-    SELECT RAISE(ABORT, 'monster template level must be at least 1');
-END;
-
-CREATE TRIGGER trg_stat_profiles_monster_template_level_update
-BEFORE UPDATE OF level ON stat_profiles
-WHEN NEW.level < 1
-  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)
-BEGIN
-    SELECT RAISE(ABORT, 'monster template level must be at least 1');
 END;
 
 CREATE TRIGGER trg_player_characters_delete_stat_profile
@@ -889,4 +861,26 @@ BEGIN
     WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)
       AND damage_type_id = OLD.damage_type_id
       AND body_location_id = OLD.body_location_id;
+END;
+
+CREATE TRIGGER trg_monster_templates_delete_stat_profile
+AFTER DELETE ON monster_templates
+BEGIN
+    DELETE FROM stat_profiles
+    WHERE id = OLD.stat_profile_id;
+END;
+
+CREATE TRIGGER trg_monster_templates_require_level
+BEFORE INSERT ON monster_templates
+WHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) < 1
+BEGIN
+    SELECT RAISE(ABORT, 'monster template level must be at least 1');
+END;
+
+CREATE TRIGGER trg_stat_profiles_monster_template_level_update
+BEFORE UPDATE OF level ON stat_profiles
+WHEN NEW.level < 1
+  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)
+BEGIN
+    SELECT RAISE(ABORT, 'monster template level must be at least 1');
 END;

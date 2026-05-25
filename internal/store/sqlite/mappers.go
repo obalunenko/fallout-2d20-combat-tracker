@@ -178,21 +178,21 @@ func encounterFromByIDRow(r dbgen.GetEncounterByIDByCampaignIDRow, combatants []
 	}, combatants)
 }
 
-func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow) domain.EncounterSummary {
+func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow, metrics domain.EncounterDifficultyMetrics) domain.EncounterSummary {
 	return domain.EncounterSummary{
 		ID:              r.ID,
 		CampaignID:      r.CampaignID,
 		Name:            r.Name,
 		Round:           int(r.Round),
 		Combatants:      int(r.Combatants),
-		Difficulty:      r.DifficultyLabel,
-		DifficultyScore: r.DifficultyScore,
-		PartyCount:      int(r.PartyCount),
-		PartyAvgLevel:   r.PartyAvgLevel,
-		PartyXPBudget:   int(r.PartyXpBudget),
-		EnemyCount:      int(r.EnemyCount),
-		EnemyAvgLevel:   r.EnemyAvgLevel,
-		EnemyTotalXP:    int(r.EnemyTotalXp),
+		Difficulty:      string(metrics.Label),
+		DifficultyScore: metrics.Score,
+		PartyCount:      metrics.PartyCount,
+		PartyAvgLevel:   metrics.PartyAvgLevel,
+		PartyXPBudget:   metrics.PartyXPBudget,
+		EnemyCount:      metrics.EnemyCount,
+		EnemyAvgLevel:   metrics.EnemyAvgLevel,
+		EnemyTotalXP:    metrics.EnemyTotalXP,
 		UpdatedAt:       r.UpdatedAt,
 	}
 }
@@ -239,7 +239,6 @@ func upsertMonsterTemplateParams(templateID string, c domain.Combatant) dbgen.Up
 		ID:            templateID,
 		StatProfileID: statProfileID(statProfileMonsterTemplateKind, templateID),
 		Name:          strings.TrimSpace(c.Name),
-		NameKey:       normalizeNameKey(c.Name),
 	}
 }
 

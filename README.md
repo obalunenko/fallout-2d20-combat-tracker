@@ -66,7 +66,7 @@ make tools-verify
 - `combatants`, `player_characters`, and `monster_templates` reference a stat profile.
 - Resistance rows are shared through `stat_profile_resistance_by_location`;
   global resistance uses the `body_locations.code = 'global'` dictionary row.
-- Deliberate cached/snapshot fields are documented in `docs/db-normalization.md`.
+- Remaining deliberate snapshots are documented in `docs/db-normalization.md`.
 - Legacy wide stat/resistance columns were removed by migrations.
 - `internal/store/sqlite/sqlc/schema.sql` is generated from a clean database with all migrations applied.
 - DB documentation is generated from the same clean migrated state via `tbls`.

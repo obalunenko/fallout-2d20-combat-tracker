@@ -10,7 +10,6 @@ CREATE TABLE "monster_templates" (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) <> ''),
     name TEXT NOT NULL CHECK (trim(name) <> ''),
-    name_key TEXT NOT NULL UNIQUE CHECK (trim(name_key) <> ''),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
@@ -27,7 +26,6 @@ CREATE TABLE "monster_templates" (
 | id              | TEXT     |                                      | true     |                                   |
 | stat_profile_id | TEXT     |                                      | false    | [stat_profiles](stat_profiles.md) |
 | name            | TEXT     |                                      | false    |                                   |
-| name_key        | TEXT     |                                      | false    |                                   |
 | created_at      | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                   |
 | updated_at      | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                   |
 | deleted_at      | DATETIME |                                      | true     |                                   |
@@ -38,20 +36,18 @@ CREATE TABLE "monster_templates" (
 | ------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------------- |
 | id                                   | PRIMARY KEY | PRIMARY KEY (id)                                                                                               |
 | - (Foreign key ID: 0)                | FOREIGN KEY | FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE |
-| sqlite_autoindex_monster_templates_2 | UNIQUE      | UNIQUE (name_key)                                                                                              |
 | sqlite_autoindex_monster_templates_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                               |
 | -                                    | CHECK       | CHECK (trim(id) <> '')                                                                                         |
 | -                                    | CHECK       | CHECK (trim(stat_profile_id) <> '')                                                                            |
 | -                                    | CHECK       | CHECK (trim(name) <> '')                                                                                       |
-| -                                    | CHECK       | CHECK (trim(name_key) <> '')                                                                                   |
 
 ## Indexes
 
-| Name                                 | Definition                                                                                                 |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| idx_monster_templates_deleted_name   | CREATE INDEX idx_monster_templates_deleted_name<br />ON monster_templates(deleted_at, name COLLATE NOCASE) |
-| sqlite_autoindex_monster_templates_2 | UNIQUE (name_key)                                                                                          |
-| sqlite_autoindex_monster_templates_1 | PRIMARY KEY (id)                                                                                           |
+| Name                                  | Definition                                                                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| idx_monster_templates_deleted_name    | CREATE INDEX idx_monster_templates_deleted_name<br />ON monster_templates(deleted_at, name COLLATE NOCASE) |
+| idx_monster_templates_name_normalized | CREATE UNIQUE INDEX idx_monster_templates_name_normalized<br />ON monster_templates(lower(trim(name)))     |
+| sqlite_autoindex_monster_templates_1  | PRIMARY KEY (id)                                                                                           |
 
 ## Triggers
 

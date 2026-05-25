@@ -37,7 +37,7 @@ WHERE spr.body_location_id = 0
 
 | Name                                                                          | Columns | Comment | Type  |
 | ----------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [monster_templates](monster_templates.md)                                     | 7       |         | table |
+| [monster_templates](monster_templates.md)                                     | 6       |         | table |
 | [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) | 7       |         | table |
 
 ## Triggers

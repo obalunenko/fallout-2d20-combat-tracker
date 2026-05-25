@@ -163,10 +163,7 @@ func (q *Queries) GetCampaignByID(ctx context.Context, campaignID string) (GetCa
 }
 
 const getEncounterByIDByCampaignID = `-- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-       difficulty_label, difficulty_score,
-       party_count, party_avg_level, party_xp_budget,
-       enemy_count, enemy_avg_level, enemy_total_xp
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
 FROM encounters
 WHERE deleted_at IS NULL
   AND campaign_id = ?1
@@ -179,21 +176,13 @@ type GetEncounterByIDByCampaignIDParams struct {
 }
 
 type GetEncounterByIDByCampaignIDRow struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int64
-	TurnIndex       int64
-	PartyAp         int64
-	GmThreat        int64
-	DifficultyLabel string
-	DifficultyScore float64
-	PartyCount      int64
-	PartyAvgLevel   float64
-	PartyXpBudget   int64
-	EnemyCount      int64
-	EnemyAvgLevel   float64
-	EnemyTotalXp    int64
+	ID         string
+	CampaignID string
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
 }
 
 func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncounterByIDByCampaignIDParams) (GetEncounterByIDByCampaignIDRow, error) {
@@ -207,23 +196,12 @@ func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncou
 		&i.TurnIndex,
 		&i.PartyAp,
 		&i.GmThreat,
-		&i.DifficultyLabel,
-		&i.DifficultyScore,
-		&i.PartyCount,
-		&i.PartyAvgLevel,
-		&i.PartyXpBudget,
-		&i.EnemyCount,
-		&i.EnemyAvgLevel,
-		&i.EnemyTotalXp,
 	)
 	return i, err
 }
 
 const getLatestEncounterByCampaignID = `-- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-       difficulty_label, difficulty_score,
-       party_count, party_avg_level, party_xp_budget,
-       enemy_count, enemy_avg_level, enemy_total_xp
+SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
 FROM encounters
 WHERE deleted_at IS NULL AND campaign_id = ?1
 ORDER BY updated_at DESC, id DESC
@@ -231,21 +209,13 @@ LIMIT 1
 `
 
 type GetLatestEncounterByCampaignIDRow struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int64
-	TurnIndex       int64
-	PartyAp         int64
-	GmThreat        int64
-	DifficultyLabel string
-	DifficultyScore float64
-	PartyCount      int64
-	PartyAvgLevel   float64
-	PartyXpBudget   int64
-	EnemyCount      int64
-	EnemyAvgLevel   float64
-	EnemyTotalXp    int64
+	ID         string
+	CampaignID string
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
 }
 
 func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID string) (GetLatestEncounterByCampaignIDRow, error) {
@@ -259,26 +229,18 @@ func (q *Queries) GetLatestEncounterByCampaignID(ctx context.Context, campaignID
 		&i.TurnIndex,
 		&i.PartyAp,
 		&i.GmThreat,
-		&i.DifficultyLabel,
-		&i.DifficultyScore,
-		&i.PartyCount,
-		&i.PartyAvgLevel,
-		&i.PartyXpBudget,
-		&i.EnemyCount,
-		&i.EnemyAvgLevel,
-		&i.EnemyTotalXp,
 	)
 	return i, err
 }
 
-const getMonsterTemplateIDByNameKey = `-- name: GetMonsterTemplateIDByNameKey :one
+const getMonsterTemplateIDByName = `-- name: GetMonsterTemplateIDByName :one
 SELECT id
 FROM monster_templates
-WHERE name_key = ?1
+WHERE lower(trim(name)) = lower(trim(?1))
 `
 
-func (q *Queries) GetMonsterTemplateIDByNameKey(ctx context.Context, nameKey string) (string, error) {
-	row := q.db.QueryRowContext(ctx, getMonsterTemplateIDByNameKey, nameKey)
+func (q *Queries) GetMonsterTemplateIDByName(ctx context.Context, name string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getMonsterTemplateIDByName, name)
 	var id string
 	err := row.Scan(&id)
 	return id, err
@@ -990,42 +952,22 @@ SELECT
   e.name,
   e.round,
   COUNT(c.id) AS combatants,
-  e.difficulty_label,
-  e.difficulty_score,
-  e.party_count,
-  e.party_avg_level,
-  e.party_xp_budget,
-  e.enemy_count,
-  e.enemy_avg_level,
-  e.enemy_total_xp,
   e.updated_at
 FROM encounters e
 LEFT JOIN combatants c ON c.encounter_id = e.id
 WHERE e.deleted_at IS NULL AND e.campaign_id = ?1
 GROUP BY
-  e.id, e.campaign_id, e.name, e.round,
-  e.difficulty_label, e.difficulty_score,
-  e.party_count, e.party_avg_level, e.party_xp_budget,
-  e.enemy_count, e.enemy_avg_level, e.enemy_total_xp,
-  e.updated_at
+  e.id, e.campaign_id, e.name, e.round, e.updated_at
 ORDER BY e.updated_at DESC, e.id DESC
 `
 
 type ListEncounterSummariesByCampaignIDRow struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int64
-	Combatants      int64
-	DifficultyLabel string
-	DifficultyScore float64
-	PartyCount      int64
-	PartyAvgLevel   float64
-	PartyXpBudget   int64
-	EnemyCount      int64
-	EnemyAvgLevel   float64
-	EnemyTotalXp    int64
-	UpdatedAt       time.Time
+	ID         string
+	CampaignID string
+	Name       string
+	Round      int64
+	Combatants int64
+	UpdatedAt  time.Time
 }
 
 func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campaignID string) ([]ListEncounterSummariesByCampaignIDRow, error) {
@@ -1043,14 +985,6 @@ func (q *Queries) ListEncounterSummariesByCampaignID(ctx context.Context, campai
 			&i.Name,
 			&i.Round,
 			&i.Combatants,
-			&i.DifficultyLabel,
-			&i.DifficultyScore,
-			&i.PartyCount,
-			&i.PartyAvgLevel,
-			&i.PartyXpBudget,
-			&i.EnemyCount,
-			&i.EnemyAvgLevel,
-			&i.EnemyTotalXp,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -1505,9 +1439,6 @@ func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByID
 const upsertEncounter = `-- name: UpsertEncounter :exec
 INSERT INTO encounters (
   id, campaign_id, name, round, turn_index, party_ap, gm_threat,
-  difficulty_label, difficulty_score,
-  party_count, party_avg_level, party_xp_budget,
-  enemy_count, enemy_avg_level, enemy_total_xp,
   created_at, updated_at, deleted_at
 )
 VALUES (
@@ -1518,14 +1449,6 @@ VALUES (
   ?5,
   ?6,
   ?7,
-  ?8,
-  ?9,
-  ?10,
-  ?11,
-  ?12,
-  ?13,
-  ?14,
-  ?15,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
@@ -1537,38 +1460,20 @@ ON CONFLICT(id) DO UPDATE SET
 	turn_index = excluded.turn_index,
 	party_ap = excluded.party_ap,
 	gm_threat = excluded.gm_threat,
-	difficulty_label = excluded.difficulty_label,
-	difficulty_score = excluded.difficulty_score,
-	party_count = excluded.party_count,
-	party_avg_level = excluded.party_avg_level,
-	party_xp_budget = excluded.party_xp_budget,
-	enemy_count = excluded.enemy_count,
-	enemy_avg_level = excluded.enemy_avg_level,
-	enemy_total_xp = excluded.enemy_total_xp,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
 
 type UpsertEncounterParams struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int64
-	TurnIndex       int64
-	PartyAp         int64
-	GmThreat        int64
-	DifficultyLabel string
-	DifficultyScore float64
-	PartyCount      int64
-	PartyAvgLevel   float64
-	PartyXpBudget   int64
-	EnemyCount      int64
-	EnemyAvgLevel   float64
-	EnemyTotalXp    int64
+	ID         string
+	CampaignID string
+	Name       string
+	Round      int64
+	TurnIndex  int64
+	PartyAp    int64
+	GmThreat   int64
 }
 
-// Difficulty and party/enemy metrics are an intentional encounter-summary cache.
-// The repository recomputes them from the in-memory encounter before every save.
 func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams) error {
 	_, err := q.db.ExecContext(ctx, upsertEncounter,
 		arg.ID,
@@ -1578,32 +1483,23 @@ func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams
 		arg.TurnIndex,
 		arg.PartyAp,
 		arg.GmThreat,
-		arg.DifficultyLabel,
-		arg.DifficultyScore,
-		arg.PartyCount,
-		arg.PartyAvgLevel,
-		arg.PartyXpBudget,
-		arg.EnemyCount,
-		arg.EnemyAvgLevel,
-		arg.EnemyTotalXp,
 	)
 	return err
 }
 
 const upsertMonsterTemplate = `-- name: UpsertMonsterTemplate :exec
 INSERT INTO monster_templates (
-  id, stat_profile_id, name, name_key, created_at, updated_at, deleted_at
+  id, stat_profile_id, name, created_at, updated_at, deleted_at
 )
 VALUES (
   ?1,
   ?2,
   ?3,
-  ?4,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
 )
-ON CONFLICT(name_key) DO UPDATE SET
+ON CONFLICT(id) DO UPDATE SET
   stat_profile_id = excluded.stat_profile_id,
   name = excluded.name,
   deleted_at = NULL,
@@ -1614,16 +1510,10 @@ type UpsertMonsterTemplateParams struct {
 	ID            string
 	StatProfileID string
 	Name          string
-	NameKey       string
 }
 
 func (q *Queries) UpsertMonsterTemplate(ctx context.Context, arg UpsertMonsterTemplateParams) error {
-	_, err := q.db.ExecContext(ctx, upsertMonsterTemplate,
-		arg.ID,
-		arg.StatProfileID,
-		arg.Name,
-		arg.NameKey,
-	)
+	_, err := q.db.ExecContext(ctx, upsertMonsterTemplate, arg.ID, arg.StatProfileID, arg.Name)
 	return err
 }
 
