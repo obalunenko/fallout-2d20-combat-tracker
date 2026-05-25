@@ -27,13 +27,10 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	if isTorsoOnlyCombatant(c) {
 		label.SetText(
 			fmt.Sprintf(
-				"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nTorso-only: yes\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s\nStatus: %s",
+				"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nTorso-only: yes\n%s\nStatus: %s",
 				displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP,
 				c.Defense,
-				formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
-				formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
-				formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
-				formatDRValue(c.ResistPoison, c.ImmunePoison),
+				formatTorsoResistanceLines(c),
 				status,
 			),
 		)
@@ -41,13 +38,10 @@ func refreshSelected(label *widget.Label, enc *domain.Encounter, idx int) {
 	}
 	label.SetText(
 		fmt.Sprintf(
-			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nDRP Head: %d\nDRP Torso: %d\nDRP Left Arm: %d\nDRP Right Arm: %d\nDRP Left Leg: %d\nDRP Right Leg: %d\nDRE Head: %d\nDRE Torso: %d\nDRE Left Arm: %d\nDRE Right Arm: %d\nDRE Left Leg: %d\nDRE Right Leg: %d\nDRR Head: %d\nDRR Torso: %d\nDRR Left Arm: %d\nDRR Right Arm: %d\nDRR Left Leg: %d\nDRR Right Leg: %d\nDR Poison: %s\nStatus: %s",
+			"Name: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\n%s\nStatus: %s",
 			displayName, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP,
 			c.Defense,
-			c.ResistPhysicalHead, c.ResistPhysicalTorso, c.ResistPhysicalLeftArm, c.ResistPhysicalRightArm, c.ResistPhysicalLeftLeg, c.ResistPhysicalRightLeg,
-			c.ResistEnergyHead, c.ResistEnergyTorso, c.ResistEnergyLeftArm, c.ResistEnergyRightArm, c.ResistEnergyLeftLeg, c.ResistEnergyRightLeg,
-			c.ResistRadiationHead, c.ResistRadiationTorso, c.ResistRadiationLeftArm, c.ResistRadiationRightArm, c.ResistRadiationLeftLeg, c.ResistRadiationRightLeg,
-			formatDRValue(c.ResistPoison, c.ImmunePoison),
+			formatCompactBodyResistanceLines(c),
 			status,
 		),
 	)
@@ -58,6 +52,61 @@ func formatDRValue(value int, immune bool) string {
 		return "IMM"
 	}
 	return strconv.Itoa(value)
+}
+
+func formatTorsoResistanceLines(c domain.Combatant) string {
+	var b strings.Builder
+	for _, damageType := range domain.LocationDamageTypes() {
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(
+			&b,
+			"DR %s: %s",
+			damageTitleLabel(damageType),
+			formatCombatantLocationResistance(c, damageType, domain.BodyTorso),
+		)
+	}
+	fmt.Fprintf(&b, "\nDR Poison: %s", formatCombatantGlobalResistance(c, domain.DamagePoison))
+	return b.String()
+}
+
+func formatCompactBodyResistanceLines(c domain.Combatant) string {
+	var b strings.Builder
+	for _, damageType := range domain.LocationDamageTypes() {
+		for _, location := range domain.BodyLocations() {
+			if b.Len() > 0 {
+				b.WriteString("\n")
+			}
+			fmt.Fprintf(
+				&b,
+				"%s %s: %s",
+				damageAbbreviation(damageType),
+				bodyLocationTitle(location),
+				formatCombatantLocationResistance(c, damageType, location),
+			)
+		}
+	}
+	fmt.Fprintf(&b, "\nDR Poison: %s", formatCombatantGlobalResistance(c, domain.DamagePoison))
+	return b.String()
+}
+
+func formatBodyResistanceTable(c domain.Combatant) string {
+	damageTypes := domain.LocationDamageTypes()
+	var b strings.Builder
+	b.WriteString("Body Damage Resistance\nLocation ")
+	for _, damageType := range damageTypes {
+		fmt.Fprintf(&b, " | %9s", damageTitleLabel(damageType))
+	}
+	b.WriteString("\n")
+	b.WriteString(strings.Repeat("-", 9+12*len(damageTypes)))
+	for _, location := range domain.BodyLocations() {
+		fmt.Fprintf(&b, "\n%-8s", bodyLocationTitle(location))
+		for _, damageType := range damageTypes {
+			fmt.Fprintf(&b, " | %9s", formatCombatantLocationResistance(c, damageType, location))
+		}
+	}
+	return b.String()
 }
 
 func formatCombatantLine(enc *domain.Encounter, c domain.Combatant) string {
@@ -74,7 +123,7 @@ func formatCombatantLine(enc *domain.Encounter, c domain.Combatant) string {
 	}
 	line := fmt.Sprintf(
 		"%s%s [%s] Lvl:%d XP:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
-		prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense, formatDRValue(c.ResistPoison, c.ImmunePoison),
+		prefix, name, c.Side, c.Level, c.XP, c.Initiative, c.HP, c.MaxHP, c.Defense, formatCombatantGlobalResistance(c, domain.DamagePoison),
 	)
 	if isDefeated {
 		return line + " [DEFEATED]"
@@ -91,7 +140,7 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 	}
 	if isTorsoOnlyCombatant(c) {
 		return fmt.Sprintf(
-			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Physical: %s\nDR Energy: %s\nDR Radiation: %s\nDR Poison: %s",
+			"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\n%s",
 			encounterDisplayNameByID(enc, c.ID),
 			c.Side,
 			c.Level,
@@ -101,14 +150,11 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 			c.MaxHP,
 			c.Defense,
 			status,
-			formatDRValue(c.ResistPhysicalTorso, c.ImmunePhysical),
-			formatDRValue(c.ResistEnergyTorso, c.ImmuneEnergy),
-			formatDRValue(c.ResistRadiationTorso, c.ImmuneRadiation),
-			formatDRValue(c.ResistPoison, c.ImmunePoison),
+			formatTorsoResistanceLines(c),
 		)
 	}
 	return fmt.Sprintf(
-		"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\nBody Damage Resistance\nLocation  | Physical | Energy | Radiation\n------------------------------------------\nHead      | %8d | %6d | %9d\nTorso     | %8d | %6d | %9d\nLeft Arm  | %8d | %6d | %9d\nRight Arm | %8d | %6d | %9d\nLeft Leg  | %8d | %6d | %9d\nRight Leg | %8d | %6d | %9d",
+		"Participant Details\nName: %s\nSide: %s\nLevel: %d\nXP: %d\nInitiative: %d\nHP: %d/%d\nDefense: %d\nStatus: %s\nDR Poison: %s\n\n%s",
 		encounterDisplayNameByID(enc, c.ID),
 		c.Side,
 		c.Level,
@@ -118,13 +164,8 @@ func formatExpandedCombatantDetails(enc *domain.Encounter, c domain.Combatant) s
 		c.MaxHP,
 		c.Defense,
 		status,
-		formatDRValue(c.ResistPoison, c.ImmunePoison),
-		c.ResistPhysicalHead, c.ResistEnergyHead, c.ResistRadiationHead,
-		c.ResistPhysicalTorso, c.ResistEnergyTorso, c.ResistRadiationTorso,
-		c.ResistPhysicalLeftArm, c.ResistEnergyLeftArm, c.ResistRadiationLeftArm,
-		c.ResistPhysicalRightArm, c.ResistEnergyRightArm, c.ResistRadiationRightArm,
-		c.ResistPhysicalLeftLeg, c.ResistEnergyLeftLeg, c.ResistRadiationLeftLeg,
-		c.ResistPhysicalRightLeg, c.ResistEnergyRightLeg, c.ResistRadiationRightLeg,
+		formatCombatantGlobalResistance(c, domain.DamagePoison),
+		formatBodyResistanceTable(c),
 	)
 }
 
@@ -244,21 +285,26 @@ func formatDifficultyPreview(metrics domain.EncounterDifficultyMetrics) string {
 
 func formatCampaignRoster(players []domain.NewCampaignPlayer) string {
 	if len(players) == 0 {
-		return "No active players in campaign"
+		return "No players in campaign"
 	}
 	lines := make([]string, 0, len(players))
 	for i, p := range players {
+		status := "active"
+		if p.Inactive {
+			status = "inactive"
+		}
 		lines = append(lines, fmt.Sprintf(
-			"[%02d] %s -> %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
+			"[%02d] %s -> %s | %s | Lvl:%d Init:%d HP:%d/%d DEF:%d DR Poison:%s",
 			i+1,
 			p.PlayerName,
 			p.Character.Name,
+			status,
 			p.Character.Level,
 			p.Character.Initiative,
 			p.Character.HP,
 			p.Character.MaxHP,
 			p.Character.Defense,
-			formatDRValue(p.Character.ResistPoison, p.Character.ImmunePoison),
+			formatCombatantGlobalResistance(p.Character, domain.DamagePoison),
 		))
 	}
 	return strings.Join(lines, "\n")
@@ -279,7 +325,7 @@ func formatPartyLibrary(members []domain.Combatant) string {
 			c.HP,
 			c.MaxHP,
 			c.Defense,
-			formatDRValue(c.ResistPoison, c.ImmunePoison),
+			formatCombatantGlobalResistance(c, domain.DamagePoison),
 		))
 	}
 	return strings.Join(lines, "\n")

@@ -12,6 +12,7 @@ type Campaign struct {
 type NewCampaignPlayer struct {
 	PlayerName string
 	Character  Combatant
+	Inactive   bool
 }
 
 type CampaignCharacter struct {

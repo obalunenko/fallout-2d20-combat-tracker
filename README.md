@@ -33,7 +33,8 @@ Use `NEW ENCOUNTER` in the app header, then:
 
 ## Storage
 
-- DB path: `~/.config/fallout-tracker/tracker.db`
+- DB path: `~/.config/fallout-tracker/tracker.db` by default
+- Override DB path: `FALLOUT_TRACKER_DB_PATH=/path/to/tracker.db`
 - Migrations: `internal/store/sqlite/migrations`
 - Migrations are applied automatically on startup via Goose
 - sqlc schema/queries:
@@ -43,8 +44,10 @@ Use `NEW ENCOUNTER` in the app header, then:
 - Tooling is split into dedicated modules:
   - `tools/goose/go.tool.mod`
   - `tools/sqlc/go.tool.mod`
+  - `tools/tbls/go.tool.mod`
   - `tools/golangci-lint/go.tool.mod`
   - `tools/goreleaser/go.tool.mod`
+- DB docs: `docs/db`
 
 Examples:
 
@@ -52,21 +55,21 @@ Examples:
 make goose-status DB=~/.config/fallout-tracker/tracker.db
 make goose-create NAME=add_new_field
 make sqlc-generate
+make db-doc-generate
 make tools-list
 make tools-verify
 ```
 
 ### DB Normalization Status
 
-- Combat stats are normalized into dedicated tables:
-  - `combatant_resistance_global`
-  - `combatant_resistance_by_location`
-  - `player_character_resistance_global`
-  - `player_character_resistance_by_location`
-- Legacy wide columns in `combatants` and `player_characters` were removed in migration `00023`.
-- Defense is global-only; body locations store DR, not Defense.
-- Current read/write SQL (`sqlc/query.sql`) relies on normalized DR tables only.
-- Migration notes for `00020`-`00025`: `internal/store/sqlite/migrations/README.md`.
+- Combat stats are normalized into `stat_profiles`.
+- `combatants`, `player_characters`, and `monster_templates` reference a stat profile.
+- Resistance rows are shared through `stat_profile_resistance_by_location`;
+  global resistance uses the `body_locations.code = 'global'` dictionary row.
+- Remaining deliberate snapshots are documented in `docs/db-normalization.md`.
+- Legacy wide stat/resistance columns were removed by migrations.
+- `internal/store/sqlite/sqlc/schema.sql` is generated from a clean database with all migrations applied.
+- DB documentation is generated from the same clean migrated state via `tbls`.
 
 ## Run
 

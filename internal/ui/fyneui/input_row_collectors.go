@@ -75,86 +75,10 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		if err != nil || defense < 0 {
 			return nil, fmt.Errorf("combatant %q: invalid defense %q", name, defenseText)
 		}
-		drEnergyHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyHead.Text), "DR energy head", name)
+		torsoOnly := row.torsoOnly != nil && row.torsoOnly.Checked
+		resistance, err := row.resistance.collectProfile(name, torsoOnly)
 		if err != nil {
 			return nil, err
-		}
-		drEnergyTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyTorso.Text), "DR energy torso", name)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyLA.Text), "DR energy left arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyRA.Text), "DR energy right arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyLL.Text), "DR energy left leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyRL.Text), "DR energy right leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadHead.Text), "DR radiation head", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadTorso.Text), "DR radiation torso", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadLA.Text), "DR radiation left arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadRA.Text), "DR radiation right arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadLL.Text), "DR radiation left leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drRadRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadRL.Text), "DR radiation right leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysHead.Text), "DR physical head", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysTorso.Text), "DR physical torso", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLA.Text), "DR physical left arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRA.Text), "DR physical right arm", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLL.Text), "DR physical left leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drPhysRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRL.Text), "DR physical right leg", name)
-		if err != nil {
-			return nil, err
-		}
-		drPoison, immPoison, err := parseResistanceCell(name, "poison", row.drPoison.Text, row.immPoison.Checked)
-		if err != nil {
-			return nil, err
-		}
-		if row.torsoOnly != nil && row.torsoOnly.Checked {
-			drPhysHead, drPhysLA, drPhysRA, drPhysLL, drPhysRL = 0, 0, 0, 0, 0
-			drEnergyHead, drEnergyLA, drEnergyRA, drEnergyLL, drEnergyRL = 0, 0, 0, 0, 0
-			drRadHead, drRadLA, drRadRA, drRadLL, drRadRL = 0, 0, 0, 0, 0
 		}
 
 		side := domain.SideNPC
@@ -168,42 +92,21 @@ func collectCombatantsFromRows(rows []*combatantInputRow) ([]domain.Combatant, e
 		}
 
 		for i := 0; i < count; i++ {
-			combatants = append(combatants, domain.Combatant{
-				ID:                      strings.TrimSpace(row.combatantID),
-				PlayerCharacterID:       strings.TrimSpace(row.playerCharacterID),
-				Name:                    name,
-				Side:                    side,
-				Level:                   level,
-				XP:                      xp,
-				Initiative:              initiative,
-				HP:                      hp,
-				MaxHP:                   hpMax,
-				Defense:                 defense,
-				TorsoOnly:               row.torsoOnly != nil && row.torsoOnly.Checked,
-				ResistPhysicalHead:      drPhysHead,
-				ResistPhysicalTorso:     drPhysTorso,
-				ResistPhysicalLeftArm:   drPhysLA,
-				ResistPhysicalRightArm:  drPhysRA,
-				ResistPhysicalLeftLeg:   drPhysLL,
-				ResistPhysicalRightLeg:  drPhysRL,
-				ResistEnergyHead:        drEnergyHead,
-				ResistEnergyTorso:       drEnergyTorso,
-				ResistEnergyLeftArm:     drEnergyLA,
-				ResistEnergyRightArm:    drEnergyRA,
-				ResistEnergyLeftLeg:     drEnergyLL,
-				ResistEnergyRightLeg:    drEnergyRL,
-				ResistRadiationHead:     drRadHead,
-				ResistRadiationTorso:    drRadTorso,
-				ResistRadiationLeftArm:  drRadLA,
-				ResistRadiationRightArm: drRadRA,
-				ResistRadiationLeftLeg:  drRadLL,
-				ResistRadiationRightLeg: drRadRL,
-				ImmunePhysical:          row.immPhysical.Checked,
-				ImmuneEnergy:            row.immEnergy.Checked,
-				ImmuneRadiation:         row.immRadiation.Checked,
-				ResistPoison:            drPoison,
-				ImmunePoison:            immPoison,
-			})
+			combatant := domain.Combatant{
+				ID:                strings.TrimSpace(row.combatantID),
+				PlayerCharacterID: strings.TrimSpace(row.playerCharacterID),
+				Name:              name,
+				Side:              side,
+				Level:             level,
+				XP:                xp,
+				Initiative:        initiative,
+				HP:                hp,
+				MaxHP:             hpMax,
+				Defense:           defense,
+				TorsoOnly:         torsoOnly,
+			}
+			combatant.SetResistanceProfile(resistance)
+			combatants = append(combatants, combatant)
 		}
 	}
 
@@ -252,117 +155,25 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		if err != nil {
 			return nil, err
 		}
-		drEnergyHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyHead.Text), "DR energy head", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyTorso.Text), "DR energy torso", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyLA.Text), "DR energy left arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyRA.Text), "DR energy right arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyLL.Text), "DR energy left leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drEnergyRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drEnergyRL.Text), "DR energy right leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadHead.Text), "DR radiation head", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadTorso.Text), "DR radiation torso", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadLA.Text), "DR radiation left arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadRA.Text), "DR radiation right arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadLL.Text), "DR radiation left leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drRadRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drRadRL.Text), "DR radiation right leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysHead, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysHead.Text), "DR physical head", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysTorso, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysTorso.Text), "DR physical torso", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysLA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLA.Text), "DR physical left arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysRA, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRA.Text), "DR physical right arm", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysLL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysLL.Text), "DR physical left leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPhysRL, err := parseNonNegativeIntOrError(strings.TrimSpace(row.drPhysRL.Text), "DR physical right leg", playerName)
-		if err != nil {
-			return nil, err
-		}
-		drPoison, immPoison, err := parseResistanceCell(characterName, "poison", row.drPoison.Text, row.immPoison.Checked)
+		resistance, err := row.resistance.collectProfile(characterName, false)
 		if err != nil {
 			return nil, err
 		}
 
+		character := domain.Combatant{
+			Name:       characterName,
+			Side:       domain.SideParty,
+			Level:      level,
+			Initiative: initiative,
+			HP:         hp,
+			MaxHP:      hpMax,
+			Defense:    defense,
+		}
+		character.SetResistanceProfile(resistance)
 		players = append(players, domain.NewCampaignPlayer{
 			PlayerName: playerName,
-			Character: domain.Combatant{
-				Name:                    characterName,
-				Side:                    domain.SideParty,
-				Level:                   level,
-				Initiative:              initiative,
-				HP:                      hp,
-				MaxHP:                   hpMax,
-				Defense:                 defense,
-				ResistPhysicalHead:      drPhysHead,
-				ResistPhysicalTorso:     drPhysTorso,
-				ResistPhysicalLeftArm:   drPhysLA,
-				ResistPhysicalRightArm:  drPhysRA,
-				ResistPhysicalLeftLeg:   drPhysLL,
-				ResistPhysicalRightLeg:  drPhysRL,
-				ResistEnergyHead:        drEnergyHead,
-				ResistEnergyTorso:       drEnergyTorso,
-				ResistEnergyLeftArm:     drEnergyLA,
-				ResistEnergyRightArm:    drEnergyRA,
-				ResistEnergyLeftLeg:     drEnergyLL,
-				ResistEnergyRightLeg:    drEnergyRL,
-				ResistRadiationHead:     drRadHead,
-				ResistRadiationTorso:    drRadTorso,
-				ResistRadiationLeftArm:  drRadLA,
-				ResistRadiationRightArm: drRadRA,
-				ResistRadiationLeftLeg:  drRadLL,
-				ResistRadiationRightLeg: drRadRL,
-				ImmunePhysical:          row.immPhysical.Checked,
-				ImmuneEnergy:            row.immEnergy.Checked,
-				ImmuneRadiation:         row.immRadiation.Checked,
-				ResistPoison:            drPoison,
-				ImmunePoison:            immPoison,
-			},
+			Inactive:   row.active != nil && !row.active.Checked,
+			Character:  character,
 		})
 	}
 	if len(players) == 0 {

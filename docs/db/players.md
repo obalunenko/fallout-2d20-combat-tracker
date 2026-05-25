@@ -1,0 +1,59 @@
+# players
+
+## Description
+
+<details>
+<summary><strong>Table Definition</strong></summary>
+
+```sql
+CREATE TABLE "players" (
+    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
+    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) <> ''),
+    name TEXT NOT NULL CHECK (trim(name) <> ''),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+)
+```
+
+</details>
+
+## Columns
+
+| Name        | Type     | Default                              | Nullable | Children                                  | Parents                   |
+| ----------- | -------- | ------------------------------------ | -------- | ----------------------------------------- | ------------------------- |
+| id          | TEXT     |                                      | true     | [player_characters](player_characters.md) |                           |
+| campaign_id | TEXT     |                                      | false    |                                           | [campaigns](campaigns.md) |
+| name        | TEXT     |                                      | false    |                                           |                           |
+| created_at  | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                           |                           |
+| updated_at  | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                           |                           |
+| deleted_at  | DATETIME |                                      | true     |                                           |                           |
+
+## Constraints
+
+| Name                       | Type        | Definition                                                                                           |
+| -------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
+| id                         | PRIMARY KEY | PRIMARY KEY (id)                                                                                     |
+| - (Foreign key ID: 0)      | FOREIGN KEY | FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| sqlite_autoindex_players_1 | PRIMARY KEY | PRIMARY KEY (id)                                                                                     |
+| -                          | CHECK       | CHECK (trim(id) <> '')                                                                               |
+| -                          | CHECK       | CHECK (trim(campaign_id) <> '')                                                                      |
+| -                          | CHECK       | CHECK (trim(name) <> '')                                                                             |
+
+## Indexes
+
+| Name                       | Definition                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| idx_players_campaign_name  | CREATE UNIQUE INDEX idx_players_campaign_name<br />ON players(campaign_id, lower(trim(name))) |
+| sqlite_autoindex_players_1 | PRIMARY KEY (id)                                                                              |
+
+## Triggers
+
+| Name                                                    | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| trg_players_campaign_update_keeps_characters_consistent | CREATE TRIGGER trg_players_campaign_update_keeps_characters_consistent<br />BEFORE UPDATE OF campaign_id ON players<br />WHEN EXISTS (<br />    SELECT 1<br />    FROM player_characters pc<br />    JOIN combatants c ON c.player_character_id = pc.id<br />    JOIN encounters e ON e.id = c.encounter_id<br />    WHERE pc.player_id = NEW.id<br />      AND e.campaign_id <> NEW.campaign_id<br />)<br />BEGIN<br />    SELECT RAISE(ABORT, 'player campaign update would mismatch linked combatants');<br />END |
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

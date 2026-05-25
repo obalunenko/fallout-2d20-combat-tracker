@@ -1,0 +1,2169 @@
+{
+  "name": "fallout-tracker",
+  "desc": "Fallout 2d20 Combat Tracker SQLite schema.",
+  "tables": [
+    {
+      "name": "encounter_logs",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "encounter_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "round",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "message",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_encounter_logs_encounter_created",
+          "def": "CREATE INDEX idx_encounter_logs_encounter_created\nON encounter_logs(encounter_id, created_at DESC, id DESC)",
+          "table": "encounter_logs",
+          "columns": [
+            "encounter_id",
+            "created_at",
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounter_logs_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounter_logs",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounter_logs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "encounter_logs",
+          "referenced_table": "encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounter_logs_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounter_logs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "encounter_logs",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(encounter_id) \u003c\u003e '')",
+          "table": "encounter_logs",
+          "columns": [
+            "id",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (round \u003e= 1)",
+          "table": "encounter_logs",
+          "columns": [
+            "round"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(message) \u003c\u003e '')",
+          "table": "encounter_logs",
+          "columns": [
+            "message"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"encounter_logs\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    message TEXT NOT NULL CHECK (trim(message) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "name": "campaigns",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "start_date",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_campaigns_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "campaigns",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "campaigns",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_campaigns_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "campaigns",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "campaigns",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "campaigns",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"campaigns\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    start_date DATETIME NOT NULL,\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL\n)"
+    },
+    {
+      "name": "players",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "campaign_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_players_campaign_name",
+          "def": "CREATE UNIQUE INDEX idx_players_campaign_name\nON players(campaign_id, lower(trim(name)))",
+          "table": "players",
+          "columns": [
+            "campaign_id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_players_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "players",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "players",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "players",
+          "referenced_table": "campaigns",
+          "columns": [
+            "campaign_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_players_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "players",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "players",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(campaign_id) \u003c\u003e '')",
+          "table": "players",
+          "columns": [
+            "id",
+            "campaign_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "players",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_players_campaign_update_keeps_characters_consistent",
+          "def": "CREATE TRIGGER trg_players_campaign_update_keeps_characters_consistent\nBEFORE UPDATE OF campaign_id ON players\nWHEN EXISTS (\n    SELECT 1\n    FROM player_characters pc\n    JOIN combatants c ON c.player_character_id = pc.id\n    JOIN encounters e ON e.id = c.encounter_id\n    WHERE pc.player_id = NEW.id\n      AND e.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player campaign update would mismatch linked combatants');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"players\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "name": "app_state",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "active_campaign_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "app_state",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (active_campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "app_state",
+          "referenced_table": "campaigns",
+          "columns": [
+            "active_campaign_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (id = 1)",
+          "table": "app_state",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"app_state\" (\n    id INTEGER PRIMARY KEY CHECK (id = 1),\n    active_campaign_id TEXT NULL,\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    FOREIGN KEY (active_campaign_id) REFERENCES campaigns(id)\n)"
+    },
+    {
+      "name": "damage_types",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "code",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_damage_types_1",
+          "def": "UNIQUE (code)",
+          "table": "damage_types",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "damage_types",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_damage_types_1",
+          "type": "UNIQUE",
+          "def": "UNIQUE (code)",
+          "table": "damage_types",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (code IN ('physical', 'energy', 'radiation', 'poison'))",
+          "table": "damage_types",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"damage_types\" (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE CHECK (code IN ('physical', 'energy', 'radiation', 'poison'))\n)"
+    },
+    {
+      "name": "stat_profiles",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "torso_only",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "level",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "xp",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "initiative",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "hp",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "max_hp",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "defense",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_stat_profiles_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "stat_profiles",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "stat_profiles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_stat_profiles_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "stat_profiles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "stat_profiles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (torso_only IN (0, 1))",
+          "table": "stat_profiles",
+          "columns": [
+            "torso_only"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (level \u003e= 0)",
+          "table": "stat_profiles",
+          "columns": [
+            "level"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (xp \u003e= 0)",
+          "table": "stat_profiles",
+          "columns": [
+            "xp"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (initiative \u003e= 0)",
+          "table": "stat_profiles",
+          "columns": [
+            "initiative"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (hp \u003e= 0)",
+          "table": "stat_profiles",
+          "columns": [
+            "hp"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (max_hp \u003e= 1)",
+          "table": "stat_profiles",
+          "columns": [
+            "hp",
+            "max_hp"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (defense \u003e= 0)",
+          "table": "stat_profiles",
+          "columns": [
+            "defense"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (hp \u003c= max_hp)",
+          "table": "stat_profiles",
+          "columns": [
+            "hp",
+            "max_hp"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_stat_profiles_player_character_level_update",
+          "def": "CREATE TRIGGER trg_stat_profiles_player_character_level_update\nBEFORE UPDATE OF level ON stat_profiles\nWHEN NEW.level \u003c 1\n  AND EXISTS (SELECT 1 FROM player_characters pc WHERE pc.stat_profile_id = NEW.id)\nBEGIN\n    SELECT RAISE(ABORT, 'player character level must be at least 1');\nEND"
+        },
+        {
+          "name": "trg_stat_profiles_monster_template_level_update",
+          "def": "CREATE TRIGGER trg_stat_profiles_monster_template_level_update\nBEFORE UPDATE OF level ON stat_profiles\nWHEN NEW.level \u003c 1\n  AND EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.stat_profile_id = NEW.id)\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"stat_profiles\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    torso_only INTEGER NOT NULL DEFAULT 0 CHECK (torso_only IN (0, 1)),\n    level INTEGER NOT NULL DEFAULT 1 CHECK (level \u003e= 0),\n    xp INTEGER NOT NULL DEFAULT 0 CHECK (xp \u003e= 0),\n    initiative INTEGER NOT NULL DEFAULT 1 CHECK (initiative \u003e= 0),\n    hp INTEGER NOT NULL DEFAULT 1 CHECK (hp \u003e= 0),\n    max_hp INTEGER NOT NULL DEFAULT 1 CHECK (max_hp \u003e= 1),\n    defense INTEGER NOT NULL DEFAULT 0 CHECK (defense \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    CHECK (hp \u003c= max_hp)\n)"
+    },
+    {
+      "name": "combatants",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "encounter_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "stat_profile_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "side",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "defeated",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "position",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_combatants_encounter_player_character",
+          "def": "CREATE UNIQUE INDEX idx_combatants_encounter_player_character\nON combatants(encounter_id, player_character_id)\nWHERE player_character_id IS NOT NULL",
+          "table": "combatants",
+          "columns": [
+            "encounter_id",
+            "player_character_id"
+          ]
+        },
+        {
+          "name": "idx_combatants_encounter_position",
+          "def": "CREATE INDEX idx_combatants_encounter_position\nON combatants(encounter_id, position)",
+          "table": "combatants",
+          "columns": [
+            "encounter_id",
+            "position"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_combatants_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "combatants",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "combatants",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_character_id) REFERENCES player_characters (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "combatants",
+          "referenced_table": "player_characters",
+          "columns": [
+            "player_character_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "combatants",
+          "referenced_table": "stat_profiles",
+          "columns": [
+            "stat_profile_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 2)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "combatants",
+          "referenced_table": "encounters",
+          "columns": [
+            "encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_combatants_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "combatants",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "combatants",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(encounter_id) \u003c\u003e '')",
+          "table": "combatants",
+          "columns": [
+            "id",
+            "encounter_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(stat_profile_id) \u003c\u003e '')",
+          "table": "combatants",
+          "columns": [
+            "id",
+            "stat_profile_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "combatants",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (side IN ('party', 'npc'))",
+          "table": "combatants",
+          "columns": [
+            "id",
+            "side"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (defeated IN (0, 1))",
+          "table": "combatants",
+          "columns": [
+            "defeated"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (position \u003e= 0)",
+          "table": "combatants",
+          "columns": [
+            "position"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_combatants_delete_stat_profile",
+          "def": "CREATE TRIGGER trg_combatants_delete_stat_profile\nAFTER DELETE ON combatants\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
+        },
+        {
+          "name": "trg_combatants_player_character_campaign_insert",
+          "def": "CREATE TRIGGER trg_combatants_player_character_campaign_insert\nBEFORE INSERT ON combatants\nWHEN NEW.player_character_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1\n    FROM encounters e\n    JOIN player_characters pc ON pc.id = NEW.player_character_id\n    JOIN players p ON p.id = pc.player_id\n    WHERE e.id = NEW.encounter_id\n      AND p.campaign_id = e.campaign_id\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'combatant player character must belong to encounter campaign');\nEND"
+        },
+        {
+          "name": "trg_combatants_player_character_campaign_update",
+          "def": "CREATE TRIGGER trg_combatants_player_character_campaign_update\nBEFORE UPDATE OF encounter_id, player_character_id ON combatants\nWHEN NEW.player_character_id IS NOT NULL\n  AND NOT EXISTS (\n    SELECT 1\n    FROM encounters e\n    JOIN player_characters pc ON pc.id = NEW.player_character_id\n    JOIN players p ON p.id = pc.player_id\n    WHERE e.id = NEW.encounter_id\n      AND p.campaign_id = e.campaign_id\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'combatant player character must belong to encounter campaign');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"combatants\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    player_character_id TEXT NULL,\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    side TEXT NOT NULL CHECK (side IN ('party', 'npc')),\n    defeated INTEGER NOT NULL DEFAULT 0 CHECK (defeated IN (0, 1)),\n    position INTEGER NOT NULL CHECK (position \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id),\n    FOREIGN KEY (player_character_id) REFERENCES player_characters(id)\n)"
+    },
+    {
+      "name": "encounters",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "campaign_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "round",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "turn_index",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "party_ap",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "gm_threat",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_encounters_campaign_deleted_updated",
+          "def": "CREATE INDEX idx_encounters_campaign_deleted_updated\nON encounters(campaign_id, deleted_at, updated_at DESC, id DESC)",
+          "table": "encounters",
+          "columns": [
+            "campaign_id",
+            "deleted_at",
+            "updated_at",
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounters_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "encounters",
+          "referenced_table": "campaigns",
+          "columns": [
+            "campaign_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_encounters_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(campaign_id) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "id",
+            "campaign_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "encounters",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (round \u003e= 1)",
+          "table": "encounters",
+          "columns": [
+            "round"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (turn_index \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "turn_index"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (party_ap \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "party_ap"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (gm_threat \u003e= 0)",
+          "table": "encounters",
+          "columns": [
+            "gm_threat"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_encounters_campaign_update_keeps_combatants_consistent",
+          "def": "CREATE TRIGGER trg_encounters_campaign_update_keeps_combatants_consistent\nBEFORE UPDATE OF campaign_id ON encounters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN player_characters pc ON pc.id = c.player_character_id\n    JOIN players p ON p.id = pc.player_id\n    WHERE c.encounter_id = NEW.id\n      AND p.campaign_id \u003c\u003e NEW.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'encounter campaign update would mismatch linked combatants');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"encounters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    campaign_id TEXT NOT NULL CHECK (trim(campaign_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    turn_index INTEGER NOT NULL CHECK (turn_index \u003e= 0),\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE\n)"
+    },
+    {
+      "name": "player_characters",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "player_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "stat_profile_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "active",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "availability_status",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "'active'"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_player_characters_player_active_availability",
+          "def": "CREATE INDEX idx_player_characters_player_active_availability\nON player_characters(player_id, active, availability_status, name)",
+          "table": "player_characters",
+          "columns": [
+            "player_id",
+            "active",
+            "availability_status",
+            "name"
+          ]
+        },
+        {
+          "name": "idx_player_characters_one_active",
+          "def": "CREATE UNIQUE INDEX idx_player_characters_one_active\nON player_characters(player_id)\nWHERE active = 1",
+          "table": "player_characters",
+          "columns": [
+            "player_id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_player_characters_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "player_characters",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "player_characters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "player_characters",
+          "referenced_table": "stat_profiles",
+          "columns": [
+            "stat_profile_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "player_characters",
+          "referenced_table": "players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_player_characters_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "player_characters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "player_characters",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(player_id) \u003c\u003e '')",
+          "table": "player_characters",
+          "columns": [
+            "id",
+            "player_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(stat_profile_id) \u003c\u003e '')",
+          "table": "player_characters",
+          "columns": [
+            "id",
+            "stat_profile_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "player_characters",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (active IN (0, 1))",
+          "table": "player_characters",
+          "columns": [
+            "active"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (availability_status IN ('active', 'inactive'))",
+          "table": "player_characters",
+          "columns": [
+            "active",
+            "availability_status"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_player_characters_delete_stat_profile",
+          "def": "CREATE TRIGGER trg_player_characters_delete_stat_profile\nAFTER DELETE ON player_characters\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
+        },
+        {
+          "name": "trg_player_characters_require_level",
+          "def": "CREATE TRIGGER trg_player_characters_require_level\nBEFORE INSERT ON player_characters\nWHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) \u003c 1\nBEGIN\n    SELECT RAISE(ABORT, 'player character level must be at least 1');\nEND"
+        },
+        {
+          "name": "trg_player_characters_player_update_keeps_combatants_consistent",
+          "def": "CREATE TRIGGER trg_player_characters_player_update_keeps_combatants_consistent\nBEFORE UPDATE OF player_id ON player_characters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN encounters e ON e.id = c.encounter_id\n    JOIN players p ON p.id = NEW.player_id\n    WHERE c.player_character_id = NEW.id\n      AND p.campaign_id \u003c\u003e e.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player character player update would mismatch linked combatants');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"player_characters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    player_id TEXT NOT NULL CHECK (trim(player_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n    availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
+    },
+    {
+      "name": "body_locations",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "code",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_body_locations_1",
+          "def": "UNIQUE (code)",
+          "table": "body_locations",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "body_locations",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_body_locations_1",
+          "type": "UNIQUE",
+          "def": "UNIQUE (code)",
+          "table": "body_locations",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (code IN ('global', 'head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'))",
+          "table": "body_locations",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"body_locations\" (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE CHECK (code IN ('global', 'head', 'torso', 'left_arm', 'right_arm', 'left_leg', 'right_leg'))\n)"
+    },
+    {
+      "name": "stat_profile_resistance_by_location",
+      "type": "table",
+      "columns": [
+        {
+          "name": "stat_profile_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_stat_profile_resistance_by_location_1",
+          "def": "PRIMARY KEY (stat_profile_id, damage_type_id, body_location_id)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "stat_profile_id",
+            "damage_type_id",
+            "body_location_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "stat_profile_id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (stat_profile_id)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "stat_profile_id"
+          ]
+        },
+        {
+          "name": "damage_type_id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (damage_type_id)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "damage_type_id"
+          ]
+        },
+        {
+          "name": "body_location_id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (body_location_id)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "body_location_id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (body_location_id) REFERENCES body_locations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "stat_profile_resistance_by_location",
+          "referenced_table": "body_locations",
+          "columns": [
+            "body_location_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (damage_type_id) REFERENCES damage_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "stat_profile_resistance_by_location",
+          "referenced_table": "damage_types",
+          "columns": [
+            "damage_type_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 2)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "stat_profile_resistance_by_location",
+          "referenced_table": "stat_profiles",
+          "columns": [
+            "stat_profile_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_stat_profile_resistance_by_location_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (stat_profile_id, damage_type_id, body_location_id)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "stat_profile_id",
+            "damage_type_id",
+            "body_location_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (resistance \u003e= 0)",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "resistance"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (immune IN (0, 1))",
+          "table": "stat_profile_resistance_by_location",
+          "columns": [
+            "immune"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_stat_profile_resistance_location_global_insert",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_global_insert\nBEFORE INSERT ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id = 0\n  AND NEW.resistance \u003c\u003e 0\n  AND NOT EXISTS (\n    SELECT 1 FROM damage_types dt\n    WHERE dt.id = NEW.damage_type_id\n      AND dt.code = 'poison'\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_global_update",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_global_update\nBEFORE UPDATE OF damage_type_id, body_location_id, resistance ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id = 0\n  AND NEW.resistance \u003c\u003e 0\n  AND NOT EXISTS (\n    SELECT 1 FROM damage_types dt\n    WHERE dt.id = NEW.damage_type_id\n      AND dt.code = 'poison'\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'non-poison global resistance must be zero');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_scoped_insert",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_scoped_insert\nBEFORE INSERT ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND NEW.immune \u003c\u003e 0\nBEGIN\n    SELECT RAISE(ABORT, 'location resistance cannot store immunity');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_scoped_update",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_scoped_update\nBEFORE UPDATE OF body_location_id, immune ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND NEW.immune \u003c\u003e 0\nBEGIN\n    SELECT RAISE(ABORT, 'location resistance cannot store immunity');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_poison_insert",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_poison_insert\nBEFORE INSERT ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND NEW.resistance \u003c\u003e 0\n  AND EXISTS (\n    SELECT 1 FROM damage_types dt\n    WHERE dt.id = NEW.damage_type_id\n      AND dt.code = 'poison'\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'poison resistance must be global');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_poison_update",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_poison_update\nBEFORE UPDATE OF damage_type_id, body_location_id, resistance ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND NEW.resistance \u003c\u003e 0\n  AND EXISTS (\n    SELECT 1 FROM damage_types dt\n    WHERE dt.id = NEW.damage_type_id\n      AND dt.code = 'poison'\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'poison resistance must be global');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_global_excludes_location_insert",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_global_excludes_location_insert\nBEFORE INSERT ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id = 0\n  AND EXISTS (\n    SELECT 1\n    FROM stat_profile_resistance_by_location spr\n    WHERE spr.stat_profile_id = NEW.stat_profile_id\n      AND spr.damage_type_id = NEW.damage_type_id\n      AND spr.body_location_id \u003c\u003e 0\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'global resistance conflicts with location resistance');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_global_excludes_location_update",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_global_excludes_location_update\nBEFORE UPDATE OF stat_profile_id, damage_type_id, body_location_id ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id = 0\n  AND EXISTS (\n    SELECT 1\n    FROM stat_profile_resistance_by_location spr\n    WHERE spr.stat_profile_id = NEW.stat_profile_id\n      AND spr.damage_type_id = NEW.damage_type_id\n      AND spr.body_location_id \u003c\u003e 0\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'global resistance conflicts with location resistance');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_excludes_global_insert",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_excludes_global_insert\nBEFORE INSERT ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND EXISTS (\n    SELECT 1\n    FROM stat_profile_resistance_by_location spr\n    WHERE spr.stat_profile_id = NEW.stat_profile_id\n      AND spr.damage_type_id = NEW.damage_type_id\n      AND spr.body_location_id = 0\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'location resistance conflicts with global resistance');\nEND"
+        },
+        {
+          "name": "trg_stat_profile_resistance_location_excludes_global_update",
+          "def": "CREATE TRIGGER trg_stat_profile_resistance_location_excludes_global_update\nBEFORE UPDATE OF stat_profile_id, damage_type_id, body_location_id ON stat_profile_resistance_by_location\nWHEN NEW.body_location_id \u003c\u003e 0\n  AND EXISTS (\n    SELECT 1\n    FROM stat_profile_resistance_by_location spr\n    WHERE spr.stat_profile_id = NEW.stat_profile_id\n      AND spr.damage_type_id = NEW.damage_type_id\n      AND spr.body_location_id = 0\n  )\nBEGIN\n    SELECT RAISE(ABORT, 'location resistance conflicts with global resistance');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE stat_profile_resistance_by_location (\n    stat_profile_id TEXT NOT NULL,\n    damage_type_id INTEGER NOT NULL,\n    body_location_id INTEGER NOT NULL,\n    resistance INTEGER NOT NULL DEFAULT 0 CHECK (resistance \u003e= 0),\n    immune INTEGER NOT NULL DEFAULT 0 CHECK (immune IN (0, 1)),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    PRIMARY KEY (stat_profile_id, damage_type_id, body_location_id),\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id) ON DELETE CASCADE,\n    FOREIGN KEY (damage_type_id) REFERENCES damage_types(id),\n    FOREIGN KEY (body_location_id) REFERENCES body_locations(id)\n)"
+    },
+    {
+      "name": "combatant_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "combatant_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_combatant_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_insert\nINSTEAD OF INSERT ON combatant_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_update\nINSTEAD OF UPDATE ON combatant_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_global_delete\nINSTEAD OF DELETE ON combatant_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW combatant_resistance_global AS\nSELECT\n    c.id AS combatant_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.immune,\n    spr.created_at,\n    spr.updated_at\nFROM combatants c\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = c.stat_profile_id\nWHERE spr.body_location_id = 0",
+      "referenced_tables": [
+        "combatants",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "combatant_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "combatant_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_combatant_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_insert\nINSTEAD OF INSERT ON combatant_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_update\nINSTEAD OF UPDATE ON combatant_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown combatant_id')\n    WHERE NOT EXISTS (SELECT 1 FROM combatants c WHERE c.id = NEW.combatant_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        c.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM combatants c\n    WHERE c.id = NEW.combatant_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_combatant_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_combatant_resistance_by_location_delete\nINSTEAD OF DELETE ON combatant_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT c.stat_profile_id FROM combatants c WHERE c.id = OLD.combatant_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW combatant_resistance_by_location AS\nSELECT\n    c.id AS combatant_id,\n    spr.body_location_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.created_at,\n    spr.updated_at\nFROM combatants c\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = c.stat_profile_id\nWHERE spr.body_location_id \u003c\u003e 0",
+      "referenced_tables": [
+        "combatants",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "monster_template_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "monster_template_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_monster_template_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_insert\nINSTEAD OF INSERT ON monster_template_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_update\nINSTEAD OF UPDATE ON monster_template_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_global_delete\nINSTEAD OF DELETE ON monster_template_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW monster_template_resistance_global AS\nSELECT\n    mt.id AS monster_template_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.immune,\n    spr.created_at,\n    spr.updated_at\nFROM monster_templates mt\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = mt.stat_profile_id\nWHERE spr.body_location_id = 0",
+      "referenced_tables": [
+        "monster_templates",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "monster_template_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "monster_template_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_insert\nINSTEAD OF INSERT ON monster_template_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_update\nINSTEAD OF UPDATE ON monster_template_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown monster_template_id')\n    WHERE NOT EXISTS (SELECT 1 FROM monster_templates mt WHERE mt.id = NEW.monster_template_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        mt.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM monster_templates mt\n    WHERE mt.id = NEW.monster_template_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_monster_template_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_monster_template_resistance_by_location_delete\nINSTEAD OF DELETE ON monster_template_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT mt.stat_profile_id FROM monster_templates mt WHERE mt.id = OLD.monster_template_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW monster_template_resistance_by_location AS\nSELECT\n    mt.id AS monster_template_id,\n    spr.body_location_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.created_at,\n    spr.updated_at\nFROM monster_templates mt\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = mt.stat_profile_id\nWHERE spr.body_location_id \u003c\u003e 0",
+      "referenced_tables": [
+        "monster_templates",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "player_character_resistance_global",
+      "type": "view",
+      "columns": [
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "immune",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_player_character_resistance_global_insert",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_insert\nINSTEAD OF INSERT ON player_character_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_global_update",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_update\nINSTEAD OF UPDATE ON player_character_resistance_global\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, immune, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        0,\n        NEW.resistance,\n        NEW.immune,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        immune = excluded.immune,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_global_delete",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_global_delete\nINSTEAD OF DELETE ON player_character_resistance_global\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = 0;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW player_character_resistance_global AS\nSELECT\n    pc.id AS player_character_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.immune,\n    spr.created_at,\n    spr.updated_at\nFROM player_characters pc\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = pc.stat_profile_id\nWHERE spr.body_location_id = 0",
+      "referenced_tables": [
+        "player_characters",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "player_character_resistance_by_location",
+      "type": "view",
+      "columns": [
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "body_location_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "damage_type_id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "resistance",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_compat_player_character_resistance_by_location_insert",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_insert\nINSTEAD OF INSERT ON player_character_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_by_location_update",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_update\nINSTEAD OF UPDATE ON player_character_resistance_by_location\nBEGIN\n    SELECT RAISE(ABORT, 'unknown player_character_id')\n    WHERE NOT EXISTS (SELECT 1 FROM player_characters pc WHERE pc.id = NEW.player_character_id);\n    SELECT RAISE(ABORT, 'global resistance must use global view')\n    WHERE NEW.body_location_id = 0;\n\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\n\n    INSERT INTO stat_profile_resistance_by_location (\n        stat_profile_id, damage_type_id, body_location_id, resistance, created_at, updated_at\n    )\n    SELECT\n        pc.stat_profile_id,\n        NEW.damage_type_id,\n        NEW.body_location_id,\n        NEW.resistance,\n        COALESCE(NEW.created_at, OLD.created_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n        COALESCE(NEW.updated_at, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n    FROM player_characters pc\n    WHERE pc.id = NEW.player_character_id\n    ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET\n        resistance = excluded.resistance,\n        updated_at = excluded.updated_at;\nEND"
+        },
+        {
+          "name": "trg_compat_player_character_resistance_by_location_delete",
+          "def": "CREATE TRIGGER trg_compat_player_character_resistance_by_location_delete\nINSTEAD OF DELETE ON player_character_resistance_by_location\nBEGIN\n    DELETE FROM stat_profile_resistance_by_location\n    WHERE stat_profile_id = (SELECT pc.stat_profile_id FROM player_characters pc WHERE pc.id = OLD.player_character_id)\n      AND damage_type_id = OLD.damage_type_id\n      AND body_location_id = OLD.body_location_id;\nEND"
+        }
+      ],
+      "def": "CREATE VIEW player_character_resistance_by_location AS\nSELECT\n    pc.id AS player_character_id,\n    spr.body_location_id,\n    spr.damage_type_id,\n    spr.resistance,\n    spr.created_at,\n    spr.updated_at\nFROM player_characters pc\nJOIN stat_profile_resistance_by_location spr\nON spr.stat_profile_id = pc.stat_profile_id\nWHERE spr.body_location_id \u003c\u003e 0",
+      "referenced_tables": [
+        "player_characters",
+        "stat_profile_resistance_by_location"
+      ]
+    },
+    {
+      "name": "monster_templates",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "stat_profile_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "deleted_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_monster_templates_deleted_name",
+          "def": "CREATE INDEX idx_monster_templates_deleted_name\nON monster_templates(deleted_at, name COLLATE NOCASE)",
+          "table": "monster_templates",
+          "columns": [
+            "deleted_at",
+            "name"
+          ]
+        },
+        {
+          "name": "idx_monster_templates_name_normalized",
+          "def": "CREATE UNIQUE INDEX idx_monster_templates_name_normalized\nON monster_templates(lower(trim(name)))",
+          "table": "monster_templates",
+          "columns": null
+        },
+        {
+          "name": "sqlite_autoindex_monster_templates_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "monster_templates",
+          "referenced_table": "stat_profiles",
+          "columns": [
+            "stat_profile_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_monster_templates_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(id) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(stat_profile_id) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "id",
+            "stat_profile_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(name) \u003c\u003e '')",
+          "table": "monster_templates",
+          "columns": [
+            "name"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_monster_templates_delete_stat_profile",
+          "def": "CREATE TRIGGER trg_monster_templates_delete_stat_profile\nAFTER DELETE ON monster_templates\nBEGIN\n    DELETE FROM stat_profiles\n    WHERE id = OLD.stat_profile_id;\nEND"
+        },
+        {
+          "name": "trg_monster_templates_require_level",
+          "def": "CREATE TRIGGER trg_monster_templates_require_level\nBEFORE INSERT ON monster_templates\nWHEN (SELECT level FROM stat_profiles WHERE id = NEW.stat_profile_id) \u003c 1\nBEGIN\n    SELECT RAISE(ABORT, 'monster template level must be at least 1');\nEND"
+        }
+      ],
+      "def": "CREATE TABLE \"monster_templates\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
+    }
+  ],
+  "relations": [
+    {
+      "table": "encounter_logs",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "players",
+      "columns": [
+        "campaign_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "campaigns",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "app_state",
+      "columns": [
+        "active_campaign_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "campaigns",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (active_campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "combatants",
+      "columns": [
+        "player_character_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "player_characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_character_id) REFERENCES player_characters (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "combatants",
+      "columns": [
+        "stat_profile_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "stat_profiles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "combatants",
+      "columns": [
+        "encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (encounter_id) REFERENCES encounters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "encounters",
+      "columns": [
+        "campaign_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "campaigns",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "player_characters",
+      "columns": [
+        "stat_profile_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "stat_profiles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "player_characters",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "stat_profile_resistance_by_location",
+      "columns": [
+        "body_location_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "body_locations",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (body_location_id) REFERENCES body_locations (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "stat_profile_resistance_by_location",
+      "columns": [
+        "damage_type_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "damage_types",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (damage_type_id) REFERENCES damage_types (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "stat_profile_resistance_by_location",
+      "columns": [
+        "stat_profile_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "stat_profiles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "monster_templates",
+      "columns": [
+        "stat_profile_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "stat_profiles",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    }
+  ],
+  "driver": {
+    "name": "sqlite",
+    "database_version": "3.51.3"
+  }
+}

@@ -13,19 +13,20 @@ import (
 func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 	test.NewTempApp(t)
 	row := newCombatantInputRow("npc", func(*combatantInputRow) {}, nil)
-	fillCombatantInputRow(row, domain.Combatant{
-		Name:                    "Raider",
-		Level:                   3,
-		XP:                      40,
-		Initiative:              9,
-		HP:                      6,
-		MaxHP:                   8,
-		Defense:                 1,
-		ResistPhysicalHead:      4,
-		ResistEnergyTorso:       5,
-		ResistRadiationRightLeg: 6,
-		ResistPoison:            7,
-	}, domain.SideNPC, 2)
+	template := domain.Combatant{
+		Name:       "Raider",
+		Level:      3,
+		XP:         40,
+		Initiative: 9,
+		HP:         6,
+		MaxHP:      8,
+		Defense:    1,
+	}
+	setTestLocationResistance(t, &template, domain.DamagePhysical, domain.BodyHead, 4)
+	setTestLocationResistance(t, &template, domain.DamageEnergy, domain.BodyTorso, 5)
+	setTestLocationResistance(t, &template, domain.DamageRadiation, domain.BodyRightLeg, 6)
+	setTestGlobalResistance(t, &template, domain.DamagePoison, 7, false)
+	fillCombatantInputRow(row, template, domain.SideNPC, 2)
 
 	combatants, err := collectCombatantsFromRows([]*combatantInputRow{row})
 
@@ -40,10 +41,10 @@ func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 		assert.Equal(t, 6, combatant.HP)
 		assert.Equal(t, 8, combatant.MaxHP)
 		assert.Equal(t, 1, combatant.Defense)
-		assert.Equal(t, 4, combatant.ResistPhysicalHead)
-		assert.Equal(t, 5, combatant.ResistEnergyTorso)
-		assert.Equal(t, 6, combatant.ResistRadiationRightLeg)
-		assert.Equal(t, 7, combatant.ResistPoison)
+		assertLocationResistance(t, combatant, domain.DamagePhysical, domain.BodyHead, 4)
+		assertLocationResistance(t, combatant, domain.DamageEnergy, domain.BodyTorso, 5)
+		assertLocationResistance(t, combatant, domain.DamageRadiation, domain.BodyRightLeg, 6)
+		assertGlobalResistance(t, combatant, domain.DamagePoison, 7, false)
 	}
 }
 
@@ -106,29 +107,30 @@ func TestFillCombatantInputRowLocksLoadedPartyStats(t *testing.T) {
 	assert.True(t, row.side.Disabled())
 	assert.True(t, row.level.Disabled())
 	assert.True(t, row.hp.Disabled())
-	assert.True(t, row.drPoison.Disabled())
-	assert.True(t, row.immPoison.Disabled())
+	assert.True(t, row.resistance.globalEntry(domain.DamagePoison).Disabled())
+	assert.True(t, row.resistance.globalImmune(domain.DamagePoison).Disabled())
 }
 
 func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 	test.NewTempApp(t)
 	row := newCombatantInputRow("npc", func(*combatantInputRow) {}, nil)
-	fillCombatantInputRow(row, domain.Combatant{
-		Name:                   "Turret",
-		TorsoOnly:              true,
-		Level:                  2,
-		XP:                     25,
-		Initiative:             5,
-		HP:                     6,
-		MaxHP:                  6,
-		Defense:                3,
-		ResistPhysicalHead:     4,
-		ResistPhysicalTorso:    5,
-		ResistEnergyLeftArm:    6,
-		ResistEnergyTorso:      7,
-		ResistRadiationLeftLeg: 8,
-		ResistRadiationTorso:   9,
-	}, domain.SideNPC, 1)
+	template := domain.Combatant{
+		Name:       "Turret",
+		TorsoOnly:  true,
+		Level:      2,
+		XP:         25,
+		Initiative: 5,
+		HP:         6,
+		MaxHP:      6,
+		Defense:    3,
+	}
+	setTestLocationResistance(t, &template, domain.DamagePhysical, domain.BodyHead, 4)
+	setTestLocationResistance(t, &template, domain.DamagePhysical, domain.BodyTorso, 5)
+	setTestLocationResistance(t, &template, domain.DamageEnergy, domain.BodyLeftArm, 6)
+	setTestLocationResistance(t, &template, domain.DamageEnergy, domain.BodyTorso, 7)
+	setTestLocationResistance(t, &template, domain.DamageRadiation, domain.BodyLeftLeg, 8)
+	setTestLocationResistance(t, &template, domain.DamageRadiation, domain.BodyTorso, 9)
+	fillCombatantInputRow(row, template, domain.SideNPC, 1)
 
 	combatants, err := collectCombatantsFromRows([]*combatantInputRow{row})
 
@@ -136,12 +138,12 @@ func TestCollectCombatantsFromRowsFlattensTorsoOnlyStats(t *testing.T) {
 	require.Len(t, combatants, 1)
 	combatant := combatants[0]
 	assert.True(t, combatant.TorsoOnly)
-	assert.Equal(t, 0, combatant.ResistPhysicalHead)
-	assert.Equal(t, 5, combatant.ResistPhysicalTorso)
-	assert.Equal(t, 0, combatant.ResistEnergyLeftArm)
-	assert.Equal(t, 7, combatant.ResistEnergyTorso)
-	assert.Equal(t, 0, combatant.ResistRadiationLeftLeg)
-	assert.Equal(t, 9, combatant.ResistRadiationTorso)
+	assertLocationResistance(t, combatant, domain.DamagePhysical, domain.BodyHead, 0)
+	assertLocationResistance(t, combatant, domain.DamagePhysical, domain.BodyTorso, 5)
+	assertLocationResistance(t, combatant, domain.DamageEnergy, domain.BodyLeftArm, 0)
+	assertLocationResistance(t, combatant, domain.DamageEnergy, domain.BodyTorso, 7)
+	assertLocationResistance(t, combatant, domain.DamageRadiation, domain.BodyLeftLeg, 0)
+	assertLocationResistance(t, combatant, domain.DamageRadiation, domain.BodyTorso, 9)
 }
 
 func TestCollectCombatantsFromRowsValidatesRequiredValues(t *testing.T) {
@@ -165,16 +167,18 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	row.hp.SetText("9")
 	row.hpMax.SetText("12")
 	row.defense.SetText("2")
-	row.drPhysHead.SetText("4")
-	row.drEnergyTorso.SetText("5")
-	row.drRadRL.SetText("6")
-	row.drPoison.SetText("imm")
+	row.resistance.locationEntry(domain.DamagePhysical, domain.BodyHead).SetText("4")
+	row.resistance.locationEntry(domain.DamageEnergy, domain.BodyTorso).SetText("5")
+	row.resistance.locationEntry(domain.DamageRadiation, domain.BodyRightLeg).SetText("6")
+	row.resistance.globalEntry(domain.DamagePoison).SetText("imm")
+	row.active.SetChecked(false)
 
 	players, err := collectCampaignPlayersFromRows([]*campaignPlayerInputRow{row})
 
 	require.NoError(t, err)
 	require.Len(t, players, 1)
 	assert.Equal(t, "June", players[0].PlayerName)
+	assert.True(t, players[0].Inactive)
 	character := players[0].Character
 	assert.Equal(t, "Vault Dweller", character.Name)
 	assert.Equal(t, domain.SideParty, character.Side)
@@ -183,11 +187,10 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	assert.Equal(t, 9, character.HP)
 	assert.Equal(t, 12, character.MaxHP)
 	assert.Equal(t, 2, character.Defense)
-	assert.Equal(t, 4, character.ResistPhysicalHead)
-	assert.Equal(t, 5, character.ResistEnergyTorso)
-	assert.Equal(t, 6, character.ResistRadiationRightLeg)
-	assert.True(t, character.ImmunePoison)
-	assert.Equal(t, 0, character.ResistPoison)
+	assertLocationResistance(t, character, domain.DamagePhysical, domain.BodyHead, 4)
+	assertLocationResistance(t, character, domain.DamageEnergy, domain.BodyTorso, 5)
+	assertLocationResistance(t, character, domain.DamageRadiation, domain.BodyRightLeg, 6)
+	assertGlobalResistance(t, character, domain.DamagePoison, 0, true)
 }
 
 func TestCollectCampaignPlayersFromRowsValidatesHPBounds(t *testing.T) {
@@ -202,4 +205,29 @@ func TestCollectCampaignPlayersFromRowsValidatesHPBounds(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "current HP cannot exceed max HP")
+}
+
+func setTestGlobalResistance(t *testing.T, combatant *domain.Combatant, damageType domain.DamageType, value int, immune bool) {
+	t.Helper()
+	require.NoError(t, combatant.SetGlobalResistance(damageType, value, immune))
+}
+
+func setTestLocationResistance(t *testing.T, combatant *domain.Combatant, damageType domain.DamageType, location domain.BodyLocation, value int) {
+	t.Helper()
+	require.NoError(t, combatant.SetLocationResistance(damageType, location, value))
+}
+
+func assertGlobalResistance(t *testing.T, combatant domain.Combatant, damageType domain.DamageType, wantValue int, wantImmune bool) {
+	t.Helper()
+	value, immune, err := combatant.GlobalResistance(damageType)
+	require.NoError(t, err)
+	assert.Equal(t, wantValue, value)
+	assert.Equal(t, wantImmune, immune)
+}
+
+func assertLocationResistance(t *testing.T, combatant domain.Combatant, damageType domain.DamageType, location domain.BodyLocation, want int) {
+	t.Helper()
+	value, err := combatant.LocationResistance(damageType, location)
+	require.NoError(t, err)
+	assert.Equal(t, want, value)
 }

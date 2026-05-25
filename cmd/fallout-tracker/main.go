@@ -13,7 +13,7 @@ func main() {
 	lifecycleCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dbPath, err := sqlite.DefaultDBPath()
+	dbPath, err := sqlite.ResolveDBPath()
 	if err != nil {
 		log.Fatalf("failed to resolve db path: %v", err)
 	}

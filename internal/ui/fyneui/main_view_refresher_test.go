@@ -174,6 +174,14 @@ func (r *refresherRepo) ListPartyMembers(context.Context) ([]domain.Combatant, e
 	return r.partyMembers, nil
 }
 
+func (r *refresherRepo) ListMonsterTemplates(context.Context) ([]domain.Combatant, error) {
+	return nil, nil
+}
+
+func (r *refresherRepo) UpsertMonsterTemplate(context.Context, domain.Combatant) (domain.Combatant, error) {
+	return domain.Combatant{}, fmt.Errorf("not implemented")
+}
+
 func (r *refresherRepo) CreateCampaign(context.Context, string, string, time.Time, []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	return nil, fmt.Errorf("not implemented")
 }
