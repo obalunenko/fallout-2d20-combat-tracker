@@ -12,8 +12,6 @@ CREATE TABLE "encounters" (
     name TEXT NOT NULL CHECK (trim(name) <> ''),
     round INTEGER NOT NULL CHECK (round >= 1),
     turn_index INTEGER NOT NULL CHECK (turn_index >= 0),
-    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0),
-    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -32,8 +30,6 @@ CREATE TABLE "encounters" (
 | name        | TEXT     |                                      | false    |                                                                 |                           |
 | round       | INTEGER  |                                      | false    |                                                                 |                           |
 | turn_index  | INTEGER  |                                      | false    |                                                                 |                           |
-| party_ap    | INTEGER  | 0                                    | false    |                                                                 |                           |
-| gm_threat   | INTEGER  | 0                                    | false    |                                                                 |                           |
 | created_at  | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                 |                           |
 | updated_at  | DATETIME | CURRENT_TIMESTAMP                    | false    |                                                                 |                           |
 | deleted_at  | DATETIME |                                      | true     |                                                                 |                           |
@@ -50,8 +46,6 @@ CREATE TABLE "encounters" (
 | -                             | CHECK       | CHECK (trim(name) <> '')                                                                             |
 | -                             | CHECK       | CHECK (round >= 1)                                                                                   |
 | -                             | CHECK       | CHECK (turn_index >= 0)                                                                              |
-| -                             | CHECK       | CHECK (party_ap >= 0)                                                                                |
-| -                             | CHECK       | CHECK (gm_threat >= 0)                                                                               |
 
 ## Indexes
 

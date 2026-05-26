@@ -91,7 +91,7 @@ func (q *Queries) EnsureAppStateRow(ctx context.Context) error {
 }
 
 const getActiveCampaign = `-- name: GetActiveCampaign :one
-SELECT c.id, c.name, c.start_date, c.updated_at
+SELECT c.id, c.name, c.start_date, c.party_ap, c.gm_threat, c.updated_at
 FROM campaigns c
 JOIN app_state s ON s.id = 1
 WHERE c.id = s.active_campaign_id
@@ -101,6 +101,8 @@ type GetActiveCampaignRow struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	PartyAp   int64
+	GmThreat  int64
 	UpdatedAt time.Time
 }
 
@@ -111,6 +113,8 @@ func (q *Queries) GetActiveCampaign(ctx context.Context) (GetActiveCampaignRow, 
 		&i.ID,
 		&i.Name,
 		&i.StartDate,
+		&i.PartyAp,
+		&i.GmThreat,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -138,7 +142,7 @@ func (q *Queries) GetActivePlayerCharacterByPlayerID(ctx context.Context, player
 }
 
 const getCampaignByID = `-- name: GetCampaignByID :one
-SELECT id, name, start_date, updated_at
+SELECT id, name, start_date, party_ap, gm_threat, updated_at
 FROM campaigns
 WHERE id = ?1
 `
@@ -147,6 +151,8 @@ type GetCampaignByIDRow struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	PartyAp   int64
+	GmThreat  int64
 	UpdatedAt time.Time
 }
 
@@ -157,17 +163,20 @@ func (q *Queries) GetCampaignByID(ctx context.Context, campaignID string) (GetCa
 		&i.ID,
 		&i.Name,
 		&i.StartDate,
+		&i.PartyAp,
+		&i.GmThreat,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getEncounterByIDByCampaignID = `-- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
-FROM encounters
-WHERE deleted_at IS NULL
-  AND campaign_id = ?1
-  AND id = ?2
+SELECT e.id, e.campaign_id, e.name, e.round, e.turn_index, c.party_ap, c.gm_threat
+FROM encounters e
+JOIN campaigns c ON c.id = e.campaign_id
+WHERE e.deleted_at IS NULL
+  AND e.campaign_id = ?1
+  AND e.id = ?2
 `
 
 type GetEncounterByIDByCampaignIDParams struct {
@@ -201,10 +210,11 @@ func (q *Queries) GetEncounterByIDByCampaignID(ctx context.Context, arg GetEncou
 }
 
 const getLatestEncounterByCampaignID = `-- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
-FROM encounters
-WHERE deleted_at IS NULL AND campaign_id = ?1
-ORDER BY updated_at DESC, id DESC
+SELECT e.id, e.campaign_id, e.name, e.round, e.turn_index, c.party_ap, c.gm_threat
+FROM encounters e
+JOIN campaigns c ON c.id = e.campaign_id
+WHERE e.deleted_at IS NULL AND e.campaign_id = ?1
+ORDER BY e.updated_at DESC, e.id DESC
 LIMIT 1
 `
 
@@ -599,7 +609,7 @@ func (q *Queries) ListBodyLocations(ctx context.Context) ([]BodyLocation, error)
 }
 
 const listCampaigns = `-- name: ListCampaigns :many
-SELECT id, name, start_date, updated_at
+SELECT id, name, start_date, party_ap, gm_threat, updated_at
 FROM campaigns
 ORDER BY updated_at DESC, id DESC
 `
@@ -608,6 +618,8 @@ type ListCampaignsRow struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	PartyAp   int64
+	GmThreat  int64
 	UpdatedAt time.Time
 }
 
@@ -624,6 +636,8 @@ func (q *Queries) ListCampaigns(ctx context.Context) ([]ListCampaignsRow, error)
 			&i.ID,
 			&i.Name,
 			&i.StartDate,
+			&i.PartyAp,
+			&i.GmThreat,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -1436,9 +1450,31 @@ func (q *Queries) UpdateCampaignByID(ctx context.Context, arg UpdateCampaignByID
 	return result.RowsAffected()
 }
 
+const updateCampaignResourcesByID = `-- name: UpdateCampaignResourcesByID :execrows
+UPDATE campaigns
+SET party_ap = ?1,
+    gm_threat = ?2,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = ?3
+`
+
+type UpdateCampaignResourcesByIDParams struct {
+	PartyAp    int64
+	GmThreat   int64
+	CampaignID string
+}
+
+func (q *Queries) UpdateCampaignResourcesByID(ctx context.Context, arg UpdateCampaignResourcesByIDParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCampaignResourcesByID, arg.PartyAp, arg.GmThreat, arg.CampaignID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const upsertEncounter = `-- name: UpsertEncounter :exec
 INSERT INTO encounters (
-  id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+  id, campaign_id, name, round, turn_index,
   created_at, updated_at, deleted_at
 )
 VALUES (
@@ -1447,8 +1483,6 @@ VALUES (
   ?3,
   ?4,
   ?5,
-  ?6,
-  ?7,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
@@ -1458,8 +1492,6 @@ ON CONFLICT(id) DO UPDATE SET
 	name = excluded.name,
 	round = excluded.round,
 	turn_index = excluded.turn_index,
-	party_ap = excluded.party_ap,
-	gm_threat = excluded.gm_threat,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 `
@@ -1470,8 +1502,6 @@ type UpsertEncounterParams struct {
 	Name       string
 	Round      int64
 	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
 }
 
 func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams) error {
@@ -1481,8 +1511,6 @@ func (q *Queries) UpsertEncounter(ctx context.Context, arg UpsertEncounterParams
 		arg.Name,
 		arg.Round,
 		arg.TurnIndex,
-		arg.PartyAp,
-		arg.GmThreat,
 	)
 	return err
 }

@@ -23,6 +23,8 @@ type Campaign struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	PartyAp   int64
+	GmThreat  int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt interface{}
@@ -71,8 +73,6 @@ type Encounter struct {
 	Name       string
 	Round      int64
 	TurnIndex  int64
-	PartyAp    int64
-	GmThreat   int64
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	DeletedAt  interface{}

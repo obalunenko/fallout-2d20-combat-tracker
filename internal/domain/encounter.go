@@ -81,6 +81,52 @@ type Resources struct {
 	GMThreat int
 }
 
+const MaxPartyAP = 6
+
+func (r *Resources) Normalize() {
+	if r.PartyAP < 0 {
+		r.PartyAP = 0
+	}
+	if r.PartyAP > MaxPartyAP {
+		r.PartyAP = MaxPartyAP
+	}
+	if r.GMThreat < 0 {
+		r.GMThreat = 0
+	}
+}
+
+func (r *Resources) AddPartyAP(v int) {
+	r.PartyAP += v
+	r.Normalize()
+}
+
+func (r *Resources) SpendPartyAP(v int) error {
+	if v < 0 {
+		return fmt.Errorf("party AP spend value cannot be negative")
+	}
+	if r.PartyAP < v {
+		return fmt.Errorf("not enough party AP")
+	}
+	r.PartyAP -= v
+	return nil
+}
+
+func (r *Resources) AddThreat(v int) {
+	r.GMThreat += v
+	r.Normalize()
+}
+
+func (r *Resources) SpendThreat(v int) error {
+	if v < 0 {
+		return fmt.Errorf("threat spend value cannot be negative")
+	}
+	if r.GMThreat < v {
+		return fmt.Errorf("not enough threat")
+	}
+	r.GMThreat -= v
+	return nil
+}
+
 type Encounter struct {
 	ID         string
 	CampaignID string
@@ -173,39 +219,19 @@ func (e *Encounter) AdvanceTurn() error {
 }
 
 func (e *Encounter) AddPartyAP(v int) {
-	e.Resources.PartyAP += v
-	if e.Resources.PartyAP < 0 {
-		e.Resources.PartyAP = 0
-	}
+	e.Resources.AddPartyAP(v)
 }
 
 func (e *Encounter) SpendPartyAP(v int) error {
-	if v < 0 {
-		return fmt.Errorf("party AP spend value cannot be negative")
-	}
-	if e.Resources.PartyAP < v {
-		return fmt.Errorf("not enough party AP")
-	}
-	e.Resources.PartyAP -= v
-	return nil
+	return e.Resources.SpendPartyAP(v)
 }
 
 func (e *Encounter) AddThreat(v int) {
-	e.Resources.GMThreat += v
-	if e.Resources.GMThreat < 0 {
-		e.Resources.GMThreat = 0
-	}
+	e.Resources.AddThreat(v)
 }
 
 func (e *Encounter) SpendThreat(v int) error {
-	if v < 0 {
-		return fmt.Errorf("threat spend value cannot be negative")
-	}
-	if e.Resources.GMThreat < v {
-		return fmt.Errorf("not enough threat")
-	}
-	e.Resources.GMThreat -= v
-	return nil
+	return e.Resources.SpendThreat(v)
 }
 
 func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, location BodyLocation, amount int) (int, error) {

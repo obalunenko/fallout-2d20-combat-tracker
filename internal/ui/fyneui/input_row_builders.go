@@ -81,13 +81,13 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		defense:    defense,
 		resistance: resistance,
 	}
-	removeBtn := widget.NewButton("Remove", func() { onRemove(row) })
+	removeBtn := newRoleButton("Remove", uiActionDestructive, func() { onRemove(row) })
 	bodyRow := resistance.bodyGrid()
 	bodyRow.Hide()
 	torsoRow := resistance.torsoGrid()
 	torsoRow.Hide()
 	var drToggleBtn *widget.Button
-	drToggleBtn = widget.NewButton("Body ▸", func() {
+	drToggleBtn = newRoleButton("Body ▸", uiActionSubtle, func() {
 		if bodyRow.Visible() {
 			bodyRow.Hide()
 			drToggleBtn.SetText("Body ▸")
@@ -97,7 +97,6 @@ func newCombatantInputRow(defaultSide string, onRemove func(*combatantInputRow),
 		}
 		row.root.Refresh()
 	})
-	drToggleBtn.Importance = widget.LowImportance
 	applyTorsoOnlyMode := func(enabled bool) {
 		resetEntry := func(e *widget.Entry) {
 			e.SetText("0")
@@ -210,14 +209,14 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		defense:       defense,
 		resistance:    resistance,
 	}
-	removeBtn := widget.NewButton("Remove", func() { onRemove(row) })
+	removeBtn := newRoleButton("Remove", uiActionDestructive, func() { onRemove(row) })
 	active := widget.NewCheck("", nil)
 	active.SetChecked(true)
 	row.active = active
 	bodyRow := resistance.bodyGrid()
 	bodyRow.Hide()
 	var drToggleBtn *widget.Button
-	drToggleBtn = widget.NewButton("Body ▸", func() {
+	drToggleBtn = newRoleButton("Body ▸", uiActionSubtle, func() {
 		if bodyRow.Visible() {
 			bodyRow.Hide()
 			drToggleBtn.SetText("Body ▸")
@@ -227,7 +226,6 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		}
 		row.root.Refresh()
 	})
-	drToggleBtn.Importance = widget.LowImportance
 	baseRow := container.NewGridWithColumns(
 		11,
 		playerName,

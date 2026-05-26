@@ -33,6 +33,7 @@ func (p *mainViewPresenter) showNoCampaign() {
 	p.screen.partyLibraryOutput.SetText("No active campaign")
 	p.screen.roundLabel.SetText("Round: -")
 	p.refreshEncounterWidgets()
+	p.hideActiveTargetPanel()
 	p.screen.tabsView.Hide()
 	p.screen.noEncounterView.Hide()
 	p.screen.noCampaignView.Show()
@@ -51,10 +52,19 @@ func (p *mainViewPresenter) showNoEncounter() {
 	p.screen.campSnapshotLabel.SetText("No active encounter\nUse NEW ENCOUNTER or OPEN ENCOUNTER to continue.")
 	p.screen.roundLabel.SetText("Round: -")
 	p.refreshEncounterWidgets()
+	p.hideActiveTargetPanel()
 	p.screen.tabsView.Hide()
 	p.screen.noCampaignView.Hide()
 	p.screen.noEncounterView.Show()
 	p.screen.mainView.Refresh()
+}
+
+func (p *mainViewPresenter) hideActiveTargetPanel() {
+	if p.screen.activeTargetPanel == nil {
+		return
+	}
+	p.screen.activeTargetPanel.Hide()
+	p.screen.activeTargetPanel.Refresh()
 }
 
 func (p *mainViewPresenter) showActiveEncounter() {
@@ -91,7 +101,12 @@ func (p *mainViewPresenter) logOutput() *widget.Entry {
 }
 
 func (p *mainViewPresenter) refreshEncounterWidgets() {
-	refreshSelected(p.screen.selectedLabel, p.state.enc, p.state.selectedIndex)
+	if p.screen.activeTarget != nil {
+		p.screen.activeTarget.SetTarget(p.state.enc, p.state.selectedIndex)
+	} else {
+		refreshSelected(p.screen.selectedLabel, p.state.enc, p.state.selectedIndex)
+	}
+	refreshActiveTurnLabel(p.state.enc, p.screen.activeTurnLabel)
 	refreshResourceLabels(p.state.enc, p.screen.partyAPLabel, p.screen.threatLabel)
 	p.encounterOrder.List().Refresh()
 	p.encounterOrder.Rebuild()

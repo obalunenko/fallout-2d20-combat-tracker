@@ -35,6 +35,7 @@ func TestMainViewPresenterShowNoCampaignResetsStateAndShowsCampaignGate(t *testi
 	assert.Equal(t, "No active campaign", screen.campRosterOutput.Text)
 	assert.Equal(t, "No active campaign", screen.partyLibraryOutput.Text)
 	assert.Equal(t, "Round: -", screen.roundLabel.Text)
+	assert.Equal(t, "Active: -", screen.activeTurnLabel.Text)
 	assert.Equal(t, "No combatants", screen.selectedLabel.Text)
 	assert.Equal(t, "Party AP: 0", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 0", screen.threatLabel.Text)
@@ -60,6 +61,7 @@ func TestMainViewPresenterShowNoEncounterKeepsCampaignAndShowsEncounterGate(t *t
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "No active encounter\nUse NEW ENCOUNTER or OPEN ENCOUNTER to continue.", screen.campSnapshotLabel.Text)
 	assert.Equal(t, "Round: -", screen.roundLabel.Text)
+	assert.Equal(t, "Active: -", screen.activeTurnLabel.Text)
 	assert.Equal(t, "No combatants", screen.selectedLabel.Text)
 	assert.Equal(t, "Party AP: 0", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 0", screen.threatLabel.Text)
@@ -85,9 +87,12 @@ func TestMainViewPresenterShowActiveEncounterRefreshesEncounterWidgets(t *testin
 	assert.Equal(t, 0, state.selectedIndex)
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "Round: 4", screen.roundLabel.Text)
+	assert.Equal(t, "Active: >> Alpha [PARTY] HP 8/8 DEF 0", screen.activeTurnLabel.Text)
 	assert.Equal(t, "Party AP: 3", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 2", screen.threatLabel.Text)
-	assert.Contains(t, screen.selectedLabel.Text, "Name: Alpha")
+	assert.Contains(t, screen.selectedLabel.Text, "Participant Details")
+	assert.Contains(t, screen.selectedLabel.Text, "Name")
+	assert.Contains(t, screen.selectedLabel.Text, "Alpha")
 	assert.Contains(t, screen.campSnapshotLabel.Text, "Encounter: Test Encounter")
 	assert.True(t, screen.tabsView.Visible())
 	assert.False(t, screen.noEncounterView.Visible())
@@ -108,7 +113,8 @@ func TestMainViewPresenterShowActiveCampaignUpdatesCampaignCopy(t *testing.T) {
 
 func newTestMainViewPresenter(t *testing.T, state *uiState) (*mainViewPresenter, *mainScreen) {
 	t.Helper()
-	test.NewTempApp(t)
+	app := test.NewTempApp(t)
+	app.Settings().SetTheme(newPipBoyTheme())
 
 	labels := newMainScreenLabels()
 	encounterOrder := newEncounterOrderView(
@@ -127,23 +133,31 @@ func newTestMainScreen(labels mainScreenLabels) *mainScreen {
 	tabsView := canvas.NewRectangle(nil)
 	noEncounterView := canvas.NewRectangle(nil)
 	noCampaignView := canvas.NewRectangle(nil)
+	activeTarget := newActiveTargetView(
+		labels.selectedLabel,
+		widget.NewButton("DMG", func() {}),
+		widget.NewButton("HEAL", func() {}),
+	)
 
 	return &mainScreen{
-		roundLabel:          labels.roundLabel,
-		selectedLabel:       labels.selectedLabel,
-		partyAPLabel:        labels.partyAPLabel,
-		threatLabel:         labels.threatLabel,
-		logOutput:           labels.logOutput,
-		campOverviewLabel:   widget.NewLabel("No active campaign"),
-		campSnapshotLabel:   widget.NewLabel("No active encounter"),
-		campaignStatusLabel: widget.NewLabel("Campaign: -"),
-		setupHint:           widget.NewLabel("No active encounter.\nCreate one from scratch to begin tracking combat."),
-		campRosterOutput:    widget.NewMultiLineEntry(),
-		partyLibraryOutput:  widget.NewMultiLineEntry(),
-		tabsView:            tabsView,
-		noEncounterView:     noEncounterView,
-		noCampaignView:      noCampaignView,
-		mainView:            container.NewStack(tabsView, noEncounterView, noCampaignView),
+		roundLabel:            labels.roundLabel,
+		activeTurnLabel:       labels.activeTurnLabel,
+		selectedLabel:         labels.selectedLabel,
+		partyAPLabel:          labels.partyAPLabel,
+		threatLabel:           labels.threatLabel,
+		logOutput:             labels.logOutput,
+		activeTarget:          activeTarget,
+		activeTargetAccordion: activeTarget.accordion,
+		campOverviewLabel:     widget.NewLabel("No active campaign"),
+		campSnapshotLabel:     widget.NewLabel("No active encounter"),
+		campaignStatusLabel:   widget.NewLabel("Campaign: -"),
+		setupHint:             widget.NewLabel("No active encounter.\nCreate one from scratch to begin tracking combat."),
+		campRosterOutput:      widget.NewMultiLineEntry(),
+		partyLibraryOutput:    widget.NewMultiLineEntry(),
+		tabsView:              tabsView,
+		noEncounterView:       noEncounterView,
+		noCampaignView:        noCampaignView,
+		mainView:              container.NewStack(tabsView, noEncounterView, noCampaignView),
 	}
 }
 

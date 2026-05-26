@@ -77,6 +77,8 @@ func (s *Service) RestartEncounter(ctx context.Context, encounterID string) (*do
 		enc.Combatants[i].Defeated = false
 	}
 	restarted := domain.NewEncounter(enc.ID, enc.Name, enc.Combatants)
+	restarted.CampaignID = enc.CampaignID
+	restarted.Resources = enc.Resources
 	if err := s.repo.Save(ctx, restarted); err != nil {
 		return nil, err
 	}
@@ -119,6 +121,7 @@ func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounte
 	}
 	enc := domain.NewEncounter(cmd.ID, cmd.Name, cmd.Combatants)
 	enc.CampaignID = activeCampaign.ID
+	enc.Resources = activeCampaign.Resources
 	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
 	}
@@ -179,12 +182,11 @@ func (s *Service) AdvanceTurn(ctx context.Context) (*domain.Encounter, error) {
 func (s *Service) AddPartyAP(ctx context.Context, v int) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	enc, err := s.repo.Get(ctx)
+	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+		resources.AddPartyAP(v)
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	enc.AddPartyAP(v)
-	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Party AP %+d (total: %d)", v, enc.Resources.PartyAP))
@@ -194,14 +196,10 @@ func (s *Service) AddPartyAP(ctx context.Context, v int) (*domain.Encounter, err
 func (s *Service) SpendPartyAP(ctx context.Context, v int) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	enc, err := s.repo.Get(ctx)
+	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+		return resources.SpendPartyAP(v)
+	})
 	if err != nil {
-		return nil, err
-	}
-	if err := enc.SpendPartyAP(v); err != nil {
-		return nil, err
-	}
-	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Party AP -%d (total: %d)", v, enc.Resources.PartyAP))
@@ -211,12 +209,11 @@ func (s *Service) SpendPartyAP(ctx context.Context, v int) (*domain.Encounter, e
 func (s *Service) AddThreat(ctx context.Context, v int) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
-	enc, err := s.repo.Get(ctx)
+	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+		resources.AddThreat(v)
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	enc.AddThreat(v)
-	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("GM Threat %+d (total: %d)", v, enc.Resources.GMThreat))
@@ -226,17 +223,31 @@ func (s *Service) AddThreat(ctx context.Context, v int) (*domain.Encounter, erro
 func (s *Service) SpendThreat(ctx context.Context, v int) (*domain.Encounter, error) {
 	ctx, cancel := s.contextForOperation(ctx)
 	defer cancel()
+	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+		return resources.SpendThreat(v)
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.appendOperationLog(ctx, enc, fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat))
+	return enc, nil
+}
+
+func (s *Service) updateActiveEncounterResources(ctx context.Context, update func(*domain.Resources) error) (*domain.Encounter, error) {
 	enc, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := enc.SpendThreat(v); err != nil {
+	resources := enc.Resources
+	if update != nil {
+		if err := update(&resources); err != nil {
+			return nil, err
+		}
+	}
+	if err := s.repo.UpdateCampaignResources(ctx, enc.CampaignID, resources); err != nil {
 		return nil, err
 	}
-	if err := s.repo.Save(ctx, enc); err != nil {
-		return nil, err
-	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat))
+	enc.Resources = resources
 	return enc, nil
 }
 

@@ -12,15 +12,6 @@ CREATE TABLE "encounter_logs" (
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
 );
 
-CREATE TABLE "campaigns" (
-    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
-    name TEXT NOT NULL CHECK (trim(name) <> ''),
-    start_date DATETIME NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL
-);
-
 CREATE TABLE "players" (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     campaign_id TEXT NOT NULL CHECK (trim(campaign_id) <> ''),
@@ -87,8 +78,6 @@ CREATE TABLE "encounters" (
     name TEXT NOT NULL CHECK (trim(name) <> ''),
     round INTEGER NOT NULL CHECK (round >= 1),
     turn_index INTEGER NOT NULL CHECK (turn_index >= 0),
-    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0),
-    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
@@ -145,6 +134,17 @@ CREATE TABLE "monster_templates" (
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL,
     FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
+);
+
+CREATE TABLE "campaigns" (
+    id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
+    name TEXT NOT NULL CHECK (trim(name) <> ''),
+    start_date DATETIME NOT NULL,
+    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0 AND party_ap <= 6),
+    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    deleted_at DATETIME NULL
 );
 
 CREATE VIEW combatant_resistance_global AS

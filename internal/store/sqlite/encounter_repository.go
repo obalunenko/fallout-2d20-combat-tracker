@@ -117,8 +117,6 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 		Name:       enc.Name,
 		Round:      int64(enc.Round),
 		TurnIndex:  int64(enc.TurnIndex),
-		PartyAp:    int64(enc.Resources.PartyAP),
-		GmThreat:   int64(enc.Resources.GMThreat),
 	}); err != nil {
 		return fmt.Errorf("upsert encounter: %w", err)
 	}
@@ -158,12 +156,7 @@ func normalizeEncounterForSave(enc *domain.Encounter) error {
 	if enc.TurnIndex < 0 {
 		enc.TurnIndex = 0
 	}
-	if enc.Resources.PartyAP < 0 {
-		enc.Resources.PartyAP = 0
-	}
-	if enc.Resources.GMThreat < 0 {
-		enc.Resources.GMThreat = 0
-	}
+	enc.Resources.Normalize()
 	for i := range enc.Combatants {
 		enc.Combatants[i].Name = strings.TrimSpace(enc.Combatants[i].Name)
 		if enc.Combatants[i].Side == "" {

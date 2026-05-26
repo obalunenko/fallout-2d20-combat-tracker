@@ -46,6 +46,7 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 		},
 	}
 
+	require.NoError(t, store.UpdateCampaignResources(t.Context(), "repo-test-campaign", expected.Resources))
 	require.NoError(t, store.Save(t.Context(), expected))
 
 	actual, err := store.Get(t.Context())
@@ -59,6 +60,15 @@ func TestEncounterStoreSaveAndGetRoundTrip(t *testing.T) {
 	assert.Equal(t, expected.Resources, actual.Resources)
 	require.Len(t, actual.Combatants, 2)
 	assert.Equal(t, expected.Combatants, actual.Combatants)
+
+	require.NoError(t, store.UpdateCampaignResources(t.Context(), "repo-test-campaign", domain.Resources{
+		PartyAP:  99,
+		GMThreat: 123,
+	}))
+	actual, err = store.Get(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, domain.MaxPartyAP, actual.Resources.PartyAP)
+	assert.Equal(t, 123, actual.Resources.GMThreat)
 }
 
 func TestEncounterStoreSaveReplacesCombatants(t *testing.T) {
@@ -356,6 +366,10 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 			{ID: "c2", Name: "Two", Side: domain.SideNPC, Initiative: 8, HP: 7, MaxHP: 7, Active: true},
 		},
 	}))
+	require.NoError(t, store.UpdateCampaignResources(t.Context(), "repo-test-campaign", domain.Resources{
+		PartyAP:  2,
+		GMThreat: 1,
+	}))
 
 	beforeUpdate, err := store.Get(t.Context())
 	require.NoError(t, err)
@@ -368,6 +382,7 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.Round, updated.Round)
 	assert.Equal(t, beforeUpdate.TurnIndex, updated.TurnIndex)
+	assert.Equal(t, beforeUpdate.Resources, updated.Resources)
 	require.GreaterOrEqual(t, updated.TurnIndex, 0)
 	require.Less(t, updated.TurnIndex, len(updated.Combatants))
 	assert.Equal(t, beforeActiveID, updated.Combatants[updated.TurnIndex].ID)
@@ -375,6 +390,7 @@ func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *te
 	persisted, err := store.Get(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, beforeUpdate.TurnIndex, persisted.TurnIndex)
+	assert.Equal(t, beforeUpdate.Resources, persisted.Resources)
 	require.GreaterOrEqual(t, persisted.TurnIndex, 0)
 	require.Less(t, persisted.TurnIndex, len(persisted.Combatants))
 	assert.Equal(t, beforeActiveID, persisted.Combatants[persisted.TurnIndex].ID)

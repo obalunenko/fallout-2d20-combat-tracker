@@ -64,7 +64,7 @@ func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	assert.Equal(t, 2, updated.Resources.PartyAP)
-	assert.Equal(t, 1, repo.saveCalls)
+	assert.Equal(t, 1, repo.resourceCalls)
 	assert.Equal(t, 1, repo.appendCalls)
 
 	persisted, getErr := repo.Get(t.Context())

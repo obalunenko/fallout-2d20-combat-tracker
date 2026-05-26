@@ -1,7 +1,12 @@
 package fyneui
 
 import (
+	"image/color"
+	"strconv"
+	"strings"
+
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
@@ -17,6 +22,7 @@ type encounterOrderView struct {
 	orderBox            *fyne.Container
 	showApplyDamage     func(int)
 	showHeal            func(int)
+	onSelect            func(int, bool)
 }
 
 func newEncounterOrderView(
@@ -56,20 +62,18 @@ func newEncounterOrderView(
 			}
 			label := o.(*widget.Label)
 			c := current.Combatants[i]
+			isDefeated := isCombatantDefeated(c)
 			label.SetText(formatCombatantLine(current, c))
-			if c.Defeated || c.HP <= 0 {
-				label.Importance = widget.LowImportance
+			label.Importance = combatantImportance(isDefeated, c.Active, combatantNeedsAttention(c))
+			if isDefeated {
 				label.TextStyle = fyne.TextStyle{Monospace: true, Italic: true}
 				return
 			}
-			label.Importance = widget.MediumImportance
-			label.TextStyle = fyne.TextStyle{Monospace: true}
+			label.TextStyle = fyne.TextStyle{Monospace: true, Bold: c.Active}
 		},
 	)
 	v.list.OnSelected = func(id widget.ListItemID) {
-		*v.selectedIndex = id
-		v.CollapseDetails()
-		refreshSelected(v.selectedLabel, v.currentEncounter(), *v.selectedIndex)
+		v.selectCombatant(id)
 	}
 	return v
 }
@@ -93,57 +97,19 @@ func (v *encounterOrderView) Rebuild() {
 		return
 	}
 
+	v.orderBox.Add(newEncounterOrderHeader())
 	for i, c := range current.Combatants {
-		idx := i
-		combatantID := c.ID
-		lineBtn := widget.NewButton(formatCombatantLine(current, c), func() {
-			*v.selectedIndex = idx
-			refreshSelected(v.selectedLabel, current, *v.selectedIndex)
-			if *v.expandedCombatantID == combatantID {
-				*v.expandedCombatantID = ""
-			} else {
-				*v.expandedCombatantID = combatantID
-			}
-			v.Rebuild()
-		})
-		isDefeated := c.Defeated || c.HP <= 0
-		switch {
-		case isDefeated:
-			lineBtn.Importance = widget.LowImportance
-		case c.Active:
-			lineBtn.Importance = widget.MediumImportance
-		default:
-			lineBtn.Importance = widget.LowImportance
-		}
-
-		damageBtn := widget.NewButton("DMG", func() {
-			v.CollapseDetails()
-			v.showApplyDamage(idx)
-		})
-		healBtn := widget.NewButton("HEAL", func() {
-			v.CollapseDetails()
-			v.showHeal(idx)
-		})
-		damageBtn.Importance = widget.LowImportance
-		healBtn.Importance = widget.LowImportance
-
-		details := widget.NewLabel(formatExpandedCombatantDetails(current, c))
-		details.TextStyle = fyne.TextStyle{Monospace: true, Bold: true}
-		details.Wrapping = fyne.TextWrapWord
-		details.Importance = widget.HighImportance
-		detailsSection := container.NewVBox(lineBtn)
-		if *v.expandedCombatantID == combatantID {
-			detailsSection.Add(details)
-		}
-
-		row := container.NewBorder(nil, nil, nil, container.NewGridWithColumns(2, damageBtn, healBtn), detailsSection)
-		v.orderBox.Add(row)
+		v.orderBox.Add(v.newCombatantOrderRow(current, i, c))
 	}
 	v.orderBox.Refresh()
 }
 
+func (v *encounterOrderView) SetOnSelect(onSelect func(int, bool)) {
+	v.onSelect = onSelect
+}
+
 func (v *encounterOrderView) CollapseDetails() {
-	if *v.expandedCombatantID == "" {
+	if v.expandedCombatantID == nil || *v.expandedCombatantID == "" {
 		return
 	}
 	*v.expandedCombatantID = ""
@@ -155,4 +121,261 @@ func (v *encounterOrderView) currentEncounter() *domain.Encounter {
 		return nil
 	}
 	return *v.enc
+}
+
+func (v *encounterOrderView) selectCombatant(idx int) {
+	enc := v.currentEncounter()
+	if enc == nil || idx < 0 || idx >= len(enc.Combatants) {
+		return
+	}
+	repeatedSelection := idx == *v.selectedIndex
+	*v.selectedIndex = idx
+	if v.expandedCombatantID != nil {
+		*v.expandedCombatantID = ""
+	}
+	refreshSelected(v.selectedLabel, enc, *v.selectedIndex)
+	if v.onSelect != nil {
+		v.onSelect(idx, repeatedSelection)
+	}
+	v.Rebuild()
+}
+
+func (v *encounterOrderView) newCombatantOrderRow(enc *domain.Encounter, idx int, c domain.Combatant) fyne.CanvasObject {
+	isDefeated := isCombatantDefeated(c)
+	isSelected := idx == *v.selectedIndex
+	importance := combatantImportance(isDefeated, c.Active, combatantNeedsAttention(c))
+
+	selectRow := func() {
+		v.selectCombatant(idx)
+	}
+
+	marker := newEncounterOrderCell(formatCombatantTurnMarker(c, isSelected), importance)
+	marker.Alignment = fyne.TextAlignCenter
+
+	nameBtn := newRoleButton(encounterDisplayNameByID(enc, c.ID), uiActionSubtle, selectRow)
+	nameBtn.Alignment = widget.ButtonAlignLeading
+
+	damageBtn := newRoleButton("DMG", uiActionDestructive, func() {
+		v.CollapseDetails()
+		v.showApplyDamage(idx)
+	})
+	healBtn := newRoleButton("HEAL", uiActionSuccess, func() {
+		v.CollapseDetails()
+		v.showHeal(idx)
+	})
+	if isDefeated {
+		damageBtn.Disable()
+	}
+
+	meta := container.New(
+		encounterOrderTableLayout{},
+		marker,
+		nameBtn,
+		newEncounterOrderCell(strings.ToUpper(string(c.Side)), sideImportance(c)),
+		newEncounterOrderCell(strconv.Itoa(c.Initiative), importance),
+		newEncounterOrderHPCell(c),
+		newEncounterOrderCell(strconv.Itoa(c.Defense), widget.MediumImportance),
+		newEncounterOrderCell(formatCombatantGlobalResistance(c, domain.DamagePoison), poisonImportance(c)),
+		newEncounterOrderCell(formatCombatantStatus(c), importance),
+		damageBtn,
+		healBtn,
+	)
+	rowHeader := container.NewStack(
+		canvas.NewRectangle(encounterOrderRowColor(c, isSelected)),
+		container.NewPadded(meta),
+	)
+	return container.NewVBox(rowHeader)
+}
+
+func newEncounterOrderHeader() fyne.CanvasObject {
+	marker := newEncounterOrderHeaderLabel("Turn")
+	marker.Alignment = fyne.TextAlignCenter
+	content := container.New(
+		encounterOrderTableLayout{},
+		marker,
+		newEncounterOrderHeaderLabel("Name"),
+		newEncounterOrderHeaderLabel("Side"),
+		newEncounterOrderHeaderLabel("Init"),
+		newEncounterOrderHeaderLabel("HP"),
+		newEncounterOrderHeaderLabel("DEF"),
+		newEncounterOrderHeaderLabel("Poison"),
+		newEncounterOrderHeaderLabel("Status"),
+		newEncounterOrderHeaderLabel("DMG"),
+		newEncounterOrderHeaderLabel("HEAL"),
+	)
+	return container.NewStack(canvas.NewRectangle(color.NRGBA{R: 99, G: 255, B: 145, A: 18}), container.NewPadded(content))
+}
+
+func newEncounterOrderHeaderLabel(text string) *widget.Label {
+	label := widget.NewLabel(text)
+	label.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	label.Importance = widget.HighImportance
+	return label
+}
+
+func newEncounterOrderCell(text string, importance widget.Importance) *widget.Label {
+	label := widget.NewLabel(text)
+	label.TextStyle = fyne.TextStyle{Monospace: true}
+	label.Importance = importance
+	label.Wrapping = fyne.TextWrapOff
+	label.Truncation = fyne.TextTruncateClip
+	return label
+}
+
+func newEncounterOrderHPCell(c domain.Combatant) fyne.CanvasObject {
+	bar := widget.NewProgressBar()
+	bar.TextFormatter = func() string { return formatCombatantHP(c) }
+	maxHP := c.MaxHP
+	if maxHP <= 0 {
+		maxHP = c.HP
+	}
+	if maxHP <= 0 {
+		maxHP = 1
+	}
+	bar.Min = 0
+	bar.Max = float64(maxHP)
+	bar.Value = float64(c.HP)
+	if bar.Value < bar.Min {
+		bar.Value = bar.Min
+	}
+	if bar.Value > bar.Max {
+		bar.Value = bar.Max
+	}
+	return bar
+}
+
+type encounterOrderTableLayout struct{}
+
+var (
+	encounterOrderColumnMinWidths = []float32{42, 160, 46, 42, 92, 42, 58, 76, 56, 56}
+	encounterOrderColumnWeights   = []float32{0, 5, 1, 0, 2, 0, 1, 2, 0, 0}
+)
+
+func (encounterOrderTableLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	widths := encounterOrderColumnWidths(size.Width)
+	x := float32(0)
+	for i, object := range objects {
+		if i >= len(widths) {
+			object.Hide()
+			continue
+		}
+		object.Show()
+		object.Move(fyne.NewPos(x, 0))
+		object.Resize(fyne.NewSize(widths[i], size.Height))
+		x += widths[i]
+	}
+}
+
+func (encounterOrderTableLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	height := float32(0)
+	for _, object := range objects {
+		height = maxFloat32(height, object.MinSize().Height)
+	}
+	return fyne.NewSize(sumFloat32(encounterOrderColumnMinWidths), height)
+}
+
+func encounterOrderColumnWidths(width float32) []float32 {
+	widths := append([]float32(nil), encounterOrderColumnMinWidths...)
+	minTotal := sumFloat32(widths)
+	if width <= 0 {
+		return widths
+	}
+	if width < minTotal {
+		scale := width / minTotal
+		for i := range widths {
+			widths[i] *= scale
+		}
+		return widths
+	}
+
+	extra := width - minTotal
+	weightTotal := sumFloat32(encounterOrderColumnWeights)
+	if weightTotal <= 0 {
+		return widths
+	}
+	for i, weight := range encounterOrderColumnWeights {
+		widths[i] += extra * weight / weightTotal
+	}
+	return widths
+}
+
+func sumFloat32(values []float32) float32 {
+	total := float32(0)
+	for _, value := range values {
+		total += value
+	}
+	return total
+}
+
+func maxFloat32(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func formatCombatantHP(c domain.Combatant) string {
+	maxHP := c.MaxHP
+	if maxHP <= 0 {
+		maxHP = c.HP
+	}
+	if maxHP <= 0 {
+		maxHP = 1
+	}
+	return strconv.Itoa(c.HP) + "/" + strconv.Itoa(maxHP)
+}
+
+func formatCombatantTurnMarker(c domain.Combatant, selected bool) string {
+	if isCombatantDefeated(c) {
+		return "xx"
+	}
+	if c.Active {
+		return ">>"
+	}
+	if selected {
+		return ">"
+	}
+	return ""
+}
+
+func encounterOrderRowColor(c domain.Combatant, selected bool) color.Color {
+	switch {
+	case isCombatantDefeated(c):
+		return color.NRGBA{R: 255, G: 95, B: 95, A: 18}
+	case selected:
+		return color.NRGBA{R: 99, G: 255, B: 145, A: 44}
+	case c.Active:
+		return color.NRGBA{R: 99, G: 255, B: 145, A: 30}
+	case combatantNeedsAttention(c):
+		return color.NRGBA{R: 255, G: 190, B: 95, A: 18}
+	default:
+		return color.NRGBA{R: 5, G: 26, B: 11, A: 0}
+	}
+}
+
+func hpImportance(c domain.Combatant) widget.Importance {
+	if isCombatantDefeated(c) {
+		return widget.DangerImportance
+	}
+	if combatantNeedsAttention(c) {
+		return widget.WarningImportance
+	}
+	return widget.MediumImportance
+}
+
+func poisonImportance(c domain.Combatant) widget.Importance {
+	if c.ImmunePoison {
+		return widget.SuccessImportance
+	}
+	if c.ResistPoison > 0 {
+		return widget.WarningImportance
+	}
+	return widget.LowImportance
+}
+
+func sideImportance(c domain.Combatant) widget.Importance {
+	if c.Side == domain.SideParty {
+		return widget.HighImportance
+	}
+	return widget.MediumImportance
 }

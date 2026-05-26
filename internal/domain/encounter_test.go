@@ -73,33 +73,39 @@ func TestAdvanceTurnReturnsErrorWhenNoValidNextCombatant(t *testing.T) {
 func TestPartyAPBoundaries(t *testing.T) {
 	t.Parallel()
 
-	e := NewEncounter("enc-1", "test", []Combatant{{ID: "c1", Name: "Alpha", Initiative: 10}})
-	e.AddPartyAP(2)
-	assert.Equal(t, 2, e.Resources.PartyAP)
+	resources := Resources{}
+	resources.AddPartyAP(2)
+	assert.Equal(t, 2, resources.PartyAP)
 
-	require.Error(t, e.SpendPartyAP(3))
-	require.Error(t, e.SpendPartyAP(-1))
-	require.NoError(t, e.SpendPartyAP(1))
-	assert.Equal(t, 1, e.Resources.PartyAP)
+	require.Error(t, resources.SpendPartyAP(3))
+	require.Error(t, resources.SpendPartyAP(-1))
+	require.NoError(t, resources.SpendPartyAP(1))
+	assert.Equal(t, 1, resources.PartyAP)
 
-	e.AddPartyAP(-100)
-	assert.Equal(t, 0, e.Resources.PartyAP)
+	resources.AddPartyAP(-100)
+	assert.Equal(t, 0, resources.PartyAP)
+
+	resources.AddPartyAP(MaxPartyAP + 10)
+	assert.Equal(t, MaxPartyAP, resources.PartyAP)
 }
 
 func TestThreatBoundaries(t *testing.T) {
 	t.Parallel()
 
-	e := NewEncounter("enc-1", "test", []Combatant{{ID: "c1", Name: "Alpha", Initiative: 10}})
-	e.AddThreat(2)
-	assert.Equal(t, 2, e.Resources.GMThreat)
+	resources := Resources{}
+	resources.AddThreat(2)
+	assert.Equal(t, 2, resources.GMThreat)
 
-	require.Error(t, e.SpendThreat(3))
-	require.Error(t, e.SpendThreat(-1))
-	require.NoError(t, e.SpendThreat(1))
-	assert.Equal(t, 1, e.Resources.GMThreat)
+	require.Error(t, resources.SpendThreat(3))
+	require.Error(t, resources.SpendThreat(-1))
+	require.NoError(t, resources.SpendThreat(1))
+	assert.Equal(t, 1, resources.GMThreat)
 
-	e.AddThreat(-100)
-	assert.Equal(t, 0, e.Resources.GMThreat)
+	resources.AddThreat(-100)
+	assert.Equal(t, 0, resources.GMThreat)
+
+	resources.AddThreat(100)
+	assert.Equal(t, 100, resources.GMThreat)
 }
 
 func TestApplyDamageReducesHPByResistance(t *testing.T) {

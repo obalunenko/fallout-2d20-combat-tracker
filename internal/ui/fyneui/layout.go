@@ -3,6 +3,7 @@ package fyneui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -28,6 +29,7 @@ func dynamicEncounterDialogSize(canvasSize fyne.Size) fyne.Size {
 func pipPanel(title string, body fyne.CanvasObject) fyne.CanvasObject {
 	titleLabel := widget.NewLabel("> " + title)
 	titleLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	titleLabel.Importance = widget.HighImportance
 
 	header := container.NewVBox(
 		titleLabel,
@@ -35,7 +37,7 @@ func pipPanel(title string, body fyne.CanvasObject) fyne.CanvasObject {
 	)
 	content := container.NewBorder(header, nil, nil, nil, body)
 
-	panelBG := canvas.NewRectangle(color.NRGBA{R: 5, G: 26, B: 11, A: 236})
+	panelBG := canvas.NewRectangle(pipColorSurface)
 	return container.NewStack(panelBG, container.NewPadded(content))
 }
 
@@ -48,6 +50,13 @@ func newMonospaceLabel(text string) *widget.Label {
 func newWrappedMonospaceLabel(text string) *widget.Label {
 	label := newMonospaceLabel(text)
 	label.Wrapping = fyne.TextWrapWord
+	return label
+}
+
+func newDialogSectionLabel(text string) *widget.Label {
+	label := newMonospaceLabel(text)
+	label.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	label.Importance = widget.HighImportance
 	return label
 }
 
@@ -72,6 +81,7 @@ func newMainContentWithHeader(
 	header := widget.NewLabel("PIP-BOY // FALLOUT 2D20 COMBAT TRACKER")
 	header.Alignment = fyne.TextAlignCenter
 	header.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	header.Importance = widget.HighImportance
 	leftControls := container.NewHBox(openCampaignBtn, openEncounterBtn)
 	rightControls := container.NewHBox(newCampaignBtn, newEncounterBtn)
 	headerBar := container.NewBorder(nil, nil, leftControls, rightControls, header)
@@ -86,8 +96,8 @@ func newMainContentWithHeader(
 }
 
 func newPipBackground(content fyne.CanvasObject) fyne.CanvasObject {
-	background := canvas.NewRectangle(color.NRGBA{R: 1, G: 15, B: 6, A: 255})
-	glow := canvas.NewRectangle(color.NRGBA{R: 38, G: 125, B: 66, A: 20})
+	background := canvas.NewRectangle(pipColorBackground)
+	glow := canvas.NewRectangle(pipColorScanlineGlow)
 	return container.NewStack(background, content, glow, newScanlineOverlay())
 }
 
@@ -101,10 +111,34 @@ func refreshResourceLabels(enc *domain.Encounter, partyAPLabel, threatLabel *wid
 	threatLabel.SetText(fmt.Sprintf("GM Threat: %d", enc.Resources.GMThreat))
 }
 
+func refreshActiveTurnLabel(enc *domain.Encounter, activeTurnLabel *widget.Label) {
+	if activeTurnLabel == nil {
+		return
+	}
+	activeTurnLabel.SetText(formatActiveTurnSummary(enc))
+}
+
+func formatActiveTurnSummary(enc *domain.Encounter) string {
+	if enc == nil || len(enc.Combatants) == 0 {
+		return "Active: -"
+	}
+	active := enc.ActiveCombatant()
+	if active == nil {
+		return "Active: -"
+	}
+	return fmt.Sprintf(
+		"Active: >> %s [%s] HP %s DEF %d",
+		encounterDisplayNameByID(enc, active.ID),
+		strings.ToUpper(string(active.Side)),
+		formatCombatantHP(*active),
+		active.Defense,
+	)
+}
+
 func newScanlineOverlay() fyne.CanvasObject {
 	scan := canvas.NewRasterWithPixels(func(x, y, w, h int) color.Color {
 		if y%3 == 0 {
-			return color.NRGBA{R: 150, G: 255, B: 180, A: 16}
+			return pipColorScanlineBright
 		}
 		if y%7 == 0 && x%2 == 0 {
 			return color.NRGBA{R: 0, G: 0, B: 0, A: 12}

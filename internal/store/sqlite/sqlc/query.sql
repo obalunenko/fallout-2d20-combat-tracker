@@ -86,7 +86,7 @@ ON CONFLICT (stat_profile_id, damage_type_id, body_location_id) DO UPDATE SET
   updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: GetActiveCampaign :one
-SELECT c.id, c.name, c.start_date, c.updated_at
+SELECT c.id, c.name, c.start_date, c.party_ap, c.gm_threat, c.updated_at
 FROM campaigns c
 JOIN app_state s ON s.id = 1
 WHERE c.id = s.active_campaign_id;
@@ -117,12 +117,12 @@ SET updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(campaign_id);
 
 -- name: ListCampaigns :many
-SELECT id, name, start_date, updated_at
+SELECT id, name, start_date, party_ap, gm_threat, updated_at
 FROM campaigns
 ORDER BY updated_at DESC, id DESC;
 
 -- name: GetCampaignByID :one
-SELECT id, name, start_date, updated_at
+SELECT id, name, start_date, party_ap, gm_threat, updated_at
 FROM campaigns
 WHERE id = sqlc.arg(campaign_id);
 
@@ -130,6 +130,13 @@ WHERE id = sqlc.arg(campaign_id);
 UPDATE campaigns
 SET name = sqlc.arg(name),
     start_date = sqlc.arg(start_date),
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = sqlc.arg(campaign_id);
+
+-- name: UpdateCampaignResourcesByID :execrows
+UPDATE campaigns
+SET party_ap = sqlc.arg(party_ap),
+    gm_threat = sqlc.arg(gm_threat),
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(campaign_id);
 
@@ -249,18 +256,20 @@ WHERE p.campaign_id = sqlc.arg(campaign_id)
 ORDER BY pc.name COLLATE NOCASE ASC, pc.id DESC, dt.id ASC, bl.id ASC;
 
 -- name: GetLatestEncounterByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
-FROM encounters
-WHERE deleted_at IS NULL AND campaign_id = sqlc.arg(campaign_id)
-ORDER BY updated_at DESC, id DESC
+SELECT e.id, e.campaign_id, e.name, e.round, e.turn_index, c.party_ap, c.gm_threat
+FROM encounters e
+JOIN campaigns c ON c.id = e.campaign_id
+WHERE e.deleted_at IS NULL AND e.campaign_id = sqlc.arg(campaign_id)
+ORDER BY e.updated_at DESC, e.id DESC
 LIMIT 1;
 
 -- name: GetEncounterByIDByCampaignID :one
-SELECT id, campaign_id, name, round, turn_index, party_ap, gm_threat
-FROM encounters
-WHERE deleted_at IS NULL
-  AND campaign_id = sqlc.arg(campaign_id)
-  AND id = sqlc.arg(encounter_id);
+SELECT e.id, e.campaign_id, e.name, e.round, e.turn_index, c.party_ap, c.gm_threat
+FROM encounters e
+JOIN campaigns c ON c.id = e.campaign_id
+WHERE e.deleted_at IS NULL
+  AND e.campaign_id = sqlc.arg(campaign_id)
+  AND e.id = sqlc.arg(encounter_id);
 
 -- name: ListCombatantsByEncounterID :many
 SELECT
@@ -371,7 +380,7 @@ ORDER BY updated_at DESC, id DESC;
 
 -- name: UpsertEncounter :exec
 INSERT INTO encounters (
-  id, campaign_id, name, round, turn_index, party_ap, gm_threat,
+  id, campaign_id, name, round, turn_index,
   created_at, updated_at, deleted_at
 )
 VALUES (
@@ -380,8 +389,6 @@ VALUES (
   sqlc.arg(name),
   sqlc.arg(round),
   sqlc.arg(turn_index),
-  sqlc.arg(party_ap),
-  sqlc.arg(gm_threat),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   NULL
@@ -391,8 +398,6 @@ ON CONFLICT(id) DO UPDATE SET
 	name = excluded.name,
 	round = excluded.round,
 	turn_index = excluded.turn_index,
-	party_ap = excluded.party_ap,
-	gm_threat = excluded.gm_threat,
 	deleted_at = NULL,
 	updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 

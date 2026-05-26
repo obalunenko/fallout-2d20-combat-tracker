@@ -99,9 +99,12 @@ func TestMainViewRefresherShowsActiveEncounterAndLogs(t *testing.T) {
 	assert.Equal(t, 0, state.selectedIndex)
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "Round: 2", screen.roundLabel.Text)
+	assert.Equal(t, "Active: >> Alpha [PARTY] HP 8/8 DEF 0", screen.activeTurnLabel.Text)
 	assert.Equal(t, "Party AP: 3", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 4", screen.threatLabel.Text)
-	assert.Contains(t, screen.selectedLabel.Text, "Name: Alpha")
+	assert.Contains(t, screen.selectedLabel.Text, "Participant Details")
+	assert.Contains(t, screen.selectedLabel.Text, "Name")
+	assert.Contains(t, screen.selectedLabel.Text, "Alpha")
 	assert.Contains(t, screen.campSnapshotLabel.Text, "Encounter: Test Encounter")
 	assert.Contains(t, screen.logOutput.Text, "[R2] Turn advanced")
 	assert.True(t, screen.tabsView.Visible())
@@ -116,7 +119,8 @@ func newTestMainViewRefresher(
 	repo *refresherRepo,
 ) (*mainViewRefresher, *mainScreen, *int) {
 	t.Helper()
-	test.NewTempApp(t)
+	app := test.NewTempApp(t)
+	app.Settings().SetTheme(newPipBoyTheme())
 
 	labels := newMainScreenLabels()
 	encounterOrder := newEncounterOrderView(
@@ -207,6 +211,10 @@ func (r *refresherRepo) ListCampaignPlayers(context.Context, string) ([]domain.N
 }
 
 func (r *refresherRepo) ActivateCampaign(context.Context, string) error { return nil }
+
+func (r *refresherRepo) UpdateCampaignResources(context.Context, string, domain.Resources) error {
+	return nil
+}
 
 func (r *refresherRepo) Activate(context.Context, string) error { return nil }
 

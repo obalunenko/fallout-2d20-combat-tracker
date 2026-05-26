@@ -6,6 +6,7 @@ type Campaign struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	Resources Resources
 	UpdatedAt time.Time
 }
 
