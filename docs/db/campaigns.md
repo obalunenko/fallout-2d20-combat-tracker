@@ -10,6 +10,8 @@ CREATE TABLE "campaigns" (
     id TEXT PRIMARY KEY CHECK (trim(id) <> ''),
     name TEXT NOT NULL CHECK (trim(name) <> ''),
     start_date DATETIME NOT NULL,
+    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap >= 0 AND party_ap <= 6),
+    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat >= 0),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL
@@ -25,18 +27,22 @@ CREATE TABLE "campaigns" (
 | id         | TEXT     |                                      | true     | [players](players.md) [app_state](app_state.md) [encounters](encounters.md) |
 | name       | TEXT     |                                      | false    |                                                                             |
 | start_date | DATETIME |                                      | false    |                                                                             |
+| party_ap   | INTEGER  | 0                                    | false    |                                                                             |
+| gm_threat  | INTEGER  | 0                                    | false    |                                                                             |
 | created_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                             |
 | updated_at | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                             |
 | deleted_at | DATETIME |                                      | true     |                                                                             |
 
 ## Constraints
 
-| Name                         | Type        | Definition               |
-| ---------------------------- | ----------- | ------------------------ |
-| id                           | PRIMARY KEY | PRIMARY KEY (id)         |
-| sqlite_autoindex_campaigns_1 | PRIMARY KEY | PRIMARY KEY (id)         |
-| -                            | CHECK       | CHECK (trim(id) <> '')   |
-| -                            | CHECK       | CHECK (trim(name) <> '') |
+| Name                         | Type        | Definition                              |
+| ---------------------------- | ----------- | --------------------------------------- |
+| id                           | PRIMARY KEY | PRIMARY KEY (id)                        |
+| sqlite_autoindex_campaigns_1 | PRIMARY KEY | PRIMARY KEY (id)                        |
+| -                            | CHECK       | CHECK (trim(id) <> '')                  |
+| -                            | CHECK       | CHECK (trim(name) <> '')                |
+| -                            | CHECK       | CHECK (party_ap >= 0 AND party_ap <= 6) |
+| -                            | CHECK       | CHECK (gm_threat >= 0)                  |
 
 ## Indexes
 

@@ -246,6 +246,8 @@ type campaignDBFields struct {
 	ID        string
 	Name      string
 	StartDate time.Time
+	PartyAP   int64
+	GMThreat  int64
 	UpdatedAt time.Time
 }
 
@@ -254,6 +256,10 @@ func campaignFromFields(f campaignDBFields) domain.Campaign {
 		ID:        f.ID,
 		Name:      f.Name,
 		StartDate: f.StartDate,
+		Resources: domain.Resources{
+			PartyAP:  int(f.PartyAP),
+			GMThreat: int(f.GMThreat),
+		},
 		UpdatedAt: f.UpdatedAt,
 	}
 }
@@ -263,6 +269,8 @@ func campaignFromRow(r dbgen.GetActiveCampaignRow) domain.Campaign {
 		ID:        r.ID,
 		Name:      r.Name,
 		StartDate: truncateCampaignStartDate(r.StartDate),
+		PartyAP:   r.PartyAp,
+		GMThreat:  r.GmThreat,
 		UpdatedAt: r.UpdatedAt,
 	})
 }
@@ -272,6 +280,8 @@ func campaignFromListRow(r dbgen.ListCampaignsRow) domain.Campaign {
 		ID:        r.ID,
 		Name:      r.Name,
 		StartDate: truncateCampaignStartDate(r.StartDate),
+		PartyAP:   r.PartyAp,
+		GMThreat:  r.GmThreat,
 		UpdatedAt: r.UpdatedAt,
 	})
 }

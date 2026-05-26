@@ -148,6 +148,24 @@ func TestResourceCommands(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, enc.Resources.PartyAP)
 	assert.Equal(t, 1, enc.Resources.GMThreat)
+
+	next, err := svc.CreateEncounter(t.Context(), "enc-2", "next", []domain.Combatant{{ID: "c2", Name: "Beta", Initiative: 8}})
+	require.NoError(t, err)
+	assert.Equal(t, 1, next.Resources.PartyAP)
+	assert.Equal(t, 1, next.Resources.GMThreat)
+
+	first, err := svc.ActivateEncounter(t.Context(), "enc-1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, first.Resources.PartyAP)
+	assert.Equal(t, 1, first.Resources.GMThreat)
+
+	capped, err := svc.AddPartyAP(t.Context(), 20)
+	require.NoError(t, err)
+	assert.Equal(t, domain.MaxPartyAP, capped.Resources.PartyAP)
+
+	uncappedThreat, err := svc.AddThreat(t.Context(), 100)
+	require.NoError(t, err)
+	assert.Equal(t, 101, uncappedThreat.Resources.GMThreat)
 }
 
 func TestListAndActivateEncounter(t *testing.T) {
@@ -257,7 +275,7 @@ func TestActivateEncounterNotFound(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrEncounterNotFound)
 }
 
-func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
+func TestRestartEncounterResetsRoundAndPreservesCampaignResources(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Alpha", []domain.Combatant{
 		{ID: "c1", Name: "One", Initiative: 10, Side: domain.SideParty, HP: 10, MaxHP: 10},
@@ -282,8 +300,8 @@ func TestRestartEncounterResetsRoundAndResources(t *testing.T) {
 	assert.Equal(t, "enc-1", restarted.ID)
 	assert.Equal(t, 1, restarted.Round)
 	assert.Equal(t, 0, restarted.TurnIndex)
-	assert.Equal(t, 0, restarted.Resources.PartyAP)
-	assert.Equal(t, 0, restarted.Resources.GMThreat)
+	assert.Equal(t, 3, restarted.Resources.PartyAP)
+	assert.Equal(t, 2, restarted.Resources.GMThreat)
 	require.Len(t, restarted.Combatants, 2)
 	assert.True(t, restarted.Combatants[0].Active)
 	assert.False(t, restarted.Combatants[1].Active)

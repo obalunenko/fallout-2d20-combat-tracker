@@ -401,3 +401,24 @@ func (s *EncounterStore) ActivateCampaign(ctx context.Context, campaignID string
 	}
 	return nil
 }
+
+func (s *EncounterStore) UpdateCampaignResources(ctx context.Context, campaignID string, resources domain.Resources) error {
+	ctx = normalizeContext(ctx)
+	campaignID = strings.TrimSpace(campaignID)
+	if campaignID == "" {
+		return fmt.Errorf("campaign id is required")
+	}
+	resources.Normalize()
+	affected, err := s.q.UpdateCampaignResourcesByID(ctx, dbgen.UpdateCampaignResourcesByIDParams{
+		PartyAp:    int64(resources.PartyAP),
+		GmThreat:   int64(resources.GMThreat),
+		CampaignID: campaignID,
+	})
+	if err != nil {
+		return fmt.Errorf("update campaign resources: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrCampaignNotFound
+	}
+	return nil
+}

@@ -212,6 +212,10 @@ func (r *refresherRepo) ListCampaignPlayers(context.Context, string) ([]domain.N
 
 func (r *refresherRepo) ActivateCampaign(context.Context, string) error { return nil }
 
+func (r *refresherRepo) UpdateCampaignResources(context.Context, string, domain.Resources) error {
+	return nil
+}
+
 func (r *refresherRepo) Activate(context.Context, string) error { return nil }
 
 func (r *refresherRepo) SoftDelete(context.Context, string) error { return nil }

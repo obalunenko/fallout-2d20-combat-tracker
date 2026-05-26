@@ -1073,9 +1073,14 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 			args: []any{"schema-check-encounter"},
 		},
 		{
-			name: "encounter resources",
-			sql:  `UPDATE encounters SET party_ap = -1 WHERE id = ?`,
-			args: []any{"schema-check-encounter"},
+			name: "campaign resources",
+			sql:  `UPDATE campaigns SET party_ap = -1 WHERE id = ?`,
+			args: []any{"repo-test-campaign"},
+		},
+		{
+			name: "campaign party AP maximum",
+			sql:  `UPDATE campaigns SET party_ap = 7 WHERE id = ?`,
+			args: []any{"repo-test-campaign"},
 		},
 		{
 			name: "combatant side",
@@ -1124,6 +1129,37 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestMigration42MovesLatestEncounterResourcesToCampaign(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "migration-42-legacy.db")
+	db, err := sql.Open("sqlite", sqliteDSN(dbPath))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, db.Close())
+	})
+
+	goose.SetBaseFS(migrationsFS)
+	require.NoError(t, goose.SetDialect("sqlite3"))
+	require.NoError(t, goose.UpTo(db, "migrations", 41))
+
+	_, err = db.Exec(`
+		INSERT INTO campaigns (id, name, start_date)
+		VALUES ('legacy-campaign', 'Legacy Campaign', '2026-01-01 00:00:00');
+		INSERT INTO encounters (
+			id, campaign_id, name, round, turn_index, party_ap, gm_threat, updated_at
+		) VALUES
+			('legacy-old', 'legacy-campaign', 'Old Fight', 1, 0, 1, 2, '2026-01-01 00:00:00.000'),
+			('legacy-latest', 'legacy-campaign', 'Latest Fight', 2, 0, 9, 99, '2026-02-01 00:00:00.000');
+	`)
+	require.NoError(t, err)
+
+	require.NoError(t, goose.UpTo(db, "migrations", 42))
+
+	assert.Equal(t, int64(domain.MaxPartyAP), queryInt64(t, db, `SELECT party_ap FROM campaigns WHERE id = ?`, "legacy-campaign"))
+	assert.Equal(t, int64(99), queryInt64(t, db, `SELECT gm_threat FROM campaigns WHERE id = ?`, "legacy-campaign"))
+	assert.NotContains(t, queryColumnNames(t, db, "encounters"), "party_ap")
+	assert.NotContains(t, queryColumnNames(t, db, "encounters"), "gm_threat")
 }
 
 func TestMigration30BackfillsNullAuditFieldsAndDropsLeftoverTempTables(t *testing.T) {

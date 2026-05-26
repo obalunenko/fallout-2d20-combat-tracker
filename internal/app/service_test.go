@@ -81,10 +81,11 @@ func testCampaignStartDate(t *testing.T) time.Time {
 }
 
 type logFailingRepo struct {
-	encounter   *domain.Encounter
-	appendErr   error
-	saveCalls   int
-	appendCalls int
+	encounter     *domain.Encounter
+	appendErr     error
+	saveCalls     int
+	resourceCalls int
+	appendCalls   int
 }
 
 func (r *logFailingRepo) Get(_ context.Context) (*domain.Encounter, error) {
@@ -138,6 +139,14 @@ func (r *logFailingRepo) ListCampaignPlayers(_ context.Context, _ string) ([]dom
 }
 
 func (r *logFailingRepo) ActivateCampaign(_ context.Context, _ string) error { return nil }
+
+func (r *logFailingRepo) UpdateCampaignResources(_ context.Context, _ string, resources domain.Resources) error {
+	r.resourceCalls++
+	if r.encounter != nil {
+		r.encounter.Resources = resources
+	}
+	return nil
+}
 
 func (r *logFailingRepo) Activate(_ context.Context, _ string) error { return nil }
 

@@ -33,6 +33,7 @@ type CampaignRepository interface {
 	ListCampaigns(ctx context.Context) ([]domain.Campaign, error)
 	ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error)
 	ActivateCampaign(ctx context.Context, campaignID string) error
+	UpdateCampaignResources(ctx context.Context, campaignID string, resources domain.Resources) error
 }
 
 type EncounterLogRepository interface {
