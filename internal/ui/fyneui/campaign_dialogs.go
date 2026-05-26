@@ -110,23 +110,23 @@ func showCampaignEditorDialog(
 	validationError := widget.NewLabel("")
 	validationError.TextStyle = fyne.TextStyle{Monospace: true}
 	validationError.Wrapping = fyne.TextWrapWord
-	addPlayerBtn := widget.NewButton("+ Add Player", func() { addRow() })
+	validationError.Importance = widget.DangerImportance
+	addPlayerBtn := newRoleButton("+ Add Player", uiActionSecondary, func() { addRow() })
 	scroll := container.NewScroll(table)
 	dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
 	scroll.Direction = container.ScrollBoth
 	scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
-	playerSection := container.NewVBox(addPlayerBtn, scroll)
 
 	form := widget.NewForm(
 		widget.NewFormItem("Campaign Name", nameEntry),
 		widget.NewFormItem("Start Date", startDateEntry),
-		widget.NewFormItem("Players", playerSection),
 	)
-	formContent := container.NewVBox(form, widget.NewSeparator(), validationError)
+	playersHeader := container.NewBorder(nil, nil, nil, addPlayerBtn, newDialogSectionLabel("Players"))
+	formContent := container.NewVBox(form, widget.NewSeparator(), playersHeader, scroll, widget.NewSeparator(), validationError)
 
 	var editorDialog *dialog.CustomDialog
-	cancelBtn := widget.NewButton("Cancel", func() { editorDialog.Hide() })
-	submitBtn := widget.NewButton(submitLabel, func() {
+	cancelBtn := newRoleButton("Cancel", uiActionSubtle, func() { editorDialog.Hide() })
+	submitBtn := newRoleButton(submitLabel, uiActionPrimary, func() {
 		validationError.SetText("")
 		campaignName := strings.TrimSpace(nameEntry.Text)
 		startDate := strings.TrimSpace(startDateEntry.Text)
@@ -225,6 +225,8 @@ func showCampaignListDialogWindow(
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("campaign")
 			label.TextStyle = fyne.TextStyle{Monospace: true}
+			label.Wrapping = fyne.TextWrapOff
+			label.Truncation = fyne.TextTruncateClip
 			return label
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
@@ -240,27 +242,14 @@ func showCampaignListDialogWindow(
 
 	dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
 	scroll := container.NewScroll(list)
-	scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.45))
+	scroll.SetMinSize(fyne.NewSize(dialogSize.Width*0.48, dialogSize.Height*0.62))
 
 	var campaignDialog *dialog.CustomDialog
-	activateBtn := widget.NewButton("Activate", func() {
-		if selectedID == "" {
-			return
-		}
-		if _, err := svc.ActivateCampaign(ctx, selectedID); err != nil {
-			dialog.ShowError(err, w)
-			return
-		}
-		if refresh != nil {
-			refresh()
-		}
-		campaignDialog.Hide()
-	})
-	createBtn := widget.NewButton("Create New", func() {
+	createBtn := newRoleButton("Create New", uiActionSecondary, func() {
 		campaignDialog.Hide()
 		showCreateCampaignDialog()
 	})
-	editBtn := widget.NewButton("Edit", func() {
+	editBtn := newRoleButton("Edit", uiActionSubtle, func() {
 		if selectedID == "" || selectedIdx < 0 || selectedIdx >= len(campaigns) {
 			return
 		}
@@ -285,7 +274,7 @@ func showCampaignListDialogWindow(
 			refresh,
 		)
 	})
-	infoBtn := widget.NewButton("Use Selected", func() {
+	infoBtn := newRoleButton("Use Selected", uiActionPrimary, func() {
 		if selectedIdx >= 0 && selectedIdx < len(campaigns) {
 			if _, err := svc.ActivateCampaign(ctx, campaigns[selectedIdx].ID); err != nil {
 				dialog.ShowError(err, w)
@@ -301,13 +290,19 @@ func showCampaignListDialogWindow(
 	renderSelected(0)
 	list.Select(0)
 
-	content := container.NewVBox(
-		scroll,
-		widget.NewSeparator(),
-		selectedInfo,
-		widget.NewSeparator(),
-		container.NewGridWithColumns(4, activateBtn, infoBtn, editBtn, createBtn),
+	actions := container.NewGridWithColumns(3, infoBtn, editBtn, createBtn)
+	detailPane := container.NewBorder(
+		nil,
+		container.NewVBox(widget.NewSeparator(), actions),
+		nil,
+		nil,
+		container.NewPadded(selectedInfo),
 	)
+	detailPane.Resize(fyne.NewSize(dialogSize.Width*0.42, dialogSize.Height*0.62))
+	split := container.NewHSplit(scroll, detailPane)
+	split.Offset = 0.55
+
+	content := container.NewBorder(nil, nil, nil, nil, split)
 
 	campaignDialog = dialog.NewCustom("Campaigns", "Close", content, w)
 	campaignDialog.Resize(dialogSize)

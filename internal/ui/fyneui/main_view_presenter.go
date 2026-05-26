@@ -91,7 +91,11 @@ func (p *mainViewPresenter) logOutput() *widget.Entry {
 }
 
 func (p *mainViewPresenter) refreshEncounterWidgets() {
-	refreshSelected(p.screen.selectedLabel, p.state.enc, p.state.selectedIndex)
+	if p.screen.activeTarget != nil {
+		p.screen.activeTarget.SetTarget(p.state.enc, p.state.selectedIndex)
+	} else {
+		refreshSelected(p.screen.selectedLabel, p.state.enc, p.state.selectedIndex)
+	}
 	refreshResourceLabels(p.state.enc, p.screen.partyAPLabel, p.screen.threatLabel)
 	p.encounterOrder.List().Refresh()
 	p.encounterOrder.Rebuild()

@@ -35,6 +35,7 @@ func showEncounterEditorDialog(
 	difficultyPreview := widget.NewLabel("Difficulty: Unknown")
 	difficultyPreview.TextStyle = fyne.TextStyle{Monospace: true}
 	difficultyPreview.Wrapping = fyne.TextWrapWord
+	difficultyPreview.Importance = widget.WarningImportance
 
 	refreshDifficultyPreview := func() {
 		preview := collectCombatantsPreviewFromRows(rows)
@@ -101,11 +102,12 @@ func showEncounterEditorDialog(
 	validationError := widget.NewLabel("")
 	validationError.TextStyle = fyne.TextStyle{Monospace: true}
 	validationError.Wrapping = fyne.TextWrapWord
+	validationError.Importance = widget.DangerImportance
 
-	addCombatantBtn := widget.NewButton("+ Add Combatant", func() {
+	addCombatantBtn := newRoleButton("+ Add Combatant", uiActionSecondary, func() {
 		addRow("npc")
 	})
-	loadMonsterBtn := widget.NewButton("Load Monster From DB", func() {
+	loadMonsterBtn := newRoleButton("Load Monster From DB", uiActionSecondary, func() {
 		validationError.SetText("")
 
 		monsters, err := svc.ListMonsterTemplates(ctx)
@@ -154,10 +156,10 @@ func showEncounterEditorDialog(
 		content.Resize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
 
 		var monsterDialog *dialog.CustomDialog
-		cancelBtn := widget.NewButton("Cancel", func() {
+		cancelBtn := newRoleButton("Cancel", uiActionSubtle, func() {
 			monsterDialog.Hide()
 		})
-		addBtn := widget.NewButton("Add", func() {
+		addBtn := newRoleButton("Add", uiActionPrimary, func() {
 			countText := strings.TrimSpace(countEntry.Text)
 			if countText == "" {
 				countText = "1"
@@ -187,7 +189,7 @@ func showEncounterEditorDialog(
 		monsterDialog.Resize(dialogSize)
 		monsterDialog.Show()
 	})
-	saveMonstersBtn := widget.NewButton("Save NPCs To DB", func() {
+	saveMonstersBtn := newRoleButton("Save NPCs To DB", uiActionSuccess, func() {
 		validationError.SetText("")
 		combatants, err := collectCombatantsFromRows(rows)
 		if err != nil {
@@ -216,7 +218,7 @@ func showEncounterEditorDialog(
 		}
 		validationError.SetText(fmt.Sprintf("Saved %d monster template(s)", len(saved)))
 	})
-	loadPartyBtn := widget.NewButton("Load Party From DB", func() {
+	loadPartyBtn := newRoleButton("Load Party From DB", uiActionSecondary, func() {
 		validationError.SetText("")
 
 		partyMembers, err := svc.ListPartyMembers(ctx)
@@ -271,23 +273,34 @@ func showEncounterEditorDialog(
 	scroll := container.NewScroll(table)
 	scroll.Direction = container.ScrollBoth
 	scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.5))
-	combatantsSection := container.NewVBox(
-		container.NewGridWithColumns(4, addCombatantBtn, loadMonsterBtn, saveMonstersBtn, loadPartyBtn),
-		difficultyPreview,
+	rosterTab := container.NewBorder(
+		container.NewVBox(container.NewGridWithColumns(2, addCombatantBtn, loadPartyBtn), widget.NewSeparator()),
+		nil,
+		nil,
+		nil,
 		scroll,
 	)
+	libraryTab := container.NewVBox(
+		container.NewGridWithColumns(2, loadMonsterBtn, saveMonstersBtn),
+	)
+	difficultyTab := container.NewVBox(difficultyPreview)
+	editorTabs := container.NewAppTabs(
+		container.NewTabItem("Roster", rosterTab),
+		container.NewTabItem("Difficulty", difficultyTab),
+		container.NewTabItem("Library", libraryTab),
+	)
+	editorTabs.SetTabLocation(container.TabLocationTop)
 
 	form := widget.NewForm(
 		widget.NewFormItem("Name", nameEntry),
-		widget.NewFormItem("Combatants", combatantsSection),
 	)
-	formContent := container.NewVBox(form, widget.NewSeparator(), validationError)
+	formContent := container.NewVBox(form, widget.NewSeparator(), editorTabs, widget.NewSeparator(), validationError)
 
 	var editorDialog *dialog.CustomDialog
-	cancelBtn := widget.NewButton("Cancel", func() {
+	cancelBtn := newRoleButton("Cancel", uiActionSubtle, func() {
 		editorDialog.Hide()
 	})
-	submitBtn := widget.NewButton(submitLabel, func() {
+	submitBtn := newRoleButton(submitLabel, uiActionPrimary, func() {
 		validationError.SetText("")
 
 		name := strings.TrimSpace(nameEntry.Text)

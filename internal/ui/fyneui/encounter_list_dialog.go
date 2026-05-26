@@ -78,6 +78,8 @@ func showEncounterListDialogWindow(
 		func() fyne.CanvasObject {
 			label := widget.NewLabel("encounter")
 			label.TextStyle = fyne.TextStyle{Monospace: true}
+			label.Wrapping = fyne.TextWrapOff
+			label.Truncation = fyne.TextTruncateClip
 			return label
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
@@ -97,7 +99,7 @@ func showEncounterListDialogWindow(
 
 	dialogSize := dynamicEncounterDialogSize(w.Canvas().Size())
 	scroll := container.NewScroll(list)
-	scroll.SetMinSize(fyne.NewSize(dialogSize.Width-80, dialogSize.Height*0.45))
+	scroll.SetMinSize(fyne.NewSize(dialogSize.Width*0.5, dialogSize.Height*0.62))
 
 	refreshSummaries := func(keepID string) error {
 		updated, err := svc.ListEncounters(ctx)
@@ -131,7 +133,7 @@ func showEncounterListDialogWindow(
 
 	var encounterDialog *dialog.CustomDialog
 
-	launchBtn = widget.NewButton("Launch", func() {
+	launchBtn = newRoleButton("Launch", uiActionPrimary, func() {
 		if selectedID == "" {
 			return
 		}
@@ -146,7 +148,7 @@ func showEncounterListDialogWindow(
 		}
 		encounterDialog.Hide()
 	})
-	restartBtn = widget.NewButton("Restart", func() {
+	restartBtn = newRoleButton("Restart", uiActionWarning, func() {
 		if selectedID == "" {
 			return
 		}
@@ -161,7 +163,7 @@ func showEncounterListDialogWindow(
 		}
 		encounterDialog.Hide()
 	})
-	deleteBtn = widget.NewButton("Delete", func() {
+	deleteBtn = newRoleButton("Delete", uiActionDestructive, func() {
 		if selectedID == "" {
 			return
 		}
@@ -194,7 +196,7 @@ func showEncounterListDialogWindow(
 			w,
 		)
 	})
-	editBtn = widget.NewButton("Edit", func() {
+	editBtn = newRoleButton("Edit", uiActionSecondary, func() {
 		if selectedID == "" {
 			return
 		}
@@ -230,14 +232,20 @@ func showEncounterListDialogWindow(
 	list.Select(0)
 	updateActionButtons()
 
-	actions := container.NewGridWithColumns(4, launchBtn, restartBtn, editBtn, deleteBtn)
-	content := container.NewVBox(
-		scroll,
-		widget.NewSeparator(),
-		selectedInfo,
-		widget.NewSeparator(),
-		actions,
+	primaryActions := container.NewGridWithColumns(2, launchBtn, editBtn)
+	secondaryActions := container.NewGridWithColumns(2, restartBtn, deleteBtn)
+	detailPane := container.NewBorder(
+		nil,
+		container.NewVBox(widget.NewSeparator(), primaryActions, secondaryActions),
+		nil,
+		nil,
+		container.NewPadded(selectedInfo),
 	)
+	detailPane.Resize(fyne.NewSize(dialogSize.Width*0.4, dialogSize.Height*0.62))
+	split := container.NewHSplit(scroll, detailPane)
+	split.Offset = 0.56
+
+	content := container.NewBorder(nil, nil, nil, nil, split)
 
 	encounterDialog = dialog.NewCustom("Encounters", "Close", content, w)
 	encounterDialog.Resize(dialogSize)

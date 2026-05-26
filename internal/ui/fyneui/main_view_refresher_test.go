@@ -101,7 +101,9 @@ func TestMainViewRefresherShowsActiveEncounterAndLogs(t *testing.T) {
 	assert.Equal(t, "Round: 2", screen.roundLabel.Text)
 	assert.Equal(t, "Party AP: 3", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 4", screen.threatLabel.Text)
-	assert.Contains(t, screen.selectedLabel.Text, "Name: Alpha")
+	assert.Contains(t, screen.selectedLabel.Text, "Participant Details")
+	assert.Contains(t, screen.selectedLabel.Text, "Name")
+	assert.Contains(t, screen.selectedLabel.Text, "Alpha")
 	assert.Contains(t, screen.campSnapshotLabel.Text, "Encounter: Test Encounter")
 	assert.Contains(t, screen.logOutput.Text, "[R2] Turn advanced")
 	assert.True(t, screen.tabsView.Visible())
@@ -116,7 +118,8 @@ func newTestMainViewRefresher(
 	repo *refresherRepo,
 ) (*mainViewRefresher, *mainScreen, *int) {
 	t.Helper()
-	test.NewTempApp(t)
+	app := test.NewTempApp(t)
+	app.Settings().SetTheme(newPipBoyTheme())
 
 	labels := newMainScreenLabels()
 	encounterOrder := newEncounterOrderView(

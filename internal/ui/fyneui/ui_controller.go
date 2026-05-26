@@ -58,24 +58,27 @@ func (c *uiController) mainScreenActions() mainScreenActions {
 
 func (c *uiController) mainScreenControls() mainScreenControls {
 	return mainScreenControls{
-		nextTurnBtn:    c.newActionButton("Next Turn", c.advanceTurn),
-		partyAddBtn:    c.newActionButton("+ AP", c.addPartyAP),
-		partySpendBtn:  c.newActionButton("- AP", c.spendPartyAP),
-		threatAddBtn:   c.newActionButton("+ Threat", c.addThreat),
-		threatSpendBtn: c.newActionButton("- Threat", c.spendThreat),
-		applyDamageBtn: widget.NewButton("APPLY DAMAGE", func() {
+		nextTurnBtn:    c.newActionButton("Next Turn", uiActionPrimary, c.advanceTurn),
+		partyAddBtn:    c.newActionButton("+ AP", uiActionSecondary, c.addPartyAP),
+		partySpendBtn:  c.newActionButton("- AP", uiActionSubtle, c.spendPartyAP),
+		threatAddBtn:   c.newActionButton("+ Threat", uiActionSecondary, c.addThreat),
+		threatSpendBtn: c.newActionButton("- Threat", uiActionSubtle, c.spendThreat),
+		applyDamageBtn: newRoleButton("APPLY DAMAGE", uiActionDestructive, func() {
 			c.encounterOrder.CollapseDetails()
 			c.showApplyDamageDialogForIndex(c.state.selectedIndex)
 		}),
-		healBtn: widget.NewButton("HEAL", func() {
+		healBtn: newRoleButton("HEAL", uiActionSuccess, func() {
 			c.encounterOrder.CollapseDetails()
 			c.showHealDialogForIndex(c.state.selectedIndex)
 		}),
 	}
 }
 
-func (c *uiController) newActionButton(label string, run func() error) *widget.Button {
-	return newRefreshingActionButton(label, c.encounterOrder.CollapseDetails, c.handleErr, c.refreshAfterAction, run)
+func (c *uiController) newActionButton(label string, role uiActionRole, run func() error) *widget.Button {
+	return styleButtonRole(
+		newRefreshingActionButton(label, c.encounterOrder.CollapseDetails, c.handleErr, c.refreshAfterAction, run),
+		role,
+	)
 }
 
 func (c *uiController) advanceTurn() error {

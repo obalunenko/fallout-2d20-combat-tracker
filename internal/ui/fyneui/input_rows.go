@@ -80,6 +80,7 @@ func newGlobalImmunityCheck(label string, entries []*widget.Entry, onChanged fun
 func newTableHeaderLabel(text string) *widget.Label {
 	l := widget.NewLabel(text)
 	l.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	l.Importance = widget.HighImportance
 	return l
 }
 

@@ -66,6 +66,9 @@ type mainScreen struct {
 	campRosterOutput   *widget.Entry
 	partyLibraryOutput *widget.Entry
 
+	activeTarget          *activeTargetView
+	activeTargetAccordion *widget.Accordion
+
 	tabsView        fyne.CanvasObject
 	noEncounterView fyne.CanvasObject
 	noCampaignView  fyne.CanvasObject
@@ -106,9 +109,11 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 		),
 	)
 	encounterOrderPanel := pipPanel("ENCOUNTER ORDER", encounterOrder.OrderBox())
+	screen.activeTarget = newActiveTargetView(screen.selectedLabel, controls.applyDamageBtn, controls.healBtn)
+	screen.activeTargetAccordion = screen.activeTarget.accordion
 	selectedPanel := pipPanel(
 		"ACTIVE TARGET",
-		container.NewVBox(screen.selectedLabel, widget.NewSeparator(), container.NewGridWithColumns(2, controls.applyDamageBtn, controls.healBtn)),
+		screen.activeTarget.Root(),
 	)
 	logPanel := pipPanel("DATA LOG", screen.logOutput)
 
@@ -124,10 +129,10 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 		"CAMPAIGN ACTIONS",
 		container.NewGridWithColumns(
 			4,
-			widget.NewButton("OPEN CAMPAIGN", func() { actions.showCampaignList() }),
-			widget.NewButton("NEW CAMPAIGN", func() { actions.showCreateCampaign() }),
-			widget.NewButton("OPEN ENCOUNTER", func() { actions.showEncounterList() }),
-			widget.NewButton("NEW ENCOUNTER", func() { actions.showCreateEncounter() }),
+			newRoleButton("OPEN CAMPAIGN", uiActionSecondary, func() { actions.showCampaignList() }),
+			newRoleButton("NEW CAMPAIGN", uiActionSecondary, func() { actions.showCreateCampaign() }),
+			newRoleButton("OPEN ENCOUNTER", uiActionSecondary, func() { actions.showEncounterList() }),
+			newRoleButton("NEW ENCOUNTER", uiActionPrimary, func() { actions.showCreateEncounter() }),
 		),
 	)
 	campTabContent := container.NewVBox(
@@ -158,22 +163,22 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 
 	screen.campaignStatusLabel = newMonospaceLabel("Campaign: -")
 
-	newEncounterBtn := widget.NewButton("NEW ENCOUNTER", func() {
+	newEncounterBtn := newRoleButton("NEW ENCOUNTER", uiActionPrimary, func() {
 		actions.showCreateEncounter()
 	})
-	openEncounterBtn := widget.NewButton("OPEN ENCOUNTER", func() {
+	openEncounterBtn := newRoleButton("OPEN ENCOUNTER", uiActionSubtle, func() {
 		actions.showEncounterList()
 	})
-	newCampaignBtn := widget.NewButton("NEW CAMPAIGN", func() {
+	newCampaignBtn := newRoleButton("NEW CAMPAIGN", uiActionSecondary, func() {
 		actions.showCreateCampaign()
 	})
-	openCampaignBtn := widget.NewButton("OPEN CAMPAIGN", func() {
+	openCampaignBtn := newRoleButton("OPEN CAMPAIGN", uiActionSubtle, func() {
 		actions.showCampaignList()
 	})
 
 	screen.setupHint = newMonospaceLabel("No active encounter.\nCreate one from scratch to begin tracking combat.")
 	screen.setupHint.Alignment = fyne.TextAlignCenter
-	setupButton := widget.NewButton("CREATE ENCOUNTER", func() {
+	setupButton := newRoleButton("CREATE ENCOUNTER", uiActionPrimary, func() {
 		actions.showCreateEncounter()
 	})
 	screen.noEncounterView = pipPanel(
@@ -184,8 +189,8 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 	campaignHint := newMonospaceLabel("No active campaign.\nCreate or choose a campaign before running encounters.")
 	campaignHint.Alignment = fyne.TextAlignCenter
 	campaignActions := container.NewGridWithColumns(2,
-		widget.NewButton("CREATE CAMPAIGN", func() { actions.showCreateCampaign() }),
-		widget.NewButton("OPEN CAMPAIGNS", func() { actions.showCampaignList() }),
+		newRoleButton("CREATE CAMPAIGN", uiActionPrimary, func() { actions.showCreateCampaign() }),
+		newRoleButton("OPEN CAMPAIGNS", uiActionSecondary, func() { actions.showCampaignList() }),
 	)
 	screen.noCampaignView = pipPanel(
 		"CAMPAIGN CONTROL",
