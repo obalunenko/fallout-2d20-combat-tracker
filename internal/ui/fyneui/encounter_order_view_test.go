@@ -34,32 +34,30 @@ func TestEncounterOrderViewRebuildUsesScannableTableRows(t *testing.T) {
 	require.Len(t, orderBox.Objects, len(enc.Combatants)+1)
 
 	headerLabels := collectLabels(orderBox.Objects[0])
+	assert.Contains(t, headerLabels, "Turn")
 	assert.Contains(t, headerLabels, "Name")
 	assert.Contains(t, headerLabels, "Side")
 	assert.Contains(t, headerLabels, "Init")
 	assert.Contains(t, headerLabels, "HP")
 	assert.Contains(t, headerLabels, "Status")
 
-	expandedRow := orderBox.Objects[1].(*fyne.Container)
-	require.Len(t, expandedRow.Objects, 2)
-	details := expandedRow.Objects[1].(*widget.Label)
-	assert.Contains(t, details.Text, "Participant Details")
-	assert.Contains(t, details.Text, "Field")
-	assert.Contains(t, details.Text, "Value")
-	assert.Contains(t, details.Text, "Body Damage Resistance")
+	firstRow := orderBox.Objects[1].(*fyne.Container)
+	require.Len(t, firstRow.Objects, 1)
 
-	buttons := collectButtons(expandedRow)
+	buttons := collectButtons(firstRow)
 	assert.Contains(t, buttonTexts(buttons), "Alpha")
 	assert.Contains(t, buttonTexts(buttons), "DMG")
 	assert.Contains(t, buttonTexts(buttons), "HEAL")
 
-	labels := collectLabels(expandedRow)
+	labels := collectLabels(firstRow)
 	assert.Contains(t, labels, ">>")
 	assert.Contains(t, labels, "PARTY")
 	assert.Contains(t, labels, "12")
-	assert.Contains(t, labels, "8/8")
 	assert.Contains(t, labels, "Active")
-	assert.Len(t, collectProgressBars(expandedRow), 1)
+	hpBars := collectProgressBars(firstRow)
+	require.Len(t, hpBars, 1)
+	require.NotNil(t, hpBars[0].TextFormatter)
+	assert.Equal(t, "8/8", hpBars[0].TextFormatter())
 
 	collapsedRow := orderBox.Objects[2].(*fyne.Container)
 	require.Len(t, collapsedRow.Objects, 1)
@@ -91,7 +89,7 @@ func TestEncounterOrderViewRebuildDisablesDefeatedRows(t *testing.T) {
 	row := orderBox.Objects[2].(*fyne.Container)
 	buttons := collectButtons(row)
 	nameBtn := requireButtonWithText(t, buttons, "Raider")
-	assert.True(t, nameBtn.Disabled())
+	assert.False(t, nameBtn.Disabled())
 
 	damageBtn := requireButtonWithText(t, buttons, "DMG")
 	healBtn := requireButtonWithText(t, buttons, "HEAL")
@@ -101,7 +99,45 @@ func TestEncounterOrderViewRebuildDisablesDefeatedRows(t *testing.T) {
 	labels := collectLabels(row)
 	assert.Contains(t, labels, "xx")
 	assert.Contains(t, labels, "Defeated")
-	assert.Contains(t, labels, "0/6")
+	hpBars := collectProgressBars(row)
+	require.Len(t, hpBars, 1)
+	require.NotNil(t, hpBars[0].TextFormatter)
+	assert.Equal(t, "0/6", hpBars[0].TextFormatter())
+}
+
+func TestEncounterOrderViewSelectionUpdatesExternalTargetPanel(t *testing.T) {
+	app := test.NewTempApp(t)
+	app.Settings().SetTheme(newPipBoyTheme())
+	enc := testEncounter()
+	selectedIndex := 0
+	expandedCombatantID := "pc-1"
+	selectedLabel := widget.NewLabel("")
+	damageBtn := widget.NewButton("DMG", func() {})
+	healBtn := widget.NewButton("HEAL", func() {})
+	target := newActiveTargetView(selectedLabel, damageBtn, healBtn)
+	view := newEncounterOrderView(
+		&enc,
+		&selectedIndex,
+		&expandedCombatantID,
+		selectedLabel,
+		func(int) {},
+		func(int) {},
+	)
+	view.SetOnSelect(func(idx int, repeatedSelection bool) {
+		target.SetTarget(view.currentEncounter(), idx)
+	})
+	view.Rebuild()
+
+	orderBox := view.OrderBox().(*fyne.Container)
+	row := orderBox.Objects[2].(*fyne.Container)
+	nameBtn := requireButtonWithText(t, collectButtons(row), "Raider")
+	nameBtn.OnTapped()
+
+	assert.Equal(t, 1, selectedIndex)
+	assert.Empty(t, expandedCombatantID)
+	assert.Contains(t, selectedLabel.Text, "Raider")
+	assert.Equal(t, "Raider", target.nameLabel.Text)
+	assert.Equal(t, "NPC", target.sideLabel.Text)
 }
 
 func TestEncounterOrderViewRebuildMarksSelectedRowSeparatelyFromActiveTurn(t *testing.T) {
@@ -158,13 +194,13 @@ func TestEncounterOrderViewRebuildShowsLongRussianCriticalImmuneState(t *testing
 	nameBtn := requireButtonWithText(t, buttons, "Сверхдлинное Имя Персонажа Из Пустоши")
 	assert.False(t, nameBtn.Disabled())
 	labels := collectLabels(row)
-	assert.Contains(t, labels, "2/8")
 	assert.Contains(t, labels, "IMM")
 	assert.Contains(t, labels, "Active, Critical")
 
-	hpLabels := collectLabelsWithText(row, "2/8")
-	require.NotEmpty(t, hpLabels)
-	assert.Equal(t, widget.WarningImportance, hpLabels[0].Importance)
+	hpBars := collectProgressBars(row)
+	require.Len(t, hpBars, 1)
+	require.NotNil(t, hpBars[0].TextFormatter)
+	assert.Equal(t, "2/8", hpBars[0].TextFormatter())
 	poisonLabels := collectLabelsWithText(row, formatCombatantGlobalResistance(enc.Combatants[0], domain.DamagePoison))
 	require.NotEmpty(t, poisonLabels)
 	assert.Equal(t, widget.SuccessImportance, poisonLabels[0].Importance)

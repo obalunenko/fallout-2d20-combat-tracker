@@ -59,18 +59,20 @@ func newActiveTargetView(detailsLabel *widget.Label, damageBtn, healBtn *widget.
 		hpBar:        widget.NewProgressBar(),
 	}
 	view.nameLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	view.nameLabel.Wrapping = fyne.TextWrapWord
+	view.nameLabel.Truncation = fyne.TextTruncateOff
 	view.statusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	view.statusLabel.Alignment = fyne.TextAlignTrailing
 
 	identity := container.NewGridWithColumns(
-		4,
+		3,
 		newActiveTargetMetric("Side", view.sideLabel),
 		newActiveTargetMetric("Level", view.levelLabel),
 		newActiveTargetMetric("XP", view.xpLabel),
-		newActiveTargetMetric("Status", view.statusLabel),
 	)
 	combat := container.NewGridWithColumns(
 		3,
-		newActiveTargetMetricWithBody("HP", view.hpLabel, view.hpBar),
+		newActiveTargetMetricWithBody("HP", nil, view.hpBar),
 		newActiveTargetMetric("Initiative", view.initLabel),
 		newActiveTargetMetric("Defense", view.defenseLabel),
 	)
@@ -85,16 +87,20 @@ func newActiveTargetView(detailsLabel *widget.Label, damageBtn, healBtn *widget.
 	view.accordion = widget.NewAccordion(
 		widget.NewAccordionItem("TARGET DETAILS", container.NewVBox(view.detailsLabel)),
 	)
+	header := container.NewBorder(nil, nil, nil, view.statusLabel, view.nameLabel)
 	view.root = container.NewVBox(
-		view.nameLabel,
+		header,
 		widget.NewSeparator(),
+		newActiveTargetSectionLabel("SIGNAL"),
 		identity,
 		widget.NewSeparator(),
+		newActiveTargetSectionLabel("VITALS"),
 		combat,
+		actions,
 		widget.NewSeparator(),
+		newActiveTargetSectionLabel("RESISTANCES"),
 		resistances,
 		widget.NewSeparator(),
-		actions,
 		view.accordion,
 	)
 	view.SetTarget(nil, 0)
@@ -124,8 +130,10 @@ func (v *activeTargetView) SetTarget(enc *domain.Encounter, idx int) {
 	v.xpLabel.SetText(strconv.Itoa(c.XP))
 	v.statusLabel.SetText(formatCombatantStatus(c))
 	v.statusLabel.Importance = combatantImportance(isCombatantDefeated(c), c.Active, combatantNeedsAttention(c))
-	v.hpLabel.SetText(formatCombatantHP(c))
+	hpText := formatCombatantHP(c)
+	v.hpLabel.SetText(hpText)
 	v.hpLabel.Importance = hpImportance(c)
+	v.hpBar.TextFormatter = func() string { return hpText }
 	v.initLabel.SetText(strconv.Itoa(c.Initiative))
 	v.defenseLabel.SetText(strconv.Itoa(c.Defense))
 	v.poisonLabel.SetText(formatCombatantGlobalResistance(c, domain.DamagePoison))
@@ -161,6 +169,7 @@ func (v *activeTargetView) setEmpty() {
 	v.hpBar.Min = 0
 	v.hpBar.Max = 1
 	v.hpBar.Value = 0
+	v.hpBar.TextFormatter = func() string { return "-" }
 	v.setActionState(false, false)
 	v.refresh()
 }
@@ -213,12 +222,22 @@ func newActiveTargetMetric(title string, value *widget.Label) fyne.CanvasObject 
 	return newActiveTargetMetricWithBody(title, value, nil)
 }
 
+func newActiveTargetSectionLabel(text string) *widget.Label {
+	label := widget.NewLabel("> " + text)
+	label.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	label.Importance = widget.HighImportance
+	return label
+}
+
 func newActiveTargetMetricWithBody(title string, value *widget.Label, body fyne.CanvasObject) fyne.CanvasObject {
 	titleLabel := widget.NewLabel(strings.ToUpper(title))
 	titleLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	titleLabel.Importance = widget.LowImportance
 	if body == nil {
 		return container.NewVBox(titleLabel, value)
+	}
+	if value == nil {
+		return container.NewVBox(titleLabel, body)
 	}
 	return container.NewVBox(titleLabel, value, body)
 }

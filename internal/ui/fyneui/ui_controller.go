@@ -82,7 +82,10 @@ func (c *uiController) newActionButton(label string, role uiActionRole, run func
 }
 
 func (c *uiController) advanceTurn() error {
-	_, err := c.svc.AdvanceTurn(c.ctx)
+	enc, err := c.svc.AdvanceTurn(c.ctx)
+	if err == nil && enc != nil {
+		c.state.selectedIndex = enc.TurnIndex
+	}
 	return err
 }
 

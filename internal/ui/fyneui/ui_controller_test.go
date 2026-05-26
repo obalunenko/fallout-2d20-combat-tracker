@@ -63,6 +63,7 @@ func TestUIControllerNextTurnButtonAdvancesEncounterAndRefreshes(t *testing.T) {
 	controls.nextTurnBtn.OnTapped()
 
 	assert.Equal(t, 1, encounter.TurnIndex)
+	assert.Equal(t, 1, state.selectedIndex)
 	assert.False(t, encounter.Combatants[0].Active)
 	assert.True(t, encounter.Combatants[1].Active)
 	assert.Equal(t, 1, refreshes)

@@ -26,6 +26,8 @@ func TestActiveTargetViewShowsEmptyStateAndDisablesActions(t *testing.T) {
 	assert.True(t, healBtn.Disabled())
 	assert.Equal(t, float64(0), view.hpBar.Value)
 	assert.Equal(t, float64(1), view.hpBar.Max)
+	require.NotNil(t, view.hpBar.TextFormatter)
+	assert.Equal(t, "-", view.hpBar.TextFormatter())
 }
 
 func TestActiveTargetViewShowsSummaryAndKeepsDetailsCollapsible(t *testing.T) {
@@ -50,6 +52,8 @@ func TestActiveTargetViewShowsSummaryAndKeepsDetailsCollapsible(t *testing.T) {
 	assert.Equal(t, "8/8", view.hpLabel.Text)
 	assert.Equal(t, float64(8), view.hpBar.Value)
 	assert.Equal(t, float64(8), view.hpBar.Max)
+	require.NotNil(t, view.hpBar.TextFormatter)
+	assert.Equal(t, "8/8", view.hpBar.TextFormatter())
 	assert.Equal(t, "12", view.initLabel.Text)
 	assert.Equal(t, "0", view.defenseLabel.Text)
 	assert.Equal(t, "0", view.poisonLabel.Text)
@@ -75,6 +79,8 @@ func TestActiveTargetViewDisablesDamageForDefeatedTarget(t *testing.T) {
 	assert.Equal(t, "Defeated", view.statusLabel.Text)
 	assert.Equal(t, "0/6", view.hpLabel.Text)
 	assert.Equal(t, float64(0), view.hpBar.Value)
+	require.NotNil(t, view.hpBar.TextFormatter)
+	assert.Equal(t, "0/6", view.hpBar.TextFormatter())
 	assert.True(t, damageBtn.Disabled())
 	assert.False(t, healBtn.Disabled())
 }
@@ -94,13 +100,15 @@ func TestActiveTargetViewShowsLongRussianCriticalImmuneTarget(t *testing.T) {
 	view.SetTarget(enc, 0)
 
 	assert.Equal(t, "Сверхдлинное Имя Персонажа Из Пустоши", view.nameLabel.Text)
-	assert.Equal(t, fyne.TextWrapOff, view.nameLabel.Wrapping)
-	assert.Equal(t, fyne.TextTruncateClip, view.nameLabel.Truncation)
+	assert.Equal(t, fyne.TextWrapWord, view.nameLabel.Wrapping)
+	assert.Equal(t, fyne.TextTruncateOff, view.nameLabel.Truncation)
 	assert.Equal(t, "Active, Critical", view.statusLabel.Text)
 	assert.Equal(t, widget.HighImportance, view.statusLabel.Importance)
 	assert.Equal(t, "2/8", view.hpLabel.Text)
 	assert.Equal(t, widget.WarningImportance, view.hpLabel.Importance)
 	assert.Equal(t, float64(2), view.hpBar.Value)
+	require.NotNil(t, view.hpBar.TextFormatter)
+	assert.Equal(t, "2/8", view.hpBar.TextFormatter())
 	assert.Equal(t, "IMM", view.poisonLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, view.poisonLabel.Importance)
 	assert.Contains(t, view.detailsLabel.Text, "Сверхдлинное Имя Персонажа")

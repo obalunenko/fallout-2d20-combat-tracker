@@ -35,6 +35,7 @@ func TestMainViewPresenterShowNoCampaignResetsStateAndShowsCampaignGate(t *testi
 	assert.Equal(t, "No active campaign", screen.campRosterOutput.Text)
 	assert.Equal(t, "No active campaign", screen.partyLibraryOutput.Text)
 	assert.Equal(t, "Round: -", screen.roundLabel.Text)
+	assert.Equal(t, "Active: -", screen.activeTurnLabel.Text)
 	assert.Equal(t, "No combatants", screen.selectedLabel.Text)
 	assert.Equal(t, "Party AP: 0", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 0", screen.threatLabel.Text)
@@ -60,6 +61,7 @@ func TestMainViewPresenterShowNoEncounterKeepsCampaignAndShowsEncounterGate(t *t
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "No active encounter\nUse NEW ENCOUNTER or OPEN ENCOUNTER to continue.", screen.campSnapshotLabel.Text)
 	assert.Equal(t, "Round: -", screen.roundLabel.Text)
+	assert.Equal(t, "Active: -", screen.activeTurnLabel.Text)
 	assert.Equal(t, "No combatants", screen.selectedLabel.Text)
 	assert.Equal(t, "Party AP: 0", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 0", screen.threatLabel.Text)
@@ -85,6 +87,7 @@ func TestMainViewPresenterShowActiveEncounterRefreshesEncounterWidgets(t *testin
 	assert.Equal(t, 0, state.selectedIndex)
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "Round: 4", screen.roundLabel.Text)
+	assert.Equal(t, "Active: >> Alpha [PARTY] HP 8/8 DEF 0", screen.activeTurnLabel.Text)
 	assert.Equal(t, "Party AP: 3", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 2", screen.threatLabel.Text)
 	assert.Contains(t, screen.selectedLabel.Text, "Participant Details")
@@ -138,6 +141,7 @@ func newTestMainScreen(labels mainScreenLabels) *mainScreen {
 
 	return &mainScreen{
 		roundLabel:            labels.roundLabel,
+		activeTurnLabel:       labels.activeTurnLabel,
 		selectedLabel:         labels.selectedLabel,
 		partyAPLabel:          labels.partyAPLabel,
 		threatLabel:           labels.threatLabel,

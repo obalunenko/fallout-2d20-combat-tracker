@@ -49,4 +49,17 @@ func TestNewMainScreenMakesActiveTargetCollapsible(t *testing.T) {
 	assert.Equal(t, "TARGET DETAILS", screen.activeTargetAccordion.Items[0].Title)
 	assert.False(t, screen.activeTargetAccordion.Items[0].Open)
 	assert.Equal(t, "No active target", screen.activeTarget.nameLabel.Text)
+	require.NotNil(t, screen.activeTargetPanel)
+	assert.False(t, screen.activeTargetPanel.Visible())
+
+	encounterOrder.Rebuild()
+	alphaBtn := requireButtonWithText(t, collectButtons(encounterOrder.OrderBox()), "Alpha")
+	alphaBtn.OnTapped()
+	assert.True(t, screen.activeTargetPanel.Visible())
+	assert.Equal(t, "Alpha", screen.activeTarget.nameLabel.Text)
+
+	alphaBtn = requireButtonWithText(t, collectButtons(encounterOrder.OrderBox()), "Alpha")
+	alphaBtn.OnTapped()
+	assert.False(t, screen.activeTargetPanel.Visible())
+	assert.Equal(t, "No active target", screen.activeTarget.nameLabel.Text)
 }

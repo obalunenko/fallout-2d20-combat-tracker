@@ -15,30 +15,36 @@ type mainScreenActions struct {
 }
 
 type mainScreenLabels struct {
-	roundLabel    *widget.Label
-	selectedLabel *widget.Label
-	partyAPLabel  *widget.Label
-	threatLabel   *widget.Label
-	logOutput     *widget.Entry
+	roundLabel      *widget.Label
+	activeTurnLabel *widget.Label
+	selectedLabel   *widget.Label
+	partyAPLabel    *widget.Label
+	threatLabel     *widget.Label
+	logOutput       *widget.Entry
 }
 
 func newMainScreenLabels() mainScreenLabels {
 	roundLabel := widget.NewLabel("")
+	activeTurnLabel := widget.NewLabel("")
 	selectedLabel := widget.NewLabel("")
 	partyAPLabel := widget.NewLabel("")
 	threatLabel := widget.NewLabel("")
 
 	roundLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	activeTurnLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	activeTurnLabel.Importance = widget.HighImportance
+	activeTurnLabel.Wrapping = fyne.TextWrapWord
 	selectedLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	partyAPLabel.TextStyle = fyne.TextStyle{Monospace: true}
 	threatLabel.TextStyle = fyne.TextStyle{Monospace: true}
 
 	return mainScreenLabels{
-		roundLabel:    roundLabel,
-		selectedLabel: selectedLabel,
-		partyAPLabel:  partyAPLabel,
-		threatLabel:   threatLabel,
-		logOutput:     newReadOnlyMonospaceOutput("[BOOT] Pip-Boy combat tracker initialized", 18),
+		roundLabel:      roundLabel,
+		activeTurnLabel: activeTurnLabel,
+		selectedLabel:   selectedLabel,
+		partyAPLabel:    partyAPLabel,
+		threatLabel:     threatLabel,
+		logOutput:       newReadOnlyMonospaceOutput("[BOOT] Pip-Boy combat tracker initialized", 18),
 	}
 }
 
@@ -54,6 +60,7 @@ type mainScreenControls struct {
 
 type mainScreen struct {
 	roundLabel          *widget.Label
+	activeTurnLabel     *widget.Label
 	selectedLabel       *widget.Label
 	partyAPLabel        *widget.Label
 	threatLabel         *widget.Label
@@ -68,6 +75,7 @@ type mainScreen struct {
 
 	activeTarget          *activeTargetView
 	activeTargetAccordion *widget.Accordion
+	activeTargetPanel     fyne.CanvasObject
 
 	tabsView        fyne.CanvasObject
 	noEncounterView fyne.CanvasObject
@@ -79,6 +87,7 @@ type mainScreen struct {
 func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, actions mainScreenActions, controls mainScreenControls) *mainScreen {
 	screen := &mainScreen{
 		roundLabel:         labels.roundLabel,
+		activeTurnLabel:    labels.activeTurnLabel,
 		selectedLabel:      labels.selectedLabel,
 		partyAPLabel:       labels.partyAPLabel,
 		threatLabel:        labels.threatLabel,
@@ -93,6 +102,7 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 		"TURN CONTROL",
 		container.NewVBox(
 			screen.roundLabel,
+			screen.activeTurnLabel,
 			controls.nextTurnBtn,
 		),
 	)
@@ -115,16 +125,39 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 		"ACTIVE TARGET",
 		screen.activeTarget.Root(),
 	)
+	selectedPanel.Hide()
+	screen.activeTargetPanel = selectedPanel
+	encounterOrder.SetOnSelect(func(idx int, repeatedSelection bool) {
+		if repeatedSelection && selectedPanel.Visible() {
+			screen.activeTarget.SetTarget(nil, 0)
+			selectedPanel.Hide()
+			selectedPanel.Refresh()
+			return
+		}
+		screen.activeTarget.SetTarget(encounterOrder.currentEncounter(), idx)
+		selectedPanel.Show()
+		selectedPanel.Refresh()
+	})
 	logPanel := pipPanel("DATA LOG", screen.logOutput)
 
-	statTabContent := container.NewVBox(
+	statLeftControls := container.NewVBox(
 		turnPanel,
 		widget.NewSeparator(),
 		resourcesPanel,
 		widget.NewSeparator(),
-		encounterOrderPanel,
 	)
-	statTabScroll := container.NewVScroll(statTabContent)
+	statLeft := container.NewBorder(
+		statLeftControls,
+		nil,
+		nil,
+		nil,
+		container.NewVScroll(encounterOrderPanel),
+	)
+	statTabContent := container.NewHSplit(
+		statLeft,
+		container.NewVScroll(selectedPanel),
+	)
+	statTabContent.Offset = 0.70
 	campActionsPanel := pipPanel(
 		"CAMPAIGN ACTIONS",
 		container.NewGridWithColumns(
@@ -146,15 +179,13 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 			pipPanel("PARTY LIBRARY", screen.partyLibraryOutput),
 		),
 		widget.NewSeparator(),
-		selectedPanel,
-		widget.NewSeparator(),
 		campActionsPanel,
 	)
 	campTabScroll := container.NewVScroll(campTabContent)
 	dataTabContent := container.NewBorder(nil, nil, nil, nil, logPanel)
 
 	tabs := container.NewAppTabs(
-		container.NewTabItem("STAT", container.NewPadded(statTabScroll)),
+		container.NewTabItem("STAT", container.NewPadded(statTabContent)),
 		container.NewTabItem("CAMP", container.NewPadded(campTabScroll)),
 		container.NewTabItem("DATA", container.NewPadded(dataTabContent)),
 	)

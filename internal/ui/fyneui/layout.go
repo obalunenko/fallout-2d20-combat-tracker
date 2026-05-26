@@ -3,6 +3,7 @@ package fyneui
 import (
 	"fmt"
 	"image/color"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -108,6 +109,30 @@ func refreshResourceLabels(enc *domain.Encounter, partyAPLabel, threatLabel *wid
 	}
 	partyAPLabel.SetText(fmt.Sprintf("Party AP: %d", enc.Resources.PartyAP))
 	threatLabel.SetText(fmt.Sprintf("GM Threat: %d", enc.Resources.GMThreat))
+}
+
+func refreshActiveTurnLabel(enc *domain.Encounter, activeTurnLabel *widget.Label) {
+	if activeTurnLabel == nil {
+		return
+	}
+	activeTurnLabel.SetText(formatActiveTurnSummary(enc))
+}
+
+func formatActiveTurnSummary(enc *domain.Encounter) string {
+	if enc == nil || len(enc.Combatants) == 0 {
+		return "Active: -"
+	}
+	active := enc.ActiveCombatant()
+	if active == nil {
+		return "Active: -"
+	}
+	return fmt.Sprintf(
+		"Active: >> %s [%s] HP %s DEF %d",
+		encounterDisplayNameByID(enc, active.ID),
+		strings.ToUpper(string(active.Side)),
+		formatCombatantHP(*active),
+		active.Defense,
+	)
 }
 
 func newScanlineOverlay() fyne.CanvasObject {

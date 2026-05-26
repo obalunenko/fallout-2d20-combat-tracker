@@ -99,6 +99,7 @@ func TestMainViewRefresherShowsActiveEncounterAndLogs(t *testing.T) {
 	assert.Equal(t, 0, state.selectedIndex)
 	assert.Empty(t, state.expandedCombatantID)
 	assert.Equal(t, "Round: 2", screen.roundLabel.Text)
+	assert.Equal(t, "Active: >> Alpha [PARTY] HP 8/8 DEF 0", screen.activeTurnLabel.Text)
 	assert.Equal(t, "Party AP: 3", screen.partyAPLabel.Text)
 	assert.Equal(t, "GM Threat: 4", screen.threatLabel.Text)
 	assert.Contains(t, screen.selectedLabel.Text, "Participant Details")
