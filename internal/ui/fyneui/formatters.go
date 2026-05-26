@@ -30,43 +30,6 @@ func formatDRValue(value int, immune bool) string {
 	return strconv.Itoa(value)
 }
 
-func formatTorsoResistanceLines(c domain.Combatant) string {
-	var b strings.Builder
-	for _, damageType := range domain.LocationDamageTypes() {
-		if b.Len() > 0 {
-			b.WriteString("\n")
-		}
-		fmt.Fprintf(
-			&b,
-			"DR %s: %s",
-			damageTitleLabel(damageType),
-			formatCombatantLocationResistance(c, damageType, domain.BodyTorso),
-		)
-	}
-	fmt.Fprintf(&b, "\nDR Poison: %s", formatCombatantGlobalResistance(c, domain.DamagePoison))
-	return b.String()
-}
-
-func formatCompactBodyResistanceLines(c domain.Combatant) string {
-	var b strings.Builder
-	for _, damageType := range domain.LocationDamageTypes() {
-		for _, location := range domain.BodyLocations() {
-			if b.Len() > 0 {
-				b.WriteString("\n")
-			}
-			fmt.Fprintf(
-				&b,
-				"%s %s: %s",
-				damageAbbreviation(damageType),
-				bodyLocationTitle(location),
-				formatCombatantLocationResistance(c, damageType, location),
-			)
-		}
-	}
-	fmt.Fprintf(&b, "\nDR Poison: %s", formatCombatantGlobalResistance(c, domain.DamagePoison))
-	return b.String()
-}
-
 func formatBodyResistanceTable(c domain.Combatant) string {
 	damageTypes := domain.LocationDamageTypes()
 	locations := domain.BodyLocations()
