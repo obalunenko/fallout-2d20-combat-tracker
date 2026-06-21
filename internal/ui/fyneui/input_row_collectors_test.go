@@ -2,6 +2,7 @@ package fyneui
 
 import (
 	"testing"
+	"time"
 
 	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,98 @@ import (
 
 	"github.com/obalunenko/fallout/internal/domain"
 )
+
+func TestCollectDraftDifficultyFromRowsUsesPartyLevelsAndMonsterQuantity(t *testing.T) {
+	test.NewTempApp(t)
+	rows := []*combatantInputRow{
+		newCombatantInputRow("party", func(*combatantInputRow) {}, nil),
+		newCombatantInputRow("party", func(*combatantInputRow) {}, nil),
+		newCombatantInputRow("npc", func(*combatantInputRow) {}, nil),
+	}
+	fillCombatantInputRow(rows[0], domain.Combatant{ID: "char-1", Name: "Vault Dweller", Level: 2}, domain.SideParty, 1)
+	fillCombatantInputRow(rows[1], domain.Combatant{ID: "char-2", Name: "Companion", Level: 3}, domain.SideParty, 1)
+	fillCombatantInputRow(rows[2], domain.Combatant{Name: "Raider", XP: 40}, domain.SideNPC, 3)
+
+	metrics := collectDraftDifficultyFromRows(rows)
+
+	assert.Equal(t, domain.EncounterDifficultyHard, metrics.Label)
+	assert.Equal(t, 2, metrics.PartyCount)
+	assert.Equal(t, 3, metrics.AveragePCLevel)
+	assert.Equal(t, 120, metrics.TotalMonsterXP)
+	assert.Equal(t, 60.0, metrics.XPBaseline)
+	assert.Equal(t, 5, metrics.EncounterLevel)
+	assert.Equal(t, 2, metrics.Difference)
+}
+
+func TestCollectDraftDifficultyFromRowsCalculatesWithPlayersAndNoMonsters(t *testing.T) {
+	test.NewTempApp(t)
+	rows := []*combatantInputRow{
+		newCombatantInputRow("party", func(*combatantInputRow) {}, nil),
+		newCombatantInputRow("party", func(*combatantInputRow) {}, nil),
+	}
+	fillCombatantInputRow(rows[0], domain.Combatant{ID: "char-1", Name: "Vault Dweller", Level: 5}, domain.SideParty, 1)
+	fillCombatantInputRow(rows[1], domain.Combatant{ID: "char-2", Name: "Companion", Level: 5}, domain.SideParty, 1)
+
+	metrics := collectDraftDifficultyFromRows(rows)
+
+	assert.Equal(t, domain.EncounterDifficultyTrivial, metrics.Label)
+	assert.Equal(t, 0, metrics.TotalMonsterXP)
+	assert.Equal(t, 1, metrics.EncounterLevel)
+	assert.Equal(t, -4, metrics.Difference)
+}
+
+func TestCollectDraftDifficultyFromRowsReturnsUnavailableForInvalidDraftInput(t *testing.T) {
+	test.NewTempApp(t)
+	party := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(party, domain.Combatant{ID: "char-1", Name: "Vault Dweller", Level: 2}, domain.SideParty, 1)
+	monster := newCombatantInputRow("npc", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(monster, domain.Combatant{Name: "Raider", XP: 40}, domain.SideNPC, 1)
+	monster.number.SetText("nope")
+
+	metrics := collectDraftDifficultyFromRows([]*combatantInputRow{party, monster})
+
+	assert.Equal(t, domain.EncounterDifficultyUnknown, metrics.Label)
+	assert.Contains(t, metrics.UnavailableReason, "invalid quantity")
+}
+
+func TestCollectDraftDifficultyUnavailableDoesNotReplaceSaveValidation(t *testing.T) {
+	test.NewTempApp(t)
+	party := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(party, domain.Combatant{ID: "char-1", Name: "Vault Dweller", Level: 2, Initiative: 10, HP: 8, MaxHP: 8}, domain.SideParty, 1)
+	monster := newCombatantInputRow("npc", func(*combatantInputRow) {}, nil)
+	fillCombatantInputRow(monster, domain.Combatant{Name: "Raider", Level: 1, XP: 40, Initiative: 8, HP: 6, MaxHP: 6}, domain.SideNPC, 1)
+	monster.xp.SetText("bad")
+
+	metrics := collectDraftDifficultyFromRows([]*combatantInputRow{party, monster})
+	_, saveErr := collectCombatantsFromRows([]*combatantInputRow{party, monster})
+
+	assert.Equal(t, domain.EncounterDifficultyUnknown, metrics.Label)
+	assert.Contains(t, metrics.UnavailableReason, "invalid XP")
+	require.Error(t, saveErr)
+	assert.Contains(t, saveErr.Error(), "invalid XP")
+}
+
+func TestCollectDraftDifficultyFromRowsRecalculatesTabletopScaleQuickly(t *testing.T) {
+	test.NewTempApp(t)
+	rows := make([]*combatantInputRow, 0, 12)
+	for i := 0; i < 4; i++ {
+		row := newCombatantInputRow("party", func(*combatantInputRow) {}, nil)
+		fillCombatantInputRow(row, domain.Combatant{ID: "char", Name: "Party", Level: 3}, domain.SideParty, 1)
+		rows = append(rows, row)
+	}
+	for i := 0; i < 8; i++ {
+		row := newCombatantInputRow("npc", func(*combatantInputRow) {}, nil)
+		fillCombatantInputRow(row, domain.Combatant{Name: "Raider", XP: 20}, domain.SideNPC, 1)
+		rows = append(rows, row)
+	}
+
+	start := time.Now()
+	metrics := collectDraftDifficultyFromRows(rows)
+	elapsed := time.Since(start)
+
+	assert.Equal(t, domain.EncounterDifficultyAverage, metrics.Label)
+	assert.Less(t, elapsed, 100*time.Millisecond)
+}
 
 func TestCollectCombatantsFromRowsExpandsNPCCount(t *testing.T) {
 	test.NewTempApp(t)

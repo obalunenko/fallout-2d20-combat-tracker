@@ -24,6 +24,9 @@ Read the current feature plan and the constitution before changing code:
 - `specs/001-existing-combat-tracker-baseline/spec.md`
 - `specs/001-existing-combat-tracker-baseline/plan.md`
 - `specs/001-existing-combat-tracker-baseline/tasks.md`
+- `specs/002-dynamic-encounter-difficulty/spec.md`
+- `specs/002-dynamic-encounter-difficulty/plan.md`
+- `specs/002-dynamic-encounter-difficulty/tasks.md`
 <!-- SPECKIT END -->
 
 ## Project Boundaries

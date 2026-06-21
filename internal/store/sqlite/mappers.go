@@ -180,20 +180,20 @@ func encounterFromByIDRow(r dbgen.GetEncounterByIDByCampaignIDRow, combatants []
 
 func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow, metrics domain.EncounterDifficultyMetrics) domain.EncounterSummary {
 	return domain.EncounterSummary{
-		ID:              r.ID,
-		CampaignID:      r.CampaignID,
-		Name:            r.Name,
-		Round:           int(r.Round),
-		Combatants:      int(r.Combatants),
-		Difficulty:      string(metrics.Label),
-		DifficultyScore: metrics.Score,
-		PartyCount:      metrics.PartyCount,
-		PartyAvgLevel:   metrics.PartyAvgLevel,
-		PartyXPBudget:   metrics.PartyXPBudget,
-		EnemyCount:      metrics.EnemyCount,
-		EnemyAvgLevel:   metrics.EnemyAvgLevel,
-		EnemyTotalXP:    metrics.EnemyTotalXP,
-		UpdatedAt:       r.UpdatedAt,
+		ID:                          r.ID,
+		CampaignID:                  r.CampaignID,
+		Name:                        r.Name,
+		Round:                       int(r.Round),
+		Combatants:                  int(r.Combatants),
+		Difficulty:                  string(metrics.Label),
+		DifficultyUnavailableReason: metrics.UnavailableReason,
+		PartyCount:                  metrics.PartyCount,
+		AveragePCLevel:              metrics.AveragePCLevel,
+		TotalMonsterXP:              metrics.TotalMonsterXP,
+		XPBaseline:                  metrics.XPBaseline,
+		EncounterLevel:              metrics.EncounterLevel,
+		DifficultyDifference:        metrics.Difference,
+		UpdatedAt:                   r.UpdatedAt,
 	}
 }
 

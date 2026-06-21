@@ -1,6 +1,7 @@
 package fyneui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -239,46 +240,55 @@ func enableCombatantInputRowStats(row *combatantInputRow) {
 	row.xp.Enable()
 }
 
-func collectCombatantsPreviewFromRows(rows []*combatantInputRow) []domain.Combatant {
+func collectDraftDifficultyFromRows(rows []*combatantInputRow) domain.EncounterDifficultyMetrics {
 	preview := make([]domain.Combatant, 0, len(rows))
 	for _, row := range rows {
+		if row == nil {
+			continue
+		}
 		name := strings.TrimSpace(row.name.Text)
 		if name == "" {
 			continue
 		}
 
-		side := domain.SideNPC
 		if row.side.Selected == "party" {
-			side = domain.SideParty
-		}
-
-		level := 1
-		if parsed, err := strconv.Atoi(strings.TrimSpace(row.level.Text)); err == nil && parsed > 0 {
-			level = parsed
-		}
-
-		count := 1
-		if side == domain.SideNPC {
-			if parsed, err := strconv.Atoi(strings.TrimSpace(row.number.Text)); err == nil && parsed > 0 {
-				count = parsed
+			levelText := strings.TrimSpace(row.level.Text)
+			level, err := strconv.Atoi(levelText)
+			if err != nil || level < 1 {
+				return unavailableDraftDifficulty(fmt.Sprintf("party member %q has invalid level", name))
 			}
-		}
-
-		xp := 0
-		if side == domain.SideNPC {
-			if parsed, err := strconv.Atoi(strings.TrimSpace(row.xp.Text)); err == nil && parsed >= 0 {
-				xp = parsed
-			}
-		}
-
-		for i := 0; i < count; i++ {
 			preview = append(preview, domain.Combatant{
 				Name:  name,
-				Side:  side,
+				Side:  domain.SideParty,
 				Level: level,
-				XP:    xp,
 			})
+			continue
 		}
+
+		countText := strings.TrimSpace(row.number.Text)
+		count, err := strconv.Atoi(countText)
+		if err != nil || count < 1 {
+			return unavailableDraftDifficulty(fmt.Sprintf("monster %q has invalid quantity", name))
+		}
+
+		xpText := strings.TrimSpace(row.xp.Text)
+		xp, err := strconv.Atoi(xpText)
+		if err != nil || xp < 0 {
+			return unavailableDraftDifficulty(fmt.Sprintf("monster %q has invalid XP", name))
+		}
+
+		preview = append(preview, domain.Combatant{
+			Name: name,
+			Side: domain.SideNPC,
+			XP:   xp * count,
+		})
 	}
-	return preview
+	return domain.EvaluateEncounterDifficulty(preview)
+}
+
+func unavailableDraftDifficulty(reason string) domain.EncounterDifficultyMetrics {
+	return domain.EncounterDifficultyMetrics{
+		Label:             domain.EncounterDifficultyUnknown,
+		UnavailableReason: reason,
+	}
 }

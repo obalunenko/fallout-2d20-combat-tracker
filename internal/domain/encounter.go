@@ -138,20 +138,20 @@ type Encounter struct {
 }
 
 type EncounterSummary struct {
-	ID              string
-	CampaignID      string
-	Name            string
-	Round           int
-	Combatants      int
-	UpdatedAt       time.Time
-	Difficulty      string
-	DifficultyScore float64
-	PartyCount      int
-	PartyAvgLevel   float64
-	PartyXPBudget   int
-	EnemyCount      int
-	EnemyAvgLevel   float64
-	EnemyTotalXP    int
+	ID                          string
+	CampaignID                  string
+	Name                        string
+	Round                       int
+	Combatants                  int
+	UpdatedAt                   time.Time
+	Difficulty                  string
+	DifficultyUnavailableReason string
+	PartyCount                  int
+	AveragePCLevel              int
+	TotalMonsterXP              int
+	XPBaseline                  float64
+	EncounterLevel              int
+	DifficultyDifference        int
 }
 
 type EncounterLog struct {
@@ -353,75 +353,71 @@ type EncounterDifficulty string
 const (
 	EncounterDifficultyUnknown EncounterDifficulty = "Unknown"
 	EncounterDifficultyTrivial EncounterDifficulty = "Trivial"
-	EncounterDifficultyEasy    EncounterDifficulty = "Easy"
-	EncounterDifficultyNormal  EncounterDifficulty = "Normal"
+	EncounterDifficultySimple  EncounterDifficulty = "Simple"
+	EncounterDifficultyAverage EncounterDifficulty = "Average"
 	EncounterDifficultyHard    EncounterDifficulty = "Hard"
 	EncounterDifficultyDeadly  EncounterDifficulty = "Deadly"
 )
 
 type EncounterDifficultyMetrics struct {
-	Label         EncounterDifficulty
-	Score         float64
-	PartyCount    int
-	PartyAvgLevel float64
-	PartyXPBudget int
-	EnemyCount    int
-	EnemyAvgLevel float64
-	EnemyTotalXP  int
+	Label             EncounterDifficulty
+	UnavailableReason string
+	PartyCount        int
+	AveragePCLevel    int
+	TotalMonsterXP    int
+	XPBaseline        float64
+	EncounterLevel    int
+	Difference        int
 }
 
 func EvaluateEncounterDifficulty(combatants []Combatant) EncounterDifficultyMetrics {
 	metrics := EncounterDifficultyMetrics{
-		Label: EncounterDifficultyUnknown,
+		Label:             EncounterDifficultyUnknown,
+		UnavailableReason: "add at least one party member",
 	}
 	if len(combatants) == 0 {
 		return metrics
 	}
 
 	partyLevelSum := 0
-	enemyLevelSum := 0
 	for i := range combatants {
 		c := combatants[i]
 		if c.Side == SideParty {
+			if c.Level < 1 {
+				metrics.UnavailableReason = fmt.Sprintf("party member %q has invalid level", c.Name)
+				return metrics
+			}
 			metrics.PartyCount++
 			partyLevelSum += c.Level
 			continue
 		}
-		metrics.EnemyCount++
-		enemyLevelSum += c.Level
-		metrics.EnemyTotalXP += c.XP
+		if c.XP < 0 {
+			metrics.UnavailableReason = fmt.Sprintf("monster %q has invalid XP", c.Name)
+			return metrics
+		}
+		metrics.TotalMonsterXP += c.XP
 	}
-
-	if metrics.PartyCount > 0 {
-		metrics.PartyAvgLevel = float64(partyLevelSum) / float64(metrics.PartyCount)
-	}
-	if metrics.EnemyCount > 0 {
-		metrics.EnemyAvgLevel = float64(enemyLevelSum) / float64(metrics.EnemyCount)
-	}
-
-	if metrics.PartyCount == 0 || metrics.EnemyCount == 0 {
+	if metrics.PartyCount == 0 {
 		return metrics
 	}
 
-	// Fallout 2d20 encounter budget baseline:
-	// party budget = (average party level + 1) * number of players * 10
-	// Difficulty compares total NPC XP against that budget.
-	partyBudget := (metrics.PartyAvgLevel + 1) * float64(metrics.PartyCount) * 10
-	if partyBudget <= 0 {
-		return metrics
+	metrics.AveragePCLevel = int(math.Ceil(float64(partyLevelSum) / float64(metrics.PartyCount)))
+	metrics.XPBaseline = float64(metrics.TotalMonsterXP) / float64(metrics.PartyCount)
+	metrics.EncounterLevel = int(math.Floor((metrics.XPBaseline - 10) / 10))
+	if metrics.EncounterLevel < 1 {
+		metrics.EncounterLevel = 1
 	}
-	metrics.PartyXPBudget = int(math.Round(partyBudget))
-	score := float64(metrics.EnemyTotalXP) / partyBudget
-	metrics.Score = math.Round(score*100) / 100
+	metrics.Difference = metrics.EncounterLevel - metrics.AveragePCLevel
+	metrics.UnavailableReason = ""
 
 	switch {
-	case score < 0.5:
+	case metrics.Difference < -2:
 		metrics.Label = EncounterDifficultyTrivial
-	case score < 1.0:
-		metrics.Label = EncounterDifficultyEasy
-	case score < 1.5:
-		metrics.Label = EncounterDifficultyNormal
-	case score <= 2.25:
+	case metrics.Difference <= -1:
+		metrics.Label = EncounterDifficultySimple
+	case metrics.Difference <= 1:
+		metrics.Label = EncounterDifficultyAverage
+	case metrics.Difference <= 5:
 		metrics.Label = EncounterDifficultyHard
 	default:
 		metrics.Label = EncounterDifficultyDeadly

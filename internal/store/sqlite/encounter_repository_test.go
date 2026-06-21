@@ -341,13 +341,12 @@ func TestEncounterStoreListCalculatesDifficultyMetrics(t *testing.T) {
 	}
 	require.NotNil(t, summary)
 	assert.Equal(t, "Hard", summary.Difficulty)
-	assert.Equal(t, 2.0, summary.DifficultyScore)
 	assert.Equal(t, 2, summary.PartyCount)
-	assert.Equal(t, 2.0, summary.PartyAvgLevel)
-	assert.Equal(t, 60, summary.PartyXPBudget)
-	assert.Equal(t, 2, summary.EnemyCount)
-	assert.Equal(t, 2.0, summary.EnemyAvgLevel)
-	assert.Equal(t, 120, summary.EnemyTotalXP)
+	assert.Equal(t, 2, summary.AveragePCLevel)
+	assert.Equal(t, 120, summary.TotalMonsterXP)
+	assert.Equal(t, 60.0, summary.XPBaseline)
+	assert.Equal(t, 5, summary.EncounterLevel)
+	assert.Equal(t, 3, summary.DifficultyDifference)
 }
 
 func TestEncounterStoreUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {

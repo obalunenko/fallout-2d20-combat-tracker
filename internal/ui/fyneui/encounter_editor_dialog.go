@@ -38,8 +38,7 @@ func showEncounterEditorDialog(
 	difficultyPreview.Importance = widget.WarningImportance
 
 	refreshDifficultyPreview := func() {
-		preview := collectCombatantsPreviewFromRows(rows)
-		metrics := domain.EvaluateEncounterDifficulty(preview)
+		metrics := collectDraftDifficultyFromRows(rows)
 		difficultyPreview.SetText(formatDifficultyPreview(metrics))
 	}
 	headers := container.NewGridWithColumns(

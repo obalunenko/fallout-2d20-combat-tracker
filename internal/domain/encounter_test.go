@@ -303,36 +303,132 @@ func TestHealValidation(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestEvaluateEncounterDifficultyUnknownWhenSidesMissing(t *testing.T) {
+func TestEvaluateEncounterDifficultyUnknownWhenPlayersMissingOrInvalid(t *testing.T) {
 	t.Parallel()
 
-	onlyParty := EvaluateEncounterDifficulty([]Combatant{
-		{Name: "Hero", Side: SideParty, Level: 2},
-	})
-	assert.Equal(t, EncounterDifficultyUnknown, onlyParty.Label)
-
-	onlyNPC := EvaluateEncounterDifficulty([]Combatant{
+	noParty := EvaluateEncounterDifficulty([]Combatant{
 		{Name: "Raider", Side: SideNPC, Level: 2, XP: 30},
 	})
-	assert.Equal(t, EncounterDifficultyUnknown, onlyNPC.Label)
+	assert.Equal(t, EncounterDifficultyUnknown, noParty.Label)
+	assert.Contains(t, noParty.UnavailableReason, "party member")
+
+	invalidParty := EvaluateEncounterDifficulty([]Combatant{
+		{Name: "Hero", Side: SideParty, Level: 0},
+	})
+	assert.Equal(t, EncounterDifficultyUnknown, invalidParty.Label)
+	assert.Contains(t, invalidParty.UnavailableReason, "invalid level")
 }
 
-func TestEvaluateEncounterDifficultyUsesPartyAndEnemyStats(t *testing.T) {
+func TestEvaluateEncounterDifficultyUsesRequestedFormula(t *testing.T) {
 	t.Parallel()
 
-	metrics := EvaluateEncounterDifficulty([]Combatant{
-		{Name: "P1", Side: SideParty, Level: 2},
-		{Name: "P2", Side: SideParty, Level: 2},
-		{Name: "Raider A", Side: SideNPC, Level: 2, XP: 60},
-		{Name: "Raider B", Side: SideNPC, Level: 2, XP: 60},
-	})
+	tests := []struct {
+		name               string
+		levels             []int
+		monsterXP          []int
+		wantAveragePCLevel int
+		wantTotalMonsterXP int
+		wantXPBaseline     float64
+		wantEncounterLevel int
+		wantDifference     int
+		wantLabel          EncounterDifficulty
+	}{
+		{
+			name:               "zero monster XP uses minimum encounter level",
+			levels:             []int{5, 5},
+			wantAveragePCLevel: 5,
+			wantXPBaseline:     0,
+			wantEncounterLevel: 1,
+			wantDifference:     -4,
+			wantLabel:          EncounterDifficultyTrivial,
+		},
+		{
+			name:               "simple lower boundary",
+			levels:             []int{3, 3},
+			monsterXP:          []int{20},
+			wantAveragePCLevel: 3,
+			wantTotalMonsterXP: 20,
+			wantXPBaseline:     10,
+			wantEncounterLevel: 1,
+			wantDifference:     -2,
+			wantLabel:          EncounterDifficultySimple,
+		},
+		{
+			name:               "average PC level rounds up",
+			levels:             []int{2, 3},
+			monsterXP:          []int{70},
+			wantAveragePCLevel: 3,
+			wantTotalMonsterXP: 70,
+			wantXPBaseline:     35,
+			wantEncounterLevel: 2,
+			wantDifference:     -1,
+			wantLabel:          EncounterDifficultySimple,
+		},
+		{
+			name:               "average upper boundary",
+			levels:             []int{1, 1},
+			monsterXP:          []int{60},
+			wantAveragePCLevel: 1,
+			wantTotalMonsterXP: 60,
+			wantXPBaseline:     30,
+			wantEncounterLevel: 2,
+			wantDifference:     1,
+			wantLabel:          EncounterDifficultyAverage,
+		},
+		{
+			name:               "hard lower boundary",
+			levels:             []int{1, 1},
+			monsterXP:          []int{80},
+			wantAveragePCLevel: 1,
+			wantTotalMonsterXP: 80,
+			wantXPBaseline:     40,
+			wantEncounterLevel: 3,
+			wantDifference:     2,
+			wantLabel:          EncounterDifficultyHard,
+		},
+		{
+			name:               "deadly above hard boundary",
+			levels:             []int{1, 1},
+			monsterXP:          []int{160},
+			wantAveragePCLevel: 1,
+			wantTotalMonsterXP: 160,
+			wantXPBaseline:     80,
+			wantEncounterLevel: 7,
+			wantDifference:     6,
+			wantLabel:          EncounterDifficultyDeadly,
+		},
+	}
 
-	assert.Equal(t, EncounterDifficultyHard, metrics.Label)
-	assert.Equal(t, 2, metrics.PartyCount)
-	assert.Equal(t, 2.0, metrics.PartyAvgLevel)
-	assert.Equal(t, 60, metrics.PartyXPBudget)
-	assert.Equal(t, 2, metrics.EnemyCount)
-	assert.Equal(t, 2.0, metrics.EnemyAvgLevel)
-	assert.Equal(t, 120, metrics.EnemyTotalXP)
-	assert.Equal(t, 2.0, metrics.Score)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			combatants := make([]Combatant, 0, len(tt.levels)+len(tt.monsterXP))
+			for _, level := range tt.levels {
+				combatants = append(combatants, Combatant{
+					Name:  "PC",
+					Side:  SideParty,
+					Level: level,
+				})
+			}
+			for _, xp := range tt.monsterXP {
+				combatants = append(combatants, Combatant{
+					Name: "NPC",
+					Side: SideNPC,
+					XP:   xp,
+				})
+			}
+
+			metrics := EvaluateEncounterDifficulty(combatants)
+
+			assert.Equal(t, tt.wantLabel, metrics.Label)
+			assert.Empty(t, metrics.UnavailableReason)
+			assert.Equal(t, len(tt.levels), metrics.PartyCount)
+			assert.Equal(t, tt.wantAveragePCLevel, metrics.AveragePCLevel)
+			assert.Equal(t, tt.wantTotalMonsterXP, metrics.TotalMonsterXP)
+			assert.Equal(t, tt.wantXPBaseline, metrics.XPBaseline)
+			assert.Equal(t, tt.wantEncounterLevel, metrics.EncounterLevel)
+			assert.Equal(t, tt.wantDifference, metrics.Difference)
+		})
+	}
 }
