@@ -31,6 +31,25 @@ Use `NEW ENCOUNTER` in the app header, then:
 - for creatures you can enable `torso-only` to use simplified body setup (torso stats only)
 - in DR fields you can enter a number or `IMM` for immunity
 
+## Encounter Difficulty
+
+Encounter list and editor summaries estimate difficulty when an encounter has at least one party combatant and at least one NPC. If either side is missing, difficulty is shown as `Unknown`.
+
+The score is based on total enemy XP compared to a party XP budget:
+
+```text
+party budget = (average party level + 1) * party combatant count * 10
+difficulty score = enemy total XP / party budget
+```
+
+Labels use these score bands:
+
+- `< 0.5`: `Trivial`
+- `< 1.0`: `Easy`
+- `< 1.5`: `Normal`
+- `<= 2.25`: `Hard`
+- `> 2.25`: `Deadly`
+
 ## Storage
 
 - DB path: `~/.config/fallout-tracker/tracker.db` by default

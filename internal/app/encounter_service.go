@@ -119,6 +119,9 @@ func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounte
 	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
 		return nil, err
 	}
+	if err := s.resolveLinkedPartyCombatants(ctx, cmd.Combatants); err != nil {
+		return nil, err
+	}
 	enc := domain.NewEncounter(cmd.ID, cmd.Name, cmd.Combatants)
 	enc.CampaignID = activeCampaign.ID
 	enc.Resources = activeCampaign.Resources
@@ -150,6 +153,9 @@ func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounte
 		return nil, fmt.Errorf("cannot update encounter without combatants")
 	}
 	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
+		return nil, err
+	}
+	if err := s.resolveLinkedPartyCombatants(ctx, cmd.Combatants); err != nil {
 		return nil, err
 	}
 	enc, err := s.repo.UpdateEncounter(ctx, cmd.EncounterID, cmd.Name, cmd.Combatants)
@@ -282,4 +288,65 @@ func validateEncounterCombatant(index int, c domain.Combatant) error {
 		RequireSide: true,
 		MinLevel:    0,
 	})
+}
+
+func (s *Service) resolveLinkedPartyCombatants(ctx context.Context, combatants []domain.Combatant) error {
+	if !hasLinkedPartyCombatant(combatants) {
+		return nil
+	}
+
+	partyMembers, err := s.repo.ListPartyMembers(ctx)
+	if err != nil {
+		return err
+	}
+	partyByID := make(map[string]domain.Combatant, len(partyMembers)*2)
+	for _, member := range partyMembers {
+		if id := strings.TrimSpace(member.PlayerCharacterID); id != "" {
+			partyByID[id] = member
+		}
+		if id := strings.TrimSpace(member.ID); id != "" {
+			partyByID[id] = member
+		}
+	}
+
+	for i := range combatants {
+		playerCharacterID := linkedPlayerCharacterID(combatants[i])
+		if playerCharacterID == "" {
+			continue
+		}
+		member, ok := partyByID[playerCharacterID]
+		if !ok {
+			continue
+		}
+
+		encounterCombatantID := strings.TrimSpace(combatants[i].ID)
+		member.PlayerCharacterID = playerCharacterID
+		member.Active = combatants[i].Active
+		if encounterCombatantID != "" && encounterCombatantID != playerCharacterID {
+			member.ID = encounterCombatantID
+		} else {
+			member.ID = playerCharacterID
+		}
+		combatants[i] = member
+	}
+	return nil
+}
+
+func hasLinkedPartyCombatant(combatants []domain.Combatant) bool {
+	for _, combatant := range combatants {
+		if linkedPlayerCharacterID(combatant) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func linkedPlayerCharacterID(combatant domain.Combatant) string {
+	if combatant.Side != domain.SideParty {
+		return ""
+	}
+	if playerCharacterID := strings.TrimSpace(combatant.PlayerCharacterID); playerCharacterID != "" {
+		return playerCharacterID
+	}
+	return strings.TrimSpace(combatant.ID)
 }
