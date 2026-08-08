@@ -49,7 +49,7 @@ func showCampaignEditorDialog(
 		newTableHeaderLabel("HP Max"),
 		newTableHeaderLabel("DEF Base"),
 		newTableHeaderLabel("DR Poison"),
-		newTableHeaderLabel("DR Details"),
+		newTableHeaderLabel("Details"),
 		newTableHeaderLabel("Active"),
 		newTableHeaderLabel("Action"),
 	)
@@ -57,15 +57,7 @@ func showCampaignEditorDialog(
 	addRow := func() *campaignPlayerInputRow {
 		row := newCampaignPlayerInputRow(func(target *campaignPlayerInputRow) {
 			if len(rows) == 1 {
-				target.playerName.SetText("")
-				target.characterName.SetText("")
-				target.level.SetText("1")
-				target.initiative.SetText("1")
-				target.hp.SetText("1")
-				target.hpMax.SetText("1")
-				target.defense.SetText("0")
-				target.resistance.reset()
-				target.active.SetChecked(true)
+				resetCampaignPlayerInputRow(target)
 				return
 			}
 			filtered := make([]*campaignPlayerInputRow, 0, len(rows)-1)
@@ -88,22 +80,7 @@ func showCampaignEditorDialog(
 	} else {
 		for _, p := range initialPlayers {
 			row := addRow()
-			row.playerName.SetText(p.PlayerName)
-			row.characterName.SetText(p.Character.Name)
-			row.level.SetText(strconv.Itoa(p.Character.Level))
-			row.initiative.SetText(strconv.Itoa(p.Character.Initiative))
-			row.hp.SetText(strconv.Itoa(p.Character.HP))
-			maxHP := p.Character.MaxHP
-			if maxHP <= 0 {
-				maxHP = p.Character.HP
-			}
-			if maxHP <= 0 {
-				maxHP = 1
-			}
-			row.hpMax.SetText(strconv.Itoa(maxHP))
-			row.defense.SetText(strconv.Itoa(p.Character.Defense))
-			row.resistance.setProfile(p.Character.ResistanceProfile())
-			row.active.SetChecked(!p.Inactive)
+			populateCampaignPlayerInputRow(row, p)
 		}
 	}
 
@@ -159,6 +136,49 @@ func showCampaignEditorDialog(
 	editorDialog.SetButtons([]fyne.CanvasObject{cancelBtn, submitBtn})
 	editorDialog.Resize(dialogSize)
 	editorDialog.Show()
+}
+
+func resetCampaignPlayerInputRow(row *campaignPlayerInputRow) {
+	row.playerName.SetText("")
+	row.characterName.SetText("")
+	row.level.SetText("1")
+	row.initiative.SetText("1")
+	row.hp.SetText("1")
+	row.hpMax.SetText("1")
+	row.defense.SetText("0")
+	row.notes.SetText("")
+	for _, attribute := range domain.SpecialAttributes() {
+		row.special[attribute].SetText("1")
+	}
+	row.resistance.reset()
+	row.active.SetChecked(true)
+}
+
+func populateCampaignPlayerInputRow(row *campaignPlayerInputRow, player domain.NewCampaignPlayer) {
+	row.playerName.SetText(player.PlayerName)
+	row.characterName.SetText(player.Character.Name)
+	row.level.SetText(strconv.Itoa(player.Character.Level))
+	row.initiative.SetText(strconv.Itoa(player.Character.Initiative))
+	row.hp.SetText(strconv.Itoa(player.Character.HP))
+	maxHP := player.Character.MaxHP
+	if maxHP <= 0 {
+		maxHP = player.Character.HP
+	}
+	if maxHP <= 0 {
+		maxHP = 1
+	}
+	row.hpMax.SetText(strconv.Itoa(maxHP))
+	row.defense.SetText(strconv.Itoa(player.Character.Defense))
+	row.notes.SetText(player.Notes)
+	special := player.Special
+	if special.IsZero() {
+		special = domain.DefaultSpecialValues()
+	}
+	for _, attribute := range domain.SpecialAttributes() {
+		row.special[attribute].SetText(strconv.Itoa(special.Value(attribute)))
+	}
+	row.resistance.setProfile(player.Character.ResistanceProfile())
+	row.active.SetChecked(!player.Inactive)
 }
 
 func showCreateCampaignDialogWindow(ctx context.Context, w fyne.Window, svc *appsvc.Service, refresh func()) {

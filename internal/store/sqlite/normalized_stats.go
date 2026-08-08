@@ -138,6 +138,38 @@ func upsertStatProfileNormalizedStats(
 	)
 }
 
+func replaceStatProfileNormalizedResistances(
+	ctx context.Context,
+	qtx *dbgen.Queries,
+	ids dictionaryIDs,
+	statProfileID string,
+	profile domain.ResistanceProfile,
+) error {
+	if err := qtx.DeleteStatProfileResistancesByProfileID(ctx, statProfileID); err != nil {
+		return fmt.Errorf("clear stat profile resistances: %w", err)
+	}
+	return upsertNormalizedStats(
+		ids,
+		profile,
+		func(stat resistanceGlobalStat) error {
+			return qtx.UpsertStatProfileResistanceGlobal(ctx, dbgen.UpsertStatProfileResistanceGlobalParams{
+				StatProfileID: statProfileID,
+				DamageTypeID:  stat.damageTypeID,
+				Resistance:    stat.resistance,
+				Immune:        stat.immune,
+			})
+		},
+		func(stat resistanceByLocationStat) error {
+			return qtx.UpsertStatProfileResistanceByLocation(ctx, dbgen.UpsertStatProfileResistanceByLocationParams{
+				StatProfileID:  statProfileID,
+				DamageTypeID:   stat.damageTypeID,
+				BodyLocationID: stat.bodyLocationID,
+				Resistance:     stat.resistance,
+			})
+		},
+	)
+}
+
 func upsertNormalizedStats(
 	ids dictionaryIDs,
 	profile domain.ResistanceProfile,

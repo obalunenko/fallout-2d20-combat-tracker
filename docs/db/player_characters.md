@@ -15,7 +15,7 @@ CREATE TABLE "player_characters" (
     availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL,
+    deleted_at DATETIME NULL, notes TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
 )
@@ -25,17 +25,18 @@ CREATE TABLE "player_characters" (
 
 ## Columns
 
-| Name                | Type     | Default                              | Nullable | Children                    | Parents                           |
-| ------------------- | -------- | ------------------------------------ | -------- | --------------------------- | --------------------------------- |
-| id                  | TEXT     |                                      | true     | [combatants](combatants.md) |                                   |
-| player_id           | TEXT     |                                      | false    |                             | [players](players.md)             |
-| stat_profile_id     | TEXT     |                                      | false    |                             | [stat_profiles](stat_profiles.md) |
-| name                | TEXT     |                                      | false    |                             |                                   |
-| active              | INTEGER  | 1                                    | false    |                             |                                   |
-| availability_status | TEXT     | 'active'                             | false    |                             |                                   |
-| created_at          | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                             |                                   |
-| updated_at          | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                             |                                   |
-| deleted_at          | DATETIME |                                      | true     |                             |                                   |
+| Name                | Type     | Default                              | Nullable | Children                                                                                                  | Parents                           |
+| ------------------- | -------- | ------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| id                  | TEXT     |                                      | true     | [combatants](combatants.md) [player_character_special_attributes](player_character_special_attributes.md) |                                   |
+| player_id           | TEXT     |                                      | false    |                                                                                                           | [players](players.md)             |
+| stat_profile_id     | TEXT     |                                      | false    |                                                                                                           | [stat_profiles](stat_profiles.md) |
+| name                | TEXT     |                                      | false    |                                                                                                           |                                   |
+| active              | INTEGER  | 1                                    | false    |                                                                                                           |                                   |
+| availability_status | TEXT     | 'active'                             | false    |                                                                                                           |                                   |
+| created_at          | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                                           |                                   |
+| updated_at          | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                                                                                                           |                                   |
+| deleted_at          | DATETIME |                                      | true     |                                                                                                           |                                   |
+| notes               | TEXT     | ''                                   | false    |                                                                                                           |                                   |
 
 ## Constraints
 

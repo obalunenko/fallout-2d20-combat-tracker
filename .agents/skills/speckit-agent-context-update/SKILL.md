@@ -4,8 +4,10 @@ description: Refresh the managed Spec Kit section in the coding agent context fi
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: agent-context:commands/speckit.agent-context.update.md
+  source: extension:agent-context
 ---
+
+# Agent Context Update Skill
 
 # Update Coding Agent Context
 

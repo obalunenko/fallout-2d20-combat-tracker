@@ -18,7 +18,9 @@
           "speckit.agent-context.update"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-agent-context-update"
+      ],
       "installed_at": "2026-06-20T10:02:29.133742+00:00"
     },
     "brownfield": {
@@ -47,8 +49,103 @@
           "speckit.brownfield.migrate"
         ]
       },
-      "registered_skills": [],
+      "registered_skills": [
+        "speckit-brownfield-scan",
+        "speckit-brownfield-bootstrap",
+        "speckit-brownfield-validate",
+        "speckit-brownfield-migrate"
+      ],
       "installed_at": "2026-06-20T10:03:06.472725+00:00"
+    },
+    "companion": {
+      "version": "0.20.1",
+      "source": "local",
+      "manifest_hash": "sha256:63daca72903a36c35450c900bb0ea3084ac91a19b235bb199dfb0c202a578f07",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "agy": [
+          "speckit.companion.after-specify",
+          "speckit.companion.after-plan",
+          "speckit.companion.after-tasks",
+          "speckit.companion.after-implement",
+          "speckit.companion.status",
+          "speckit.companion.resume",
+          "speckit.companion.specify",
+          "speckit.companion.plan",
+          "speckit.companion.tasks",
+          "speckit.companion.implement",
+          "speckit.companion.classify",
+          "speckit.companion.mark-complete",
+          "speckit.companion.auto",
+          "speckit.companion.living-adopt",
+          "speckit.companion.living-move",
+          "speckit.companion.living-drift",
+          "speckit.companion.living-coverage",
+          "speckit.companion.living-sync"
+        ],
+        "codex": [
+          "speckit.companion.after-specify",
+          "speckit.companion.after-plan",
+          "speckit.companion.after-tasks",
+          "speckit.companion.after-implement",
+          "speckit.companion.status",
+          "speckit.companion.resume",
+          "speckit.companion.specify",
+          "speckit.companion.plan",
+          "speckit.companion.tasks",
+          "speckit.companion.implement",
+          "speckit.companion.classify",
+          "speckit.companion.mark-complete",
+          "speckit.companion.auto",
+          "speckit.companion.living-adopt",
+          "speckit.companion.living-move",
+          "speckit.companion.living-drift",
+          "speckit.companion.living-coverage",
+          "speckit.companion.living-sync"
+        ],
+        "zed": [
+          "speckit.companion.after-specify",
+          "speckit.companion.after-plan",
+          "speckit.companion.after-tasks",
+          "speckit.companion.after-implement",
+          "speckit.companion.status",
+          "speckit.companion.resume",
+          "speckit.companion.specify",
+          "speckit.companion.plan",
+          "speckit.companion.tasks",
+          "speckit.companion.implement",
+          "speckit.companion.classify",
+          "speckit.companion.mark-complete",
+          "speckit.companion.auto",
+          "speckit.companion.living-adopt",
+          "speckit.companion.living-move",
+          "speckit.companion.living-drift",
+          "speckit.companion.living-coverage",
+          "speckit.companion.living-sync"
+        ]
+      },
+      "registered_skills": [
+        "speckit-companion-after-specify",
+        "speckit-companion-after-plan",
+        "speckit-companion-after-tasks",
+        "speckit-companion-after-implement",
+        "speckit-companion-status",
+        "speckit-companion-resume",
+        "speckit-companion-specify",
+        "speckit-companion-plan",
+        "speckit-companion-tasks",
+        "speckit-companion-implement",
+        "speckit-companion-classify",
+        "speckit-companion-mark-complete",
+        "speckit-companion-auto",
+        "speckit-companion-living-adopt",
+        "speckit-companion-living-move",
+        "speckit-companion-living-drift",
+        "speckit-companion-living-coverage",
+        "speckit-companion-living-sync"
+      ],
+      "installed_at": "2026-08-05T13:53:38.155810+00:00"
     }
   }
 }

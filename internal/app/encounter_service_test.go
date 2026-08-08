@@ -241,6 +241,43 @@ func TestUpdateEncounterRejectsInvalidCombatantValues(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid defense")
 }
 
+func TestDraftDifficultyPreviewDoesNotPersistUntilUpdateEncounter(t *testing.T) {
+	svc := newSQLiteService(t)
+	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Draft Preview", []domain.Combatant{
+		{ID: "p1", Name: "Vault Dweller", Side: domain.SideParty, Level: 2, Initiative: 10, HP: 8, MaxHP: 8},
+		{ID: "n1", Name: "Raider", Side: domain.SideNPC, Level: 1, XP: 20, Initiative: 8, HP: 6, MaxHP: 6},
+	})
+	require.NoError(t, err)
+
+	savedBeforePreview, err := svc.GetEncounter(t.Context())
+	require.NoError(t, err)
+	draftCombatants := append([]domain.Combatant(nil), savedBeforePreview.Combatants...)
+	draftCombatants = append(draftCombatants, domain.Combatant{
+		Name:       "Raider",
+		Side:       domain.SideNPC,
+		Level:      1,
+		XP:         20,
+		Initiative: 7,
+		HP:         6,
+		MaxHP:      6,
+	})
+	preview := domain.EvaluateEncounterDifficulty(draftCombatants)
+	require.NotEqual(t, domain.EncounterDifficultyUnknown, preview.Label)
+
+	stillSaved, err := svc.GetEncounter(t.Context())
+	require.NoError(t, err)
+	require.Len(t, stillSaved.Combatants, len(savedBeforePreview.Combatants))
+	assert.Equal(t, "n1", stillSaved.Combatants[1].ID)
+
+	updated, err := svc.UpdateEncounter(t.Context(), "enc-1", "Draft Preview", draftCombatants)
+	require.NoError(t, err)
+	require.Len(t, updated.Combatants, len(draftCombatants))
+
+	persistedAfterUpdate, err := svc.GetEncounter(t.Context())
+	require.NoError(t, err)
+	assert.Len(t, persistedAfterUpdate.Combatants, len(draftCombatants))
+}
+
 func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 	svc := newSQLiteService(t)
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "Difficulty Check", []domain.Combatant{
@@ -258,12 +295,11 @@ func TestListEncountersIncludesDifficultyMetrics(t *testing.T) {
 	assert.Equal(t, "Difficulty Check", summaries[0].Name)
 	assert.Equal(t, "Hard", summaries[0].Difficulty)
 	assert.Equal(t, 2, summaries[0].PartyCount)
-	assert.Equal(t, 2.0, summaries[0].PartyAvgLevel)
-	assert.Equal(t, 60, summaries[0].PartyXPBudget)
-	assert.Equal(t, 2, summaries[0].EnemyCount)
-	assert.Equal(t, 2.0, summaries[0].EnemyAvgLevel)
-	assert.Equal(t, 120, summaries[0].EnemyTotalXP)
-	assert.Equal(t, 2.0, summaries[0].DifficultyScore)
+	assert.Equal(t, 2, summaries[0].AveragePCLevel)
+	assert.Equal(t, 120, summaries[0].TotalMonsterXP)
+	assert.Equal(t, 60.0, summaries[0].XPBaseline)
+	assert.Equal(t, 5, summaries[0].EncounterLevel)
+	assert.Equal(t, 3, summaries[0].DifficultyDifference)
 }
 
 func TestActivateEncounterNotFound(t *testing.T) {

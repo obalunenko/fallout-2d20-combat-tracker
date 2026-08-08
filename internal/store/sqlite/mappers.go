@@ -110,6 +110,7 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 	return domain.NewCampaignPlayer{
 		PlayerName: r.PlayerName,
 		Character:  partyCombatantFromRow(r),
+		Notes:      r.Notes,
 		Inactive:   r.AvailabilityStatus == playerCharacterAvailabilityInactive,
 	}
 }
@@ -180,20 +181,20 @@ func encounterFromByIDRow(r dbgen.GetEncounterByIDByCampaignIDRow, combatants []
 
 func encounterSummaryFromRow(r dbgen.ListEncounterSummariesByCampaignIDRow, metrics domain.EncounterDifficultyMetrics) domain.EncounterSummary {
 	return domain.EncounterSummary{
-		ID:              r.ID,
-		CampaignID:      r.CampaignID,
-		Name:            r.Name,
-		Round:           int(r.Round),
-		Combatants:      int(r.Combatants),
-		Difficulty:      string(metrics.Label),
-		DifficultyScore: metrics.Score,
-		PartyCount:      metrics.PartyCount,
-		PartyAvgLevel:   metrics.PartyAvgLevel,
-		PartyXPBudget:   metrics.PartyXPBudget,
-		EnemyCount:      metrics.EnemyCount,
-		EnemyAvgLevel:   metrics.EnemyAvgLevel,
-		EnemyTotalXP:    metrics.EnemyTotalXP,
-		UpdatedAt:       r.UpdatedAt,
+		ID:                          r.ID,
+		CampaignID:                  r.CampaignID,
+		Name:                        r.Name,
+		Round:                       int(r.Round),
+		Combatants:                  int(r.Combatants),
+		Difficulty:                  string(metrics.Label),
+		DifficultyUnavailableReason: metrics.UnavailableReason,
+		PartyCount:                  metrics.PartyCount,
+		AveragePCLevel:              metrics.AveragePCLevel,
+		TotalMonsterXP:              metrics.TotalMonsterXP,
+		XPBaseline:                  metrics.XPBaseline,
+		EncounterLevel:              metrics.EncounterLevel,
+		DifficultyDifference:        metrics.Difference,
+		UpdatedAt:                   r.UpdatedAt,
 	}
 }
 
@@ -215,22 +216,24 @@ func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: value != ""}
 }
 
-func insertPlayerCharacterParams(characterID, playerID string, c domain.Combatant, inactive bool) dbgen.InsertPlayerCharacterParams {
+func insertPlayerCharacterParams(characterID, playerID string, player domain.NewCampaignPlayer) dbgen.InsertPlayerCharacterParams {
 	return dbgen.InsertPlayerCharacterParams{
 		ID:                 characterID,
 		PlayerID:           playerID,
 		StatProfileID:      statProfileID(statProfilePlayerCharacterKind, characterID),
-		Name:               strings.TrimSpace(c.Name),
+		Name:               strings.TrimSpace(player.Character.Name),
+		Notes:              player.Notes,
 		Active:             1,
-		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
+		AvailabilityStatus: playerCharacterAvailabilityStatus(player.Inactive),
 	}
 }
 
-func updateActivePlayerCharacterParams(characterID string, c domain.Combatant, inactive bool) dbgen.UpdateActivePlayerCharacterByIDParams {
+func updateActivePlayerCharacterParams(characterID string, player domain.NewCampaignPlayer) dbgen.UpdateActivePlayerCharacterByIDParams {
 	return dbgen.UpdateActivePlayerCharacterByIDParams{
 		CharacterID:        characterID,
-		Name:               strings.TrimSpace(c.Name),
-		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
+		Name:               strings.TrimSpace(player.Character.Name),
+		Notes:              player.Notes,
+		AvailabilityStatus: playerCharacterAvailabilityStatus(player.Inactive),
 	}
 }
 

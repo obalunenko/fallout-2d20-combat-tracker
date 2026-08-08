@@ -213,18 +213,21 @@ func formatEncounterDifficultySummary(s domain.EncounterSummary) string {
 	if strings.TrimSpace(s.Difficulty) == "" {
 		return "Unknown"
 	}
-	if s.PartyCount == 0 || s.EnemyCount == 0 {
-		return s.Difficulty
+	if s.Difficulty == string(domain.EncounterDifficultyUnknown) {
+		if strings.TrimSpace(s.DifficultyUnavailableReason) == "" {
+			return s.Difficulty
+		}
+		return fmt.Sprintf("%s (%s)", s.Difficulty, s.DifficultyUnavailableReason)
 	}
 	return fmt.Sprintf(
-		"%s (P:%d avgLvl:%.1f budget:%d | NPC:%d avgLvl:%.1f XP:%d)",
+		"%s (party:%d avg PC lvl:%d | monster XP:%d baseline:%.1f | encounter lvl:%d diff:%+d)",
 		s.Difficulty,
 		s.PartyCount,
-		s.PartyAvgLevel,
-		s.PartyXPBudget,
-		s.EnemyCount,
-		s.EnemyAvgLevel,
-		s.EnemyTotalXP,
+		s.AveragePCLevel,
+		s.TotalMonsterXP,
+		s.XPBaseline,
+		s.EncounterLevel,
+		s.DifficultyDifference,
 	)
 }
 
@@ -293,19 +296,22 @@ func alphabeticOrdinalLabel(idx int) string {
 }
 
 func formatDifficultyPreview(metrics domain.EncounterDifficultyMetrics) string {
-	if metrics.PartyCount == 0 || metrics.EnemyCount == 0 {
-		return "Difficulty: Unknown (add at least one party member and one NPC)"
+	if metrics.Label == domain.EncounterDifficultyUnknown {
+		reason := strings.TrimSpace(metrics.UnavailableReason)
+		if reason == "" {
+			reason = "difficulty inputs are unavailable"
+		}
+		return fmt.Sprintf("Difficulty: Unknown (%s)", reason)
 	}
 	return fmt.Sprintf(
-		"Difficulty: %s (xp ratio: %.2f | party: %d avg lvl %.1f budget %d | npc: %d avg lvl %.1f total xp: %d)",
+		"Difficulty: %s (party: %d avg PC lvl %d | monster XP: %d baseline %.1f | encounter lvl %d diff %+d)",
 		metrics.Label,
-		metrics.Score,
 		metrics.PartyCount,
-		metrics.PartyAvgLevel,
-		metrics.PartyXPBudget,
-		metrics.EnemyCount,
-		metrics.EnemyAvgLevel,
-		metrics.EnemyTotalXP,
+		metrics.AveragePCLevel,
+		metrics.TotalMonsterXP,
+		metrics.XPBaseline,
+		metrics.EncounterLevel,
+		metrics.Difference,
 	)
 }
 

@@ -136,32 +136,30 @@ func TestEncounterSummaryFromRowMapsSummaryFields(t *testing.T) {
 			UpdatedAt:  updatedAt,
 		},
 		domain.EncounterDifficultyMetrics{
-			Label:         domain.EncounterDifficultyHard,
-			Score:         1.25,
-			PartyCount:    2,
-			PartyAvgLevel: 3.5,
-			PartyXPBudget: 120,
-			EnemyCount:    2,
-			EnemyAvgLevel: 4.5,
-			EnemyTotalXP:  150,
+			Label:          domain.EncounterDifficultyHard,
+			PartyCount:     2,
+			AveragePCLevel: 4,
+			TotalMonsterXP: 150,
+			XPBaseline:     75,
+			EncounterLevel: 6,
+			Difference:     2,
 		},
 	)
 
 	assert.Equal(t, domain.EncounterSummary{
-		ID:              "enc-1",
-		CampaignID:      "camp-1",
-		Name:            "Vault Ambush",
-		Round:           7,
-		Combatants:      4,
-		Difficulty:      "Hard",
-		DifficultyScore: 1.25,
-		PartyCount:      2,
-		PartyAvgLevel:   3.5,
-		PartyXPBudget:   120,
-		EnemyCount:      2,
-		EnemyAvgLevel:   4.5,
-		EnemyTotalXP:    150,
-		UpdatedAt:       updatedAt,
+		ID:                   "enc-1",
+		CampaignID:           "camp-1",
+		Name:                 "Vault Ambush",
+		Round:                7,
+		Combatants:           4,
+		Difficulty:           "Hard",
+		PartyCount:           2,
+		AveragePCLevel:       4,
+		TotalMonsterXP:       150,
+		XPBaseline:           75,
+		EncounterLevel:       6,
+		DifficultyDifference: 2,
+		UpdatedAt:            updatedAt,
 	}, actual)
 }
 
@@ -204,20 +202,24 @@ func TestPlayerCharacterParamsMapAndTrimDomainCombatant(t *testing.T) {
 		TorsoOnly:  true,
 	}
 
-	insertParams := insertPlayerCharacterParams("pc-1", "player-1", combatant, true)
+	player := domain.NewCampaignPlayer{Character: combatant, Notes: "  keep notes  ", Inactive: true}
+	insertParams := insertPlayerCharacterParams("pc-1", "player-1", player)
 	assert.Equal(t, dbgen.InsertPlayerCharacterParams{
 		ID:                 "pc-1",
 		PlayerID:           "player-1",
 		StatProfileID:      "player_character:pc-1",
 		Name:               "Vault Dweller",
+		Notes:              "  keep notes  ",
 		Active:             1,
 		AvailabilityStatus: playerCharacterAvailabilityInactive,
 	}, insertParams)
 
-	updateParams := updateActivePlayerCharacterParams("pc-1", combatant, false)
+	player.Inactive = false
+	updateParams := updateActivePlayerCharacterParams("pc-1", player)
 	assert.Equal(t, dbgen.UpdateActivePlayerCharacterByIDParams{
 		CharacterID:        "pc-1",
 		Name:               "Vault Dweller",
+		Notes:              "  keep notes  ",
 		AvailabilityStatus: playerCharacterAvailabilityActive,
 	}, updateParams)
 }

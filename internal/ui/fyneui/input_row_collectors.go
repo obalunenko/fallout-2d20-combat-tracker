@@ -159,6 +159,16 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		if err != nil {
 			return nil, err
 		}
+		special := domain.SpecialValues{}
+		for _, attribute := range domain.SpecialAttributes() {
+			value, err := parsePositiveIntOrError(strings.TrimSpace(row.special[attribute].Text), string(attribute), playerName)
+			if err != nil {
+				return nil, err
+			}
+			if err := special.Set(attribute, value); err != nil {
+				return nil, err
+			}
+		}
 
 		character := domain.Combatant{
 			Name:       characterName,
@@ -172,6 +182,8 @@ func collectCampaignPlayersFromRows(rows []*campaignPlayerInputRow) ([]domain.Ne
 		character.SetResistanceProfile(resistance)
 		players = append(players, domain.NewCampaignPlayer{
 			PlayerName: playerName,
+			Notes:      row.notes.Text,
+			Special:    special,
 			Inactive:   row.active != nil && !row.active.Checked,
 			Character:  character,
 		})

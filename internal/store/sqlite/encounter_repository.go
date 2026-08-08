@@ -96,7 +96,10 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 				c.Side = domain.SideParty
 				c.XP = 0
 				c.Defeated = c.HP == 0
-				if err = updateActivePlayerCharacter(ctx, qtx, playerCharacterID, c, false); err != nil {
+				if err = qtx.UpdateActivePlayerCharacterNameByID(ctx, dbgen.UpdateActivePlayerCharacterNameByIDParams{
+					CharacterID: playerCharacterID,
+					Name:        strings.TrimSpace(c.Name),
+				}); err != nil {
 					return fmt.Errorf("update campaign character %s: %w", playerCharacterID, err)
 				}
 				if err = upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, playerCharacterID, c.Profile()); err != nil {

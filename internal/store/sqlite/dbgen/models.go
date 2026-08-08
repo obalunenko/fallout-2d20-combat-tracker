@@ -134,6 +134,7 @@ type PlayerCharacter struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          interface{}
+	Notes              string
 }
 
 type PlayerCharacterResistanceByLocation struct {
@@ -152,6 +153,19 @@ type PlayerCharacterResistanceGlobal struct {
 	Immune            int64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+}
+
+type PlayerCharacterSpecialAttribute struct {
+	PlayerCharacterID  string
+	SpecialAttributeID int64
+	Value              int64
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type SpecialAttribute struct {
+	ID   int64
+	Code string
 }
 
 type StatProfile struct {

@@ -33,22 +33,25 @@ Use `NEW ENCOUNTER` in the app header, then:
 
 ## Encounter Difficulty
 
-Encounter list and editor summaries estimate difficulty when an encounter has at least one party combatant and at least one NPC. If either side is missing, difficulty is shown as `Unknown`.
+Encounter list and editor summaries estimate difficulty from the current party and monster roster. A valid party with no monsters still calculates with total monster XP of `0`; if no party member is selected or draft numeric inputs are invalid, difficulty is shown as `Unknown`.
 
-The score is based on total enemy XP compared to a party XP budget:
+The calculator uses average selected-player level rounded up, total monster XP, and encounter level:
 
 ```text
-party budget = (average party level + 1) * party combatant count * 10
-difficulty score = enemy total XP / party budget
+average PC level = ceil(sum(selected player levels) / player count)
+total monster XP = sum(monster XP * quantity)
+XP baseline = total monster XP / player count
+encounter level = max(1, floor((XP baseline - 10) / 10))
+difference = encounter level - average PC level
 ```
 
-Labels use these score bands:
+Labels use these difference bands:
 
-- `< 0.5`: `Trivial`
-- `< 1.0`: `Easy`
-- `< 1.5`: `Normal`
-- `<= 2.25`: `Hard`
-- `> 2.25`: `Deadly`
+- `< -2`: `Trivial`
+- `-2` or `-1`: `Simple`
+- `0` or `1`: `Average`
+- `2` through `5`: `Hard`
+- `> 5`: `Deadly`
 
 ## Storage
 

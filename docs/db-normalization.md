@@ -12,7 +12,7 @@ These tables and columns are the primary relational state:
 | ---- | ----------------- |
 | Campaigns | `campaigns` |
 | Players | `players` |
-| Player characters | `player_characters` plus their `stat_profiles` row |
+| Player characters | `player_characters` (identity, availability, exact notes), their `stat_profiles` row, and `player_character_special_attributes` |
 | Encounters | `encounters` for encounter identity, round, active turn index, AP, and threat |
 | Combatants | `combatants` for encounter membership/order; their `stat_profiles` row is canonical for NPC and unlinked combatants |
 | Monster templates | `monster_templates` plus their `stat_profiles` row |
@@ -33,6 +33,13 @@ views are compatibility views over the normalized stat-profile table.
 `player_characters` does not store `campaign_id`; a character's campaign is
 derived through `player_characters.player_id -> players.campaign_id`.
 
+S.P.E.C.I.A.L. is normalized through the stable seven-row
+`special_attributes` dictionary and one positive integer row per character and
+attribute in `player_character_special_attributes`. Migration `00043` gives
+existing characters blank notes and a complete profile with every value set to
+1. Notes remain owned by `player_characters` and are stored without trimming so
+intentional whitespace and line breaks survive a round trip.
+
 `combatants` does not store `active`; active combatants are derived from
 `combatants.position = encounters.turn_index`.
 
@@ -44,8 +51,8 @@ from other tables:
 | Field(s) | Type | Reason | Refresh path |
 | -------- | ---- | ------ | ------------ |
 | `combatants.position` | Ordered snapshot | Preserves encounter initiative order without depending on mutable stats or names. | Rewritten whenever an encounter is saved. |
-| `combatants.name` for linked party combatants | Snapshot/fallback | Keeps a combatant-readable name if the party character link is removed or the row is inspected directly. Normal app reads prefer the linked player character name. | Rewritten whenever an encounter is saved. |
-| `combatants.stat_profile_id` for linked party combatants | Snapshot/fallback | Every combatant owns a profile for uniform lifecycle and fallback reads. Normal app reads prefer the linked player character profile when `player_character_id` is present. | Rewritten whenever an encounter is saved. |
+| `combatants.name` for linked party combatants | Snapshot | Preserves the name recorded for that encounter. | Rewritten whenever an encounter is explicitly saved. |
+| `combatants.stat_profile_id` for linked party combatants | Combat snapshot | Stores the encounter's scalar and resistance state. Campaign edits copy level, HP, max HP, Defense, DR/immunity, and defeated state only into the effective active encounter; closed encounters remain historical. | Rewritten on explicit encounter save; selectively synchronized for the active campaign's latest activated encounter. |
 
 ## Consistency Rules
 

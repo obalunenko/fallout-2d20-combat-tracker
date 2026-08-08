@@ -1,0 +1,630 @@
+{
+  "workflow": "speckit",
+  "specName": "Edit Campaign Player Characters",
+  "branch": "002-dynamic-encounter-difficulty",
+  "currentStep": "implement",
+  "status": "implemented",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-08-08T11:52:11.591Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T12:00:27.414Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-08-08T12:03:49.575Z"
+    },
+    {
+      "step": "tasks",
+      "substep": "generate",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-08-08T12:10:09.835Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T12:11:26.486Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T038",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T039",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.473Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.474Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.474Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.474Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-08-08T13:36:01.474Z"
+    }
+  ],
+  "coverage": {
+    "FR-001": {
+      "title": "The system MUST allow a GM to open an existing player character for editing from its campaign context.",
+      "tasks": [
+        "T013",
+        "T016",
+        "T018"
+      ]
+    },
+    "FR-002": {
+      "title": "The editor MUST display the character's currently stored values before the GM makes changes.",
+      "tasks": [
+        "T013",
+        "T016",
+        "T018"
+      ]
+    },
+    "FR-003": {
+      "title": "The GM MUST be able to add, replace, or clear free-form multiline character notes.",
+      "tasks": [
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018"
+      ]
+    },
+    "FR-004": {
+      "title": "The GM MUST be able to update the character's level.",
+      "tasks": [
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T017",
+        "T018"
+      ]
+    },
+    "FR-005": {
+      "title": "The GM MUST be able to update all seven S.P.E.C.I.A.L. attributes.",
+      "tasks": [
+        "T002",
+        "T004",
+        "T005",
+        "T006",
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018"
+      ]
+    },
+    "FR-006": {
+      "title": "The GM MUST be able to update current HP and maximum HP independently, subject to their validation relationship.",
+      "tasks": [
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T017",
+        "T018",
+        "T019",
+        "T021",
+        "T023",
+        "T025"
+      ]
+    },
+    "FR-007": {
+      "title": "The GM MUST be able to update Defense.",
+      "tasks": [
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T017",
+        "T018"
+      ]
+    },
+    "FR-008": {
+      "title": "The GM MUST be able to update the existing location and global DR profile.",
+      "tasks": [
+        "T010",
+        "T011",
+        "T012",
+        "T014",
+        "T015",
+        "T017",
+        "T018"
+      ]
+    },
+    "FR-009": {
+      "title": "Level and every S.P.E.C.I.A.L. attribute MUST be positive whole numbers.",
+      "tasks": [
+        "T002",
+        "T004",
+        "T019",
+        "T020",
+        "T021",
+        "T023",
+        "T024",
+        "T025"
+      ]
+    },
+    "FR-010": {
+      "title": "Current HP MUST be non-negative, maximum HP MUST be positive, and current HP MUST NOT exceed maximum HP.",
+      "tasks": [
+        "T019",
+        "T020",
+        "T021",
+        "T023",
+        "T024",
+        "T025"
+      ]
+    },
+    "FR-011": {
+      "title": "Defense and every DR value MUST be non-negative whole numbers.",
+      "tasks": [
+        "T019",
+        "T020",
+        "T021",
+        "T023",
+        "T024",
+        "T025"
+      ]
+    },
+    "FR-012": {
+      "title": "Invalid edits MUST NOT change stored state and MUST produce field-specific feedback without discarding entered values.",
+      "tasks": [
+        "T020",
+        "T021",
+        "T022",
+        "T023",
+        "T024",
+        "T025",
+        "T026"
+      ]
+    },
+    "FR-013": {
+      "title": "Saving a valid edit MUST persist all changed character values atomically.",
+      "tasks": [
+        "T011",
+        "T015",
+        "T027",
+        "T033"
+      ]
+    },
+    "FR-014": {
+      "title": "Canceling an edit MUST leave all stored values unchanged.",
+      "tasks": [
+        "T013",
+        "T018",
+        "T022",
+        "T026"
+      ]
+    },
+    "FR-015": {
+      "title": "After a successful save, the system MUST refresh campaign and character-selection views.",
+      "tasks": [
+        "T013",
+        "T018",
+        "T029",
+        "T035"
+      ]
+    },
+    "FR-016": {
+      "title": "A linked active-encounter combatant MUST synchronize level, HP, Defense, and DR after a successful edit.",
+      "tasks": [
+        "T027",
+        "T030",
+        "T031",
+        "T033",
+        "T035"
+      ]
+    },
+    "FR-017": {
+      "title": "Active synchronization MUST derive defeated state and preserve round, turn, and unrelated combatants.",
+      "tasks": [
+        "T027",
+        "T030",
+        "T033"
+      ]
+    },
+    "FR-018": {
+      "title": "Campaign character edits MUST NOT rewrite closed or inactive encounter combatants.",
+      "tasks": [
+        "T027",
+        "T028",
+        "T030",
+        "T032",
+        "T033",
+        "T034"
+      ]
+    },
+    "FR-019": {
+      "title": "Notes and S.P.E.C.I.A.L. MUST persist across restarts and MUST NOT be duplicated into encounter combatants.",
+      "tasks": [
+        "T004",
+        "T005",
+        "T006",
+        "T008",
+        "T009",
+        "T011",
+        "T015",
+        "T028",
+        "T030",
+        "T032",
+        "T039",
+        "T042"
+      ]
+    },
+    "FR-020": {
+      "title": "Existing identities, name, initiative, availability, immunity, and unrelated fields MUST be preserved.",
+      "tasks": [
+        "T009",
+        "T010",
+        "T011",
+        "T014",
+        "T015",
+        "T017",
+        "T027",
+        "T028",
+        "T033",
+        "T034"
+      ]
+    }
+  },
+  "step_summaries": {
+    "tasks": {
+      "summary": "42 tasks across Setup, Foundational, US1, US2, US3, and Polish with explicit dependency waves"
+    }
+  },
+  "currentTask": "T042"
+}

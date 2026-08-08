@@ -15,7 +15,7 @@ Fallout 2d20 Combat Tracker SQLite schema.
 | [stat_profiles](stat_profiles.md)                                                     | 11      |         | table |
 | [combatants](combatants.md)                                                           | 11      |         | table |
 | [encounters](encounters.md)                                                           | 8       |         | table |
-| [player_characters](player_characters.md)                                             | 9       |         | table |
+| [player_characters](player_characters.md)                                             | 10      |         | table |
 | [body_locations](body_locations.md)                                                   | 2       |         | table |
 | [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md)         | 7       |         | table |
 | [combatant_resistance_global](combatant_resistance_global.md)                         | 6       |         | view  |
@@ -26,6 +26,8 @@ Fallout 2d20 Combat Tracker SQLite schema.
 | [player_character_resistance_by_location](player_character_resistance_by_location.md) | 6       |         | view  |
 | [monster_templates](monster_templates.md)                                             | 6       |         | table |
 | [campaigns](campaigns.md)                                                             | 8       |         | table |
+| [special_attributes](special_attributes.md)                                           | 2       |         | table |
+| [player_character_special_attributes](player_character_special_attributes.md)         | 5       |         | table |
 
 ---
 

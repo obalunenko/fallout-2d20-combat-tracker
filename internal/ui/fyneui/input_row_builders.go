@@ -197,6 +197,19 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	defense.SetPlaceHolder("Defense")
 	defense.TextStyle = fyne.TextStyle{Monospace: true}
 	defense.SetText("0")
+	notes := widget.NewMultiLineEntry()
+	notes.SetPlaceHolder("Character notes")
+	notes.Wrapping = fyne.TextWrapWord
+	special := make(map[domain.SpecialAttribute]*widget.Entry, len(domain.SpecialAttributes()))
+	specialCells := make([]fyne.CanvasObject, 0, len(domain.SpecialAttributes()))
+	for _, attribute := range domain.SpecialAttributes() {
+		entry := widget.NewEntry()
+		entry.SetText("1")
+		entry.TextStyle = fyne.TextStyle{Monospace: true}
+		special[attribute] = entry
+		label := strings.ToUpper(string(attribute[:1]))
+		specialCells = append(specialCells, container.NewVBox(newTableHeaderLabel(label), entry))
+	}
 	resistance := newUIResistanceInputs(nil)
 
 	row := &campaignPlayerInputRow{
@@ -207,6 +220,8 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		hp:            hp,
 		hpMax:         hpMax,
 		defense:       defense,
+		notes:         notes,
+		special:       special,
 		resistance:    resistance,
 	}
 	removeBtn := newRoleButton("Remove", uiActionDestructive, func() { onRemove(row) })
@@ -215,14 +230,22 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 	row.active = active
 	bodyRow := resistance.bodyGrid()
 	bodyRow.Hide()
+	details := container.NewVBox(
+		widget.NewForm(widget.NewFormItem("Notes", notes)),
+		container.NewGridWithColumns(len(specialCells), specialCells...),
+		bodyRow,
+	)
+	details.Hide()
+	row.details = details
 	var drToggleBtn *widget.Button
-	drToggleBtn = newRoleButton("Body ▸", uiActionSubtle, func() {
-		if bodyRow.Visible() {
-			bodyRow.Hide()
-			drToggleBtn.SetText("Body ▸")
+	drToggleBtn = newRoleButton("Details ▸", uiActionSubtle, func() {
+		if details.Visible() {
+			details.Hide()
+			drToggleBtn.SetText("Details ▸")
 		} else {
+			details.Show()
 			bodyRow.Show()
-			drToggleBtn.SetText("Body ▾")
+			drToggleBtn.SetText("Details ▾")
 		}
 		row.root.Refresh()
 	})
@@ -240,6 +263,6 @@ func newCampaignPlayerInputRow(onRemove func(*campaignPlayerInputRow)) *campaign
 		active,
 		removeBtn,
 	)
-	row.root = container.NewVBox(baseRow, bodyRow)
+	row.root = container.NewVBox(baseRow, details)
 	return row
 }

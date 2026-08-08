@@ -81,3 +81,69 @@ func TestFormatCombatantLineAddsHealthAttentionBadge(t *testing.T) {
 
 	assert.Contains(t, got, "[CRITICAL]")
 }
+
+func TestFormatDifficultyPreviewShowsRequestedLabelsAndMetrics(t *testing.T) {
+	tests := []domain.EncounterDifficulty{
+		domain.EncounterDifficultyTrivial,
+		domain.EncounterDifficultySimple,
+		domain.EncounterDifficultyAverage,
+		domain.EncounterDifficultyHard,
+		domain.EncounterDifficultyDeadly,
+	}
+
+	for _, label := range tests {
+		t.Run(string(label), func(t *testing.T) {
+			got := formatDifficultyPreview(domain.EncounterDifficultyMetrics{
+				Label:          label,
+				PartyCount:     2,
+				AveragePCLevel: 3,
+				TotalMonsterXP: 70,
+				XPBaseline:     35,
+				EncounterLevel: 2,
+				Difference:     -1,
+			})
+
+			assert.Contains(t, got, "Difficulty: "+string(label))
+			assert.Contains(t, got, "party: 2")
+			assert.Contains(t, got, "avg PC lvl 3")
+			assert.Contains(t, got, "monster XP: 70")
+			assert.Contains(t, got, "baseline 35.0")
+			assert.Contains(t, got, "encounter lvl 2")
+			assert.NotContains(t, got, "Easy")
+			assert.NotContains(t, got, "Normal")
+			assert.NotContains(t, got, "xp ratio")
+		})
+	}
+}
+
+func TestFormatDifficultyPreviewShowsUnknownReason(t *testing.T) {
+	got := formatDifficultyPreview(domain.EncounterDifficultyMetrics{
+		Label:             domain.EncounterDifficultyUnknown,
+		UnavailableReason: "add at least one party member",
+	})
+
+	assert.Equal(t, "Difficulty: Unknown (add at least one party member)", got)
+}
+
+func TestFormatEncounterDifficultySummaryUsesNewMetrics(t *testing.T) {
+	got := formatEncounterDifficultySummary(domain.EncounterSummary{
+		Difficulty:           string(domain.EncounterDifficultySimple),
+		PartyCount:           2,
+		AveragePCLevel:       3,
+		TotalMonsterXP:       70,
+		XPBaseline:           35,
+		EncounterLevel:       2,
+		DifficultyDifference: -1,
+	})
+
+	assert.Contains(t, got, "Simple")
+	assert.Contains(t, got, "party:2")
+	assert.Contains(t, got, "avg PC lvl:3")
+	assert.Contains(t, got, "monster XP:70")
+	assert.Contains(t, got, "baseline:35.0")
+	assert.Contains(t, got, "encounter lvl:2")
+	assert.Contains(t, got, "diff:-1")
+	assert.NotContains(t, got, "Easy")
+	assert.NotContains(t, got, "Normal")
+	assert.NotContains(t, got, "budget")
+}
