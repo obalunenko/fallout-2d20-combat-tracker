@@ -5,8 +5,10 @@ description: Companion implement — execute tasks.md in dependency order, then 
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.implement.md
+  source: extension:companion
 ---
+
+# Companion Implement Skill
 
 ## User Input
 

@@ -5,8 +5,10 @@ description: Brownfield adoption wizard — draft living specs for the code area
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.living-adopt.md
+  source: extension:companion
 ---
+
+# Companion Living Adopt Skill
 
 # Adopt a Code Area into a Living Spec
 

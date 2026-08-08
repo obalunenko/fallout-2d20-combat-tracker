@@ -5,8 +5,10 @@ description: Companion auto — run the whole pipeline hands-off (specify → pl
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.auto.md
+  source: extension:companion
 ---
+
+# Companion Auto Skill
 
 ## User Input
 

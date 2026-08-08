@@ -1,103 +1,113 @@
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `$speckit-plan` command; its definition describes the execution workflow.
 
 ## Summary
 
-[Summarize the user-visible requirement and the technical approach.]
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.3
-**Primary Dependencies**: Fyne v2, modernc.org/sqlite, Goose, sqlc, google/uuid, testify
-**Storage**: Local SQLite database; default path `~/.config/fallout-tracker/tracker.db`; override via `FALLOUT_TRACKER_DB_PATH`
-**Testing**: `go test ./...`; focused package tests for domain/app/store/ui; `go vet ./...`; `make lint`
-**Target Platform**: Native desktop app on macOS/Linux/Windows
-**Project Type**: Single Go desktop application with layered internals
-**Performance Goals**: Local UI actions should complete without noticeable delay for tabletop-scale rosters and encounter logs
-**Constraints**: Offline-first, local-only storage, Fyne UI, SQLite migrations must remain forward-only
-**Scale/Scope**: Single GM workstation, multiple campaigns, multiple encounters per campaign, tabletop-sized combatant rosters
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
+
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
-*GATE: Must pass before implementation and be re-checked before completion.*
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Layer Boundaries**: [Which of `domain`, `app`, `store/sqlite`, `ui/fyneui`, `cmd` are touched? Confirm dependency direction remains valid.]
-- **Domain Rules**: [List changed Fallout 2d20 mechanics or state "none".]
-- **Persistence**: [State whether Goose migration/sqlc/schema/docs are required.]
-- **Generated Code**: [State whether `internal/store/sqlite/dbgen` must be regenerated.]
-- **Tests**: [List focused tests to add/update.]
-- **Quality Gates**: [List commands that will be run for this feature.]
+[Gates determined based on constitution file]
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature-name]/
-├── spec.md
-├── plan.md
-├── tasks.md
-├── research.md       # optional when design choices need exploration
-├── data-model.md     # optional when persistence/domain entities change
-├── quickstart.md     # optional for manual verification workflows
-└── contracts/        # optional for command/service/UI contracts
+specs/[###-feature]/
+├── plan.md              # This file ($speckit-plan command output)
+├── research.md          # Phase 0 output ($speckit-plan command)
+├── data-model.md        # Phase 1 output ($speckit-plan command)
+├── quickstart.md        # Phase 1 output ($speckit-plan command)
+├── contracts/           # Phase 1 output ($speckit-plan command)
+└── tasks.md             # Phase 2 output ($speckit-tasks command - NOT created by $speckit-plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-cmd/fallout-tracker/
-└── main.go
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
 
-internal/domain/
-├── encounter.go
-├── resistance.go
-├── campaign.go
-└── *_test.go
+tests/
+├── contract/
+├── integration/
+└── unit/
 
-internal/app/
-├── service.go
-├── *_service.go
-├── repository_contracts.go
-└── *_test.go
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
 
-internal/store/sqlite/
-├── migrations/
-├── sqlc/
-├── dbgen/
-├── *_repository.go
-└── *_test.go
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
 
-internal/ui/fyneui/
-├── *_dialog*.go
-├── main_*.go
-├── *_view*.go
-└── *_test.go
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
 
-docs/db/
-└── generated database documentation
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: [Name the touched directories and why the feature belongs there.]
-
-## Data Model / Migration Plan
-
-[If persistence changes, describe new/changed entities, migration order, backfill strategy, sqlc query changes, and docs regeneration. If none, write "No persistence changes."]
-
-## Implementation Phases
-
-1. **Domain/Application**: [Rules, validation, service commands, repository contract changes]
-2. **Persistence**: [Migrations, sqlc schema/query/dbgen, repository changes]
-3. **UI**: [Fyne dialogs/views/presenters/refresh behavior]
-4. **Docs/Generated Artifacts**: [README/docs/db/spec updates]
-5. **Verification**: [Focused and full checks]
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-> Fill only if the implementation violates or stretches the constitution.
+> **Fill ONLY if Constitution Check has violations that must be justified**
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g. UI directly handles rule] | [reason] | [why domain/app path was insufficient] |
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

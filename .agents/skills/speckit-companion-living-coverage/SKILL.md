@@ -5,8 +5,10 @@ description: Report living-spec requirement→test coverage — per requirement,
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.living-coverage.md
+  source: extension:companion
 ---
+
+# Companion Living Coverage Skill
 
 # Spec Coverage
 

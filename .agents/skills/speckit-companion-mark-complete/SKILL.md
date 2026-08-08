@@ -5,8 +5,10 @@ description: 'Mark the active spec completed — the Companion workflow''s termi
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.mark-complete.md
+  source: extension:companion
 ---
+
+# Companion Mark Complete Skill
 
 # Mark Spec Complete
 

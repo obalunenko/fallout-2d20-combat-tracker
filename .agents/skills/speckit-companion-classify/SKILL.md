@@ -5,8 +5,10 @@ description: Classify the change size (small | normal | oversized) so the Compan
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.classify.md
+  source: extension:companion
 ---
+
+# Companion Classify Skill
 
 # Classify Change Size
 

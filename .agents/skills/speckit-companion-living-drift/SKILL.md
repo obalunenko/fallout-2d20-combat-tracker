@@ -5,8 +5,10 @@ description: Report living-spec drift — per capability, the source files chang
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.living-drift.md
+  source: extension:companion
 ---
+
+# Companion Living Drift Skill
 
 # Spec Drift
 

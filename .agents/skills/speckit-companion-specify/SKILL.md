@@ -4,8 +4,10 @@ description: Companion specify — spec.md with prioritized user stories
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.specify.md
+  source: extension:companion
 ---
+
+# Companion Specify Skill
 
 ## User Input
 

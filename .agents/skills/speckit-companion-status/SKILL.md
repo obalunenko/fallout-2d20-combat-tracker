@@ -5,8 +5,10 @@ description: Report where the active spec stands — current step, status, recor
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.status.md
+  source: extension:companion
 ---
+
+# Companion Status Skill
 
 # Spec Status
 

@@ -5,8 +5,10 @@ description: Move a living spec between central and colocated storage — file, 
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.living-move.md
+  source: extension:companion
 ---
+
+# Companion Living Move Skill
 
 # Relocate a Living Spec
 

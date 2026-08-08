@@ -5,8 +5,10 @@ description: Capture tasks completion (currentStep=tasks, status=ready-to-implem
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.after-tasks.md
+  source: extension:companion
 ---
+
+# Companion After Tasks Skill
 
 # Capture Tasks Context
 

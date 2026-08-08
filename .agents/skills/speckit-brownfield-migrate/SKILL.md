@@ -5,8 +5,10 @@ description: Incrementally adopt SDD for existing features with reverse-engineer
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: brownfield:commands/speckit.brownfield.migrate.md
+  source: extension:brownfield
 ---
+
+# Brownfield Migrate Skill
 
 # Migrate Existing Features
 

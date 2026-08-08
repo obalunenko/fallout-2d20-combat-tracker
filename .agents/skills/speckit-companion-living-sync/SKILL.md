@@ -6,8 +6,10 @@ description: Sync living specs from your current changes — group working-tree 
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.living-sync.md
+  source: extension:companion
 ---
+
+# Companion Living Sync Skill
 
 # Sync Living Specs
 

@@ -5,8 +5,10 @@ description: Capture plan completion (currentStep=plan, status=planned) into .sp
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.after-plan.md
+  source: extension:companion
 ---
+
+# Companion After Plan Skill
 
 # Capture Plan Context
 

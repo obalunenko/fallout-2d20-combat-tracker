@@ -4,8 +4,10 @@ description: Verify bootstrap output matches actual project structure and conven
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: brownfield:commands/speckit.brownfield.validate.md
+  source: extension:brownfield
 ---
+
+# Brownfield Validate Skill
 
 # Validate Bootstrap
 

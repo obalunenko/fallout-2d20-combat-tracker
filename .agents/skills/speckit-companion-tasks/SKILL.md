@@ -4,8 +4,10 @@ description: Companion tasks — user-story phased task list
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.tasks.md
+  source: extension:companion
 ---
+
+# Companion Tasks Skill
 
 ## User Input
 

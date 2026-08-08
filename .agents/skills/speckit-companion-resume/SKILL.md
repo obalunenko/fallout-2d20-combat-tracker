@@ -5,8 +5,10 @@ description: Continue the spec-driven pipeline from the last completed step, car
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.resume.md
+  source: extension:companion
 ---
+
+# Companion Resume Skill
 
 # Resume Spec
 

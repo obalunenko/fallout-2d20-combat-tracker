@@ -5,8 +5,10 @@ description: Capture the current spec-kit step into .spec-context.json for the C
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.after-specify.md
+  source: extension:companion
 ---
+
+# Companion After Specify Skill
 
 # Capture Spec Context
 

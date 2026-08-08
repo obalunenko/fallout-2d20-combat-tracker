@@ -5,8 +5,10 @@ description: Capture per-task implement progress (currentStep=implement) into .s
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
-  source: companion:commands/speckit.companion.after-implement.md
+  source: extension:companion
 ---
+
+# Companion After Implement Skill
 
 # Capture Implement Context
 
