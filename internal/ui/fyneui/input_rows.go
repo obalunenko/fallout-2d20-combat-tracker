@@ -38,8 +38,11 @@ type campaignPlayerInputRow struct {
 	hp            *widget.Entry
 	hpMax         *widget.Entry
 	defense       *widget.Entry
+	notes         *widget.Entry
+	special       map[domain.SpecialAttribute]*widget.Entry
 	resistance    uiResistanceInputs
 	active        *widget.Check
+	details       *fyne.Container
 	root          *fyne.Container
 }
 

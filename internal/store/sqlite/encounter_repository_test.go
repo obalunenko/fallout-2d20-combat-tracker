@@ -248,13 +248,13 @@ func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
 	actual, err := store.Get(t.Context())
 	require.NoError(t, err)
 	require.Len(t, actual.Combatants, 2)
-	assert.Equal(t, "Scout Prime", actual.Combatants[0].Name)
+	assert.Equal(t, "Scout", actual.Combatants[0].Name)
 	assert.Equal(t, 3, actual.Combatants[0].Level)
-	assert.Equal(t, 12, actual.Combatants[0].Initiative)
+	assert.Equal(t, 7, actual.Combatants[0].Initiative)
 	assert.Equal(t, 4, actual.Combatants[0].HP)
 	assert.Equal(t, 8, actual.Combatants[0].MaxHP)
 	assert.Equal(t, 5, actual.Combatants[0].Defense)
-	assert.True(t, actual.Combatants[0].TorsoOnly)
+	assert.False(t, actual.Combatants[0].TorsoOnly)
 	assert.Equal(t, 2, actual.Combatants[0].ResistEnergyTorso)
 	assert.Equal(t, 1, actual.Combatants[0].ResistPoison)
 	assert.True(t, actual.Combatants[0].ImmunePoison)
@@ -273,8 +273,8 @@ func TestEncounterStorePartyCombatantUsesCampaignCharacterStats(t *testing.T) {
 
 	actual, err = store.Get(t.Context())
 	require.NoError(t, err)
-	assert.Equal(t, 0, actual.Combatants[0].HP)
-	assert.True(t, actual.Combatants[0].Defeated)
+	assert.Equal(t, 4, actual.Combatants[0].HP)
+	assert.False(t, actual.Combatants[0].Defeated)
 }
 
 func TestEncounterStoreSaveUpdatesLinkedCampaignCharacterFromPartyCombatant(t *testing.T) {

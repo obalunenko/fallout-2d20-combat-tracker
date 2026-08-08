@@ -156,13 +156,14 @@ VALUES (
 
 -- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, stat_profile_id, name, active, availability_status, created_at, updated_at
+  id, player_id, stat_profile_id, name, notes, active, availability_status, created_at, updated_at
 )
 VALUES (
   sqlc.arg(id),
   sqlc.arg(player_id),
   sqlc.arg(stat_profile_id),
   sqlc.arg(name),
+  sqlc.arg(notes),
   sqlc.arg(active),
   sqlc.arg(availability_status),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
@@ -192,10 +193,19 @@ WHERE player_id = sqlc.arg(player_id)
 -- name: UpdateActivePlayerCharacterByID :exec
 UPDATE player_characters
 SET name = sqlc.arg(name),
+    notes = sqlc.arg(notes),
     active = 1,
     availability_status = sqlc.arg(availability_status),
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 WHERE id = sqlc.arg(character_id);
+
+-- name: UpdateActivePlayerCharacterNameByID :exec
+UPDATE player_characters
+SET name = sqlc.arg(name),
+    availability_status = 'active',
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = sqlc.arg(character_id)
+  AND active = 1;
 
 -- name: ListInactiveCurrentPlayerCharacterIDsByCampaignID :many
 SELECT pc.id
@@ -210,6 +220,7 @@ SELECT
   pc.id,
   p.name AS player_name,
   pc.name AS character_name,
+  pc.notes,
   sp.level,
   sp.initiative,
   sp.hp,
@@ -222,6 +233,39 @@ JOIN stat_profiles sp ON sp.id = pc.stat_profile_id
 JOIN players p ON p.id = pc.player_id
 WHERE p.campaign_id = sqlc.arg(campaign_id) AND pc.active = 1
 ORDER BY p.name COLLATE NOCASE ASC, pc.name COLLATE NOCASE ASC;
+
+-- name: ListSpecialAttributes :many
+SELECT id, code
+FROM special_attributes
+ORDER BY id ASC;
+
+-- name: ListActivePlayerCharacterSpecialValuesByCampaignID :many
+SELECT
+  pc.id AS player_character_id,
+  sa.code AS special_attribute,
+  pcsa.value
+FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
+JOIN player_character_special_attributes pcsa ON pcsa.player_character_id = pc.id
+JOIN special_attributes sa ON sa.id = pcsa.special_attribute_id
+WHERE p.campaign_id = sqlc.arg(campaign_id)
+  AND pc.active = 1
+ORDER BY pc.id ASC, sa.id ASC;
+
+-- name: UpsertPlayerCharacterSpecialValue :exec
+INSERT INTO player_character_special_attributes (
+  player_character_id, special_attribute_id, value, created_at, updated_at
+)
+VALUES (
+  sqlc.arg(player_character_id),
+  sqlc.arg(special_attribute_id),
+  sqlc.arg(value),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+ON CONFLICT (player_character_id, special_attribute_id) DO UPDATE SET
+  value = excluded.value,
+  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
 
 -- name: ListActivePlayerCharacterResistanceGlobalByCampaignID :many
 SELECT
@@ -275,29 +319,58 @@ WHERE e.deleted_at IS NULL
 SELECT
   c.id,
   c.player_character_id,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
+  c.name,
   c.side,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
+  csp.level,
+  csp.xp,
+  csp.initiative,
+  csp.hp,
+  csp.max_hp,
+  csp.defense,
+  csp.torso_only,
   CAST(CASE WHEN c.position = e.turn_index THEN 1 ELSE 0 END AS INTEGER) AS active,
-  CAST(CASE
-    WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
-    ELSE c.defeated
-  END AS INTEGER) AS defeated
+  c.defeated
 FROM combatants c
 JOIN stat_profiles csp ON csp.id = c.stat_profile_id
 JOIN encounters e ON e.id = c.encounter_id
-LEFT JOIN player_characters pc ON pc.id = c.player_character_id
-LEFT JOIN players pcp ON pcp.id = pc.player_id
-  AND pcp.campaign_id = e.campaign_id
-LEFT JOIN stat_profiles pcsp ON pcsp.id = pc.stat_profile_id
 WHERE c.encounter_id = sqlc.arg(encounter_id)
 ORDER BY c.position ASC;
+
+-- name: GetEffectiveActiveEncounterIDByCampaignID :one
+SELECT e.id
+FROM encounters e
+JOIN app_state s ON s.id = 1 AND s.active_campaign_id = e.campaign_id
+WHERE e.campaign_id = sqlc.arg(campaign_id)
+  AND e.deleted_at IS NULL
+ORDER BY e.updated_at DESC, e.id DESC
+LIMIT 1;
+
+-- name: ListLinkedCombatantsByEncounterID :many
+SELECT id, CAST(player_character_id AS TEXT) AS player_character_id
+FROM combatants
+WHERE encounter_id = sqlc.arg(encounter_id)
+  AND side = 'party'
+  AND player_character_id IS NOT NULL
+ORDER BY position ASC;
+
+-- name: UpdateLinkedCombatantSnapshotStatsByID :exec
+UPDATE stat_profiles
+SET level = sqlc.arg(level),
+    hp = sqlc.arg(hp),
+    max_hp = sqlc.arg(max_hp),
+    defense = sqlc.arg(defense),
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE stat_profiles.id = (
+  SELECT c.stat_profile_id
+  FROM combatants c
+  WHERE c.id = sqlc.arg(combatant_id)
+);
+
+-- name: UpdateCombatantDefeatedByID :exec
+UPDATE combatants
+SET defeated = sqlc.arg(defeated),
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = sqlc.arg(combatant_id);
 
 -- name: ListCombatantResistanceGlobalByEncounterID :many
 SELECT

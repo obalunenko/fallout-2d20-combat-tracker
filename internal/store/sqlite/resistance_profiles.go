@@ -22,16 +22,7 @@ func combatantsByEncounterID(ctx context.Context, qtx *dbgen.Queries, encounterI
 	if err != nil {
 		return nil, err
 	}
-	linkedPlayerProfiles, err := linkedPlayerCharacterResistanceProfiles(ctx, qtx, encounterID)
-	if err != nil {
-		return nil, err
-	}
-
 	for i := range combatants {
-		if profile, ok := linkedPlayerProfiles[combatants[i].ID]; ok {
-			combatants[i].SetResistanceProfile(profile)
-			continue
-		}
 		if profile, ok := combatantProfiles[combatants[i].ID]; ok {
 			combatants[i].SetResistanceProfile(profile)
 		}
@@ -56,28 +47,6 @@ func combatantResistanceProfiles(ctx context.Context, qtx *dbgen.Queries, encoun
 			return row.CombatantID, row.DamageType, row.Resistance, row.Immune
 		},
 		func(row dbgen.ListCombatantResistanceByLocationByEncounterIDRow) (string, string, string, int64) {
-			return row.CombatantID, row.DamageType, row.BodyLocation, row.Resistance
-		},
-	), nil
-}
-
-func linkedPlayerCharacterResistanceProfiles(ctx context.Context, qtx *dbgen.Queries, encounterID string) (map[string]domain.ResistanceProfile, error) {
-	globalRows, err := qtx.ListLinkedPlayerCharacterResistanceGlobalByEncounterID(ctx, encounterID)
-	if err != nil {
-		return nil, fmt.Errorf("list linked player character global resistances: %w", err)
-	}
-	locationRows, err := qtx.ListLinkedPlayerCharacterResistanceByLocationByEncounterID(ctx, encounterID)
-	if err != nil {
-		return nil, fmt.Errorf("list linked player character location resistances: %w", err)
-	}
-
-	return resistanceProfilesFromRows(
-		globalRows,
-		locationRows,
-		func(row dbgen.ListLinkedPlayerCharacterResistanceGlobalByEncounterIDRow) (string, string, int64, int64) {
-			return row.CombatantID, row.DamageType, row.Resistance, row.Immune
-		},
-		func(row dbgen.ListLinkedPlayerCharacterResistanceByLocationByEncounterIDRow) (string, string, string, int64) {
 			return row.CombatantID, row.DamageType, row.BodyLocation, row.Resistance
 		},
 	), nil

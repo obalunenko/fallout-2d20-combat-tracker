@@ -110,6 +110,7 @@ func campaignPlayerFromRow(r dbgen.ListActivePartyCharactersByCampaignIDRow) dom
 	return domain.NewCampaignPlayer{
 		PlayerName: r.PlayerName,
 		Character:  partyCombatantFromRow(r),
+		Notes:      r.Notes,
 		Inactive:   r.AvailabilityStatus == playerCharacterAvailabilityInactive,
 	}
 }
@@ -215,22 +216,24 @@ func nullString(value string) sql.NullString {
 	return sql.NullString{String: value, Valid: value != ""}
 }
 
-func insertPlayerCharacterParams(characterID, playerID string, c domain.Combatant, inactive bool) dbgen.InsertPlayerCharacterParams {
+func insertPlayerCharacterParams(characterID, playerID string, player domain.NewCampaignPlayer) dbgen.InsertPlayerCharacterParams {
 	return dbgen.InsertPlayerCharacterParams{
 		ID:                 characterID,
 		PlayerID:           playerID,
 		StatProfileID:      statProfileID(statProfilePlayerCharacterKind, characterID),
-		Name:               strings.TrimSpace(c.Name),
+		Name:               strings.TrimSpace(player.Character.Name),
+		Notes:              player.Notes,
 		Active:             1,
-		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
+		AvailabilityStatus: playerCharacterAvailabilityStatus(player.Inactive),
 	}
 }
 
-func updateActivePlayerCharacterParams(characterID string, c domain.Combatant, inactive bool) dbgen.UpdateActivePlayerCharacterByIDParams {
+func updateActivePlayerCharacterParams(characterID string, player domain.NewCampaignPlayer) dbgen.UpdateActivePlayerCharacterByIDParams {
 	return dbgen.UpdateActivePlayerCharacterByIDParams{
 		CharacterID:        characterID,
-		Name:               strings.TrimSpace(c.Name),
-		AvailabilityStatus: playerCharacterAvailabilityStatus(inactive),
+		Name:               strings.TrimSpace(player.Character.Name),
+		Notes:              player.Notes,
+		AvailabilityStatus: playerCharacterAvailabilityStatus(player.Inactive),
 	}
 }
 

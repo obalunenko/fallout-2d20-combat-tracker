@@ -38,6 +38,19 @@ func TestSQLCSchemaSeedsEnumDictionaries(t *testing.T) {
 	)
 }
 
+func TestOpenAndMigrateAddsPlayerCharacterDetails(t *testing.T) {
+	store := newTestStore(t)
+
+	assert.Contains(t, queryColumnNames(t, store.db, "player_characters"), "notes")
+	assert.Equal(t, "", queryString(t, store.db, `SELECT notes FROM player_characters WHERE id = ?`, "repo-char-1"))
+	assert.Equal(t, int64(7), queryInt64(t, store.db, `SELECT COUNT(*) FROM special_attributes`))
+	assert.Equal(t, int64(7), queryInt64(t, store.db, `SELECT COUNT(*) FROM player_character_special_attributes WHERE player_character_id = ?`, "repo-char-1"))
+	assert.Equal(t, int64(7), queryInt64(t, store.db, `SELECT COUNT(*) FROM player_character_special_attributes WHERE player_character_id = ? AND value = 1`, "repo-char-1"))
+
+	_, err := store.db.Exec(`UPDATE player_character_special_attributes SET value = 0 WHERE player_character_id = ?`, "repo-char-1")
+	require.Error(t, err)
+}
+
 func TestOpenAndMigrateEnablesForeignKeysAndCascadeOnAllConnections(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "repo-fk-cascade.db")
 	db, err := OpenAndMigrate(dbPath)

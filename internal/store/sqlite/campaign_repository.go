@@ -25,10 +25,19 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 	if err != nil {
 		return nil, err
 	}
+	specialValues, err := playerCharacterSpecialValuesByCampaign(ctx, s.q, campaignID)
+	if err != nil {
+		return nil, err
+	}
 	players := make([]domain.NewCampaignPlayer, 0, len(rows))
 	for _, r := range rows {
 		player := campaignPlayerFromRow(r)
 		applyPlayerCharacterResistanceProfile(&player.Character, profiles)
+		values, ok := specialValues[player.Character.ID]
+		if !ok {
+			return nil, fmt.Errorf("player character %s has no SPECIAL values", player.Character.ID)
+		}
+		player.Special = values
 		players = append(players, player)
 	}
 	return players, nil
@@ -131,6 +140,10 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 		if err != nil {
 			return err
 		}
+		specialIDs, err := specialAttributeIDs(ctx, qtx)
+		if err != nil {
+			return err
+		}
 
 		for _, p := range players {
 			if err := normalizeCampaignPlayerForSave(&p); err != nil {
@@ -152,8 +165,11 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 			if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 				return fmt.Errorf("sync normalized player character stats: %w", err)
 			}
-			if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, p.Character, p.Inactive)); err != nil {
+			if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, p)); err != nil {
 				return fmt.Errorf("insert player character: %w", err)
+			}
+			if err := upsertPlayerCharacterSpecialValues(ctx, qtx, specialIDs, charID, p.Special); err != nil {
+				return fmt.Errorf("sync player character SPECIAL values: %w", err)
 			}
 		}
 
@@ -209,8 +225,13 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 		if err != nil {
 			return err
 		}
+		specialIDs, err := specialAttributeIDs(ctx, qtx)
+		if err != nil {
+			return err
+		}
 
 		updatedPlayers := make(map[string]struct{}, len(players))
+		savedPlayersByCharacterID := make(map[string]domain.NewCampaignPlayer, len(players))
 		for _, p := range players {
 			if err := normalizeCampaignPlayerForSave(&p); err != nil {
 				return err
@@ -257,16 +278,23 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 					return fmt.Errorf("sync normalized player character stats: %w", err)
 				}
-				if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, p.Character, p.Inactive)); err != nil {
+				if err := qtx.InsertPlayerCharacter(ctx, insertPlayerCharacterParams(charID, playerID, p)); err != nil {
 					return fmt.Errorf("insert player character: %w", err)
 				}
 			} else {
-				if err := updateActivePlayerCharacter(ctx, qtx, charID, p.Character, p.Inactive); err != nil {
+				if err := updateActivePlayerCharacter(ctx, qtx, charID, p); err != nil {
 					return fmt.Errorf("update player character: %w", err)
 				}
 				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 					return fmt.Errorf("sync normalized player character stats: %w", err)
 				}
+			}
+			if err := upsertPlayerCharacterSpecialValues(ctx, qtx, specialIDs, charID, p.Special); err != nil {
+				return fmt.Errorf("sync player character SPECIAL values: %w", err)
+			}
+			p.Character.ID = charID
+			if !p.Inactive {
+				savedPlayersByCharacterID[charID] = p
 			}
 		}
 
@@ -277,6 +305,9 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			if err := deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
 				return fmt.Errorf("deactivate removed campaign players: %w", err)
 			}
+		}
+		if err := syncEffectiveActiveEncounterPlayerCharacters(ctx, qtx, ids, campaignID, savedPlayersByCharacterID); err != nil {
+			return err
 		}
 		if err := removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID); err != nil {
 			return err
@@ -290,6 +321,58 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 		Name:      name,
 		StartDate: startDate,
 	}, nil
+}
+
+func syncEffectiveActiveEncounterPlayerCharacters(
+	ctx context.Context,
+	qtx *dbgen.Queries,
+	ids dictionaryIDs,
+	campaignID string,
+	playersByCharacterID map[string]domain.NewCampaignPlayer,
+) error {
+	encounterID, err := qtx.GetEffectiveActiveEncounterIDByCampaignID(ctx, campaignID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("get effective active encounter: %w", err)
+	}
+	rows, err := qtx.ListLinkedCombatantsByEncounterID(ctx, encounterID)
+	if err != nil {
+		return fmt.Errorf("list active encounter linked combatants: %w", err)
+	}
+	for _, row := range rows {
+		player, ok := playersByCharacterID[row.PlayerCharacterID]
+		if !ok {
+			continue
+		}
+		character := player.Character
+		if err := qtx.UpdateLinkedCombatantSnapshotStatsByID(ctx, dbgen.UpdateLinkedCombatantSnapshotStatsByIDParams{
+			Level:       int64(character.Level),
+			Hp:          int64(character.HP),
+			MaxHp:       int64(character.MaxHP),
+			Defense:     int64(character.Defense),
+			CombatantID: row.ID,
+		}); err != nil {
+			return fmt.Errorf("sync linked combatant stats %s: %w", row.ID, err)
+		}
+		if err := replaceStatProfileNormalizedResistances(
+			ctx,
+			qtx,
+			ids,
+			statProfileID(statProfileCombatantKind, row.ID),
+			character.ResistanceProfile(),
+		); err != nil {
+			return fmt.Errorf("sync linked combatant resistance %s: %w", row.ID, err)
+		}
+		if err := qtx.UpdateCombatantDefeatedByID(ctx, dbgen.UpdateCombatantDefeatedByIDParams{
+			Defeated:    boolToInt64(character.HP == 0),
+			CombatantID: row.ID,
+		}); err != nil {
+			return fmt.Errorf("sync linked combatant defeated state %s: %w", row.ID, err)
+		}
+	}
+	return nil
 }
 
 type playerCharacterRef struct {
@@ -339,7 +422,6 @@ func normalizeCampaignPlayerForSave(player *domain.NewCampaignPlayer) error {
 	}
 	player.Character.Side = domain.SideParty
 	player.Character.XP = 0
-	domain.NormalizeCombatantHP(&player.Character)
 	if err := domain.ValidateCombatant(player.Character, domain.CombatantValidationOptions{
 		Label:       fmt.Sprintf("player %q", player.PlayerName),
 		RequireName: true,
@@ -347,11 +429,18 @@ func normalizeCampaignPlayerForSave(player *domain.NewCampaignPlayer) error {
 	}); err != nil {
 		return err
 	}
+	domain.NormalizeCombatantHP(&player.Character)
+	if player.Special.IsZero() {
+		player.Special = domain.DefaultSpecialValues()
+	}
+	if err := player.Special.Validate(); err != nil {
+		return fmt.Errorf("player %q: %w", player.PlayerName, err)
+	}
 	return nil
 }
 
-func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID string, c domain.Combatant, inactive bool) error {
-	return qtx.UpdateActivePlayerCharacterByID(ctx, updateActivePlayerCharacterParams(characterID, c, inactive))
+func updateActivePlayerCharacter(ctx context.Context, qtx *dbgen.Queries, characterID string, player domain.NewCampaignPlayer) error {
+	return qtx.UpdateActivePlayerCharacterByID(ctx, updateActivePlayerCharacterParams(characterID, player))
 }
 
 func normalizeNameKey(value string) string {

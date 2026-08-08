@@ -202,20 +202,24 @@ func TestPlayerCharacterParamsMapAndTrimDomainCombatant(t *testing.T) {
 		TorsoOnly:  true,
 	}
 
-	insertParams := insertPlayerCharacterParams("pc-1", "player-1", combatant, true)
+	player := domain.NewCampaignPlayer{Character: combatant, Notes: "  keep notes  ", Inactive: true}
+	insertParams := insertPlayerCharacterParams("pc-1", "player-1", player)
 	assert.Equal(t, dbgen.InsertPlayerCharacterParams{
 		ID:                 "pc-1",
 		PlayerID:           "player-1",
 		StatProfileID:      "player_character:pc-1",
 		Name:               "Vault Dweller",
+		Notes:              "  keep notes  ",
 		Active:             1,
 		AvailabilityStatus: playerCharacterAvailabilityInactive,
 	}, insertParams)
 
-	updateParams := updateActivePlayerCharacterParams("pc-1", combatant, false)
+	player.Inactive = false
+	updateParams := updateActivePlayerCharacterParams("pc-1", player)
 	assert.Equal(t, dbgen.UpdateActivePlayerCharacterByIDParams{
 		CharacterID:        "pc-1",
 		Name:               "Vault Dweller",
+		Notes:              "  keep notes  ",
 		AvailabilityStatus: playerCharacterAvailabilityActive,
 	}, updateParams)
 }

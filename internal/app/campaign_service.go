@@ -133,5 +133,11 @@ func prepareCampaignPlayer(player *domain.NewCampaignPlayer) error {
 	domain.NormalizeCombatantHP(&player.Character)
 	player.Character.Side = domain.SideParty
 	player.Character.XP = 0
+	if player.Special.IsZero() {
+		player.Special = domain.DefaultSpecialValues()
+	}
+	if err := player.Special.Validate(); err != nil {
+		return fmt.Errorf("player %q: %w", player.PlayerName, err)
+	}
 	return nil
 }

@@ -170,6 +170,23 @@ func (q *Queries) GetCampaignByID(ctx context.Context, campaignID string) (GetCa
 	return i, err
 }
 
+const getEffectiveActiveEncounterIDByCampaignID = `-- name: GetEffectiveActiveEncounterIDByCampaignID :one
+SELECT e.id
+FROM encounters e
+JOIN app_state s ON s.id = 1 AND s.active_campaign_id = e.campaign_id
+WHERE e.campaign_id = ?1
+  AND e.deleted_at IS NULL
+ORDER BY e.updated_at DESC, e.id DESC
+LIMIT 1
+`
+
+func (q *Queries) GetEffectiveActiveEncounterIDByCampaignID(ctx context.Context, campaignID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getEffectiveActiveEncounterIDByCampaignID, campaignID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getEncounterByIDByCampaignID = `-- name: GetEncounterByIDByCampaignID :one
 SELECT e.id, e.campaign_id, e.name, e.round, e.turn_index, c.party_ap, c.gm_threat
 FROM encounters e
@@ -374,7 +391,7 @@ func (q *Queries) InsertPlayer(ctx context.Context, arg InsertPlayerParams) erro
 
 const insertPlayerCharacter = `-- name: InsertPlayerCharacter :exec
 INSERT INTO player_characters (
-  id, player_id, stat_profile_id, name, active, availability_status, created_at, updated_at
+  id, player_id, stat_profile_id, name, notes, active, availability_status, created_at, updated_at
 )
 VALUES (
   ?1,
@@ -383,6 +400,7 @@ VALUES (
   ?4,
   ?5,
   ?6,
+  ?7,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -393,6 +411,7 @@ type InsertPlayerCharacterParams struct {
 	PlayerID           string
 	StatProfileID      string
 	Name               string
+	Notes              string
 	Active             int64
 	AvailabilityStatus string
 }
@@ -403,6 +422,7 @@ func (q *Queries) InsertPlayerCharacter(ctx context.Context, arg InsertPlayerCha
 		arg.PlayerID,
 		arg.StatProfileID,
 		arg.Name,
+		arg.Notes,
 		arg.Active,
 		arg.AvailabilityStatus,
 	)
@@ -414,6 +434,7 @@ SELECT
   pc.id,
   p.name AS player_name,
   pc.name AS character_name,
+  pc.notes,
   sp.level,
   sp.initiative,
   sp.hp,
@@ -432,6 +453,7 @@ type ListActivePartyCharactersByCampaignIDRow struct {
 	ID                 string
 	PlayerName         string
 	CharacterName      string
+	Notes              string
 	Level              int64
 	Initiative         int64
 	Hp                 int64
@@ -454,6 +476,7 @@ func (q *Queries) ListActivePartyCharactersByCampaignID(ctx context.Context, cam
 			&i.ID,
 			&i.PlayerName,
 			&i.CharacterName,
+			&i.Notes,
 			&i.Level,
 			&i.Initiative,
 			&i.Hp,
@@ -566,6 +589,49 @@ func (q *Queries) ListActivePlayerCharacterResistanceGlobalByCampaignID(ctx cont
 			&i.Resistance,
 			&i.Immune,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActivePlayerCharacterSpecialValuesByCampaignID = `-- name: ListActivePlayerCharacterSpecialValuesByCampaignID :many
+SELECT
+  pc.id AS player_character_id,
+  sa.code AS special_attribute,
+  pcsa.value
+FROM player_characters pc
+JOIN players p ON p.id = pc.player_id
+JOIN player_character_special_attributes pcsa ON pcsa.player_character_id = pc.id
+JOIN special_attributes sa ON sa.id = pcsa.special_attribute_id
+WHERE p.campaign_id = ?1
+  AND pc.active = 1
+ORDER BY pc.id ASC, sa.id ASC
+`
+
+type ListActivePlayerCharacterSpecialValuesByCampaignIDRow struct {
+	PlayerCharacterID string
+	SpecialAttribute  string
+	Value             int64
+}
+
+func (q *Queries) ListActivePlayerCharacterSpecialValuesByCampaignID(ctx context.Context, campaignID string) ([]ListActivePlayerCharacterSpecialValuesByCampaignIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActivePlayerCharacterSpecialValuesByCampaignID, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActivePlayerCharacterSpecialValuesByCampaignIDRow
+	for rows.Next() {
+		var i ListActivePlayerCharacterSpecialValuesByCampaignIDRow
+		if err := rows.Scan(&i.PlayerCharacterID, &i.SpecialAttribute, &i.Value); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -786,27 +852,20 @@ const listCombatantsByEncounterID = `-- name: ListCombatantsByEncounterID :many
 SELECT
   c.id,
   c.player_character_id,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pc.name ELSE c.name END AS TEXT) AS name,
+  c.name,
   c.side,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.level ELSE csp.level END AS INTEGER) AS level,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN 0 ELSE csp.xp END AS INTEGER) AS xp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.initiative ELSE csp.initiative END AS INTEGER) AS initiative,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.hp ELSE csp.hp END AS INTEGER) AS hp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.max_hp ELSE csp.max_hp END AS INTEGER) AS max_hp,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.defense ELSE csp.defense END AS INTEGER) AS defense,
-  CAST(CASE WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN pcsp.torso_only ELSE csp.torso_only END AS INTEGER) AS torso_only,
+  csp.level,
+  csp.xp,
+  csp.initiative,
+  csp.hp,
+  csp.max_hp,
+  csp.defense,
+  csp.torso_only,
   CAST(CASE WHEN c.position = e.turn_index THEN 1 ELSE 0 END AS INTEGER) AS active,
-  CAST(CASE
-    WHEN c.side = 'party' AND pcp.id IS NOT NULL THEN CASE WHEN pcsp.hp <= 0 THEN 1 ELSE 0 END
-    ELSE c.defeated
-  END AS INTEGER) AS defeated
+  c.defeated
 FROM combatants c
 JOIN stat_profiles csp ON csp.id = c.stat_profile_id
 JOIN encounters e ON e.id = c.encounter_id
-LEFT JOIN player_characters pc ON pc.id = c.player_character_id
-LEFT JOIN players pcp ON pcp.id = pc.player_id
-  AND pcp.campaign_id = e.campaign_id
-LEFT JOIN stat_profiles pcsp ON pcsp.id = pc.stat_profile_id
 WHERE c.encounter_id = ?1
 ORDER BY c.position ASC
 `
@@ -1036,6 +1095,43 @@ func (q *Queries) ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx context.
 			return nil, err
 		}
 		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLinkedCombatantsByEncounterID = `-- name: ListLinkedCombatantsByEncounterID :many
+SELECT id, CAST(player_character_id AS TEXT) AS player_character_id
+FROM combatants
+WHERE encounter_id = ?1
+  AND side = 'party'
+  AND player_character_id IS NOT NULL
+ORDER BY position ASC
+`
+
+type ListLinkedCombatantsByEncounterIDRow struct {
+	ID                string
+	PlayerCharacterID string
+}
+
+func (q *Queries) ListLinkedCombatantsByEncounterID(ctx context.Context, encounterID string) ([]ListLinkedCombatantsByEncounterIDRow, error) {
+	rows, err := q.db.QueryContext(ctx, listLinkedCombatantsByEncounterID, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLinkedCombatantsByEncounterIDRow
+	for rows.Next() {
+		var i ListLinkedCombatantsByEncounterIDRow
+		if err := rows.Scan(&i.ID, &i.PlayerCharacterID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1358,6 +1454,35 @@ func (q *Queries) ListPlayerIDsAndNamesByCampaignID(ctx context.Context, campaig
 	return items, nil
 }
 
+const listSpecialAttributes = `-- name: ListSpecialAttributes :many
+SELECT id, code
+FROM special_attributes
+ORDER BY id ASC
+`
+
+func (q *Queries) ListSpecialAttributes(ctx context.Context) ([]SpecialAttribute, error) {
+	rows, err := q.db.QueryContext(ctx, listSpecialAttributes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SpecialAttribute
+	for rows.Next() {
+		var i SpecialAttribute
+		if err := rows.Scan(&i.ID, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setActiveCampaign = `-- name: SetActiveCampaign :execrows
 UPDATE app_state
 SET active_campaign_id = ?1
@@ -1411,20 +1536,46 @@ func (q *Queries) TouchCampaign(ctx context.Context, campaignID string) error {
 const updateActivePlayerCharacterByID = `-- name: UpdateActivePlayerCharacterByID :exec
 UPDATE player_characters
 SET name = ?1,
+    notes = ?2,
     active = 1,
-    availability_status = ?2,
+    availability_status = ?3,
     updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-WHERE id = ?3
+WHERE id = ?4
 `
 
 type UpdateActivePlayerCharacterByIDParams struct {
 	Name               string
+	Notes              string
 	AvailabilityStatus string
 	CharacterID        string
 }
 
 func (q *Queries) UpdateActivePlayerCharacterByID(ctx context.Context, arg UpdateActivePlayerCharacterByIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterByID, arg.Name, arg.AvailabilityStatus, arg.CharacterID)
+	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterByID,
+		arg.Name,
+		arg.Notes,
+		arg.AvailabilityStatus,
+		arg.CharacterID,
+	)
+	return err
+}
+
+const updateActivePlayerCharacterNameByID = `-- name: UpdateActivePlayerCharacterNameByID :exec
+UPDATE player_characters
+SET name = ?1,
+    availability_status = 'active',
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = ?2
+  AND active = 1
+`
+
+type UpdateActivePlayerCharacterNameByIDParams struct {
+	Name        string
+	CharacterID string
+}
+
+func (q *Queries) UpdateActivePlayerCharacterNameByID(ctx context.Context, arg UpdateActivePlayerCharacterNameByIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateActivePlayerCharacterNameByID, arg.Name, arg.CharacterID)
 	return err
 }
 
@@ -1470,6 +1621,56 @@ func (q *Queries) UpdateCampaignResourcesByID(ctx context.Context, arg UpdateCam
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const updateCombatantDefeatedByID = `-- name: UpdateCombatantDefeatedByID :exec
+UPDATE combatants
+SET defeated = ?1,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE id = ?2
+`
+
+type UpdateCombatantDefeatedByIDParams struct {
+	Defeated    int64
+	CombatantID string
+}
+
+func (q *Queries) UpdateCombatantDefeatedByID(ctx context.Context, arg UpdateCombatantDefeatedByIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateCombatantDefeatedByID, arg.Defeated, arg.CombatantID)
+	return err
+}
+
+const updateLinkedCombatantSnapshotStatsByID = `-- name: UpdateLinkedCombatantSnapshotStatsByID :exec
+UPDATE stat_profiles
+SET level = ?1,
+    hp = ?2,
+    max_hp = ?3,
+    defense = ?4,
+    updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+WHERE stat_profiles.id = (
+  SELECT c.stat_profile_id
+  FROM combatants c
+  WHERE c.id = ?5
+)
+`
+
+type UpdateLinkedCombatantSnapshotStatsByIDParams struct {
+	Level       int64
+	Hp          int64
+	MaxHp       int64
+	Defense     int64
+	CombatantID string
+}
+
+func (q *Queries) UpdateLinkedCombatantSnapshotStatsByID(ctx context.Context, arg UpdateLinkedCombatantSnapshotStatsByIDParams) error {
+	_, err := q.db.ExecContext(ctx, updateLinkedCombatantSnapshotStatsByID,
+		arg.Level,
+		arg.Hp,
+		arg.MaxHp,
+		arg.Defense,
+		arg.CombatantID,
+	)
+	return err
 }
 
 const upsertEncounter = `-- name: UpsertEncounter :exec
@@ -1542,6 +1743,33 @@ type UpsertMonsterTemplateParams struct {
 
 func (q *Queries) UpsertMonsterTemplate(ctx context.Context, arg UpsertMonsterTemplateParams) error {
 	_, err := q.db.ExecContext(ctx, upsertMonsterTemplate, arg.ID, arg.StatProfileID, arg.Name)
+	return err
+}
+
+const upsertPlayerCharacterSpecialValue = `-- name: UpsertPlayerCharacterSpecialValue :exec
+INSERT INTO player_character_special_attributes (
+  player_character_id, special_attribute_id, value, created_at, updated_at
+)
+VALUES (
+  ?1,
+  ?2,
+  ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+ON CONFLICT (player_character_id, special_attribute_id) DO UPDATE SET
+  value = excluded.value,
+  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+`
+
+type UpsertPlayerCharacterSpecialValueParams struct {
+	PlayerCharacterID  string
+	SpecialAttributeID int64
+	Value              int64
+}
+
+func (q *Queries) UpsertPlayerCharacterSpecialValue(ctx context.Context, arg UpsertPlayerCharacterSpecialValueParams) error {
+	_, err := q.db.ExecContext(ctx, upsertPlayerCharacterSpecialValue, arg.PlayerCharacterID, arg.SpecialAttributeID, arg.Value)
 	return err
 }
 

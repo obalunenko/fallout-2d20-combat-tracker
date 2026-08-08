@@ -1,6 +1,7 @@
 package fyneui
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -260,6 +261,10 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	row.hp.SetText("9")
 	row.hpMax.SetText("12")
 	row.defense.SetText("2")
+	row.notes.SetText("  keep this\nexactly  ")
+	for i, attribute := range domain.SpecialAttributes() {
+		row.special[attribute].SetText(strconv.Itoa(i + 2))
+	}
 	row.resistance.locationEntry(domain.DamagePhysical, domain.BodyHead).SetText("4")
 	row.resistance.locationEntry(domain.DamageEnergy, domain.BodyTorso).SetText("5")
 	row.resistance.locationEntry(domain.DamageRadiation, domain.BodyRightLeg).SetText("6")
@@ -272,6 +277,10 @@ func TestCollectCampaignPlayersFromRowsMapsPlayerCharacter(t *testing.T) {
 	require.Len(t, players, 1)
 	assert.Equal(t, "June", players[0].PlayerName)
 	assert.True(t, players[0].Inactive)
+	assert.Equal(t, "  keep this\nexactly  ", players[0].Notes)
+	for i, attribute := range domain.SpecialAttributes() {
+		assert.Equal(t, i+2, players[0].Special.Value(attribute))
+	}
 	character := players[0].Character
 	assert.Equal(t, "Vault Dweller", character.Name)
 	assert.Equal(t, domain.SideParty, character.Side)
@@ -298,6 +307,19 @@ func TestCollectCampaignPlayersFromRowsValidatesHPBounds(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "current HP cannot exceed max HP")
+}
+
+func TestCollectCampaignPlayersFromRowsRejectsInvalidSPECIAL(t *testing.T) {
+	test.NewTempApp(t)
+	row := newCampaignPlayerInputRow(func(*campaignPlayerInputRow) {})
+	row.playerName.SetText("June")
+	row.characterName.SetText("Vault Dweller")
+	row.special[domain.SpecialLuck].SetText("0")
+
+	_, err := collectCampaignPlayersFromRows([]*campaignPlayerInputRow{row})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid luck")
 }
 
 func setTestGlobalResistance(t *testing.T, combatant *domain.Combatant, damageType domain.DamageType, value int, immune bool) {

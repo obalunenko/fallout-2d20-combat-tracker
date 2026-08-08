@@ -9,6 +9,80 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEncounterStoreCampaignPlayerDetailsRoundTrip(t *testing.T) {
+	store := newTestStore(t)
+	players, err := store.ListCampaignPlayers(t.Context(), "repo-test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+
+	players[0].Notes = "  first line\nsecond line  "
+	players[0].Special = domain.SpecialValues{
+		Strength: 2, Perception: 3, Endurance: 4, Charisma: 5,
+		Intelligence: 6, Agility: 7, Luck: 8,
+	}
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), players)
+	require.NoError(t, err)
+
+	reloaded, err := store.ListCampaignPlayers(t.Context(), "repo-test-campaign")
+	require.NoError(t, err)
+	require.Len(t, reloaded, 1)
+	assert.Equal(t, players[0].Notes, reloaded[0].Notes)
+	assert.Equal(t, players[0].Special, reloaded[0].Special)
+}
+
+func TestEncounterStoreCampaignEditSyncsOnlyEffectiveActiveEncounterSnapshot(t *testing.T) {
+	store := newTestStore(t)
+	party, err := store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID: "closed-snapshot", Name: "Closed", Round: 2, TurnIndex: 0,
+		Combatants: []domain.Combatant{party[0]},
+	}))
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID: "active-snapshot", Name: "Active", Round: 4, TurnIndex: 0,
+		Combatants: []domain.Combatant{party[0]},
+	}))
+	require.NoError(t, store.Activate(t.Context(), "active-snapshot"))
+
+	players, err := store.ListCampaignPlayers(t.Context(), "repo-test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+	players[0].Character.Level = 5
+	players[0].Character.HP = 0
+	players[0].Character.MaxHP = 12
+	players[0].Character.Defense = 3
+	players[0].Character.ResistEnergyTorso = 4
+	players[0].Character.ImmunePoison = true
+	players[0].Notes = "profile only"
+	players[0].Special.Strength = 9
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), players)
+	require.NoError(t, err)
+
+	active, err := store.GetEncounterByID(t.Context(), "active-snapshot")
+	require.NoError(t, err)
+	require.Len(t, active.Combatants, 1)
+	assert.Equal(t, 4, active.Round)
+	assert.Equal(t, 5, active.Combatants[0].Level)
+	assert.Equal(t, 0, active.Combatants[0].HP)
+	assert.Equal(t, 12, active.Combatants[0].MaxHP)
+	assert.Equal(t, 3, active.Combatants[0].Defense)
+	assert.Equal(t, 4, active.Combatants[0].ResistEnergyTorso)
+	assert.True(t, active.Combatants[0].ImmunePoison)
+	assert.True(t, active.Combatants[0].Defeated)
+
+	closed, err := store.GetEncounterByID(t.Context(), "closed-snapshot")
+	require.NoError(t, err)
+	require.Len(t, closed.Combatants, 1)
+	assert.Equal(t, 2, closed.Round)
+	assert.Equal(t, 1, closed.Combatants[0].Level)
+	assert.Equal(t, 6, closed.Combatants[0].HP)
+	assert.Equal(t, 1, closed.Combatants[0].Defense)
+	assert.Equal(t, 0, closed.Combatants[0].ResistEnergyTorso)
+	assert.False(t, closed.Combatants[0].Defeated)
+}
+
 func TestEncounterStoreUpdateCampaignKeepsInactiveCharacterHistory(t *testing.T) {
 	store := newTestStore(t)
 

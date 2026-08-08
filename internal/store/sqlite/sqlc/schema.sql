@@ -93,7 +93,7 @@ CREATE TABLE "player_characters" (
     availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL,
+    deleted_at DATETIME NULL, notes TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
     FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)
 );
@@ -145,6 +145,25 @@ CREATE TABLE "campaigns" (
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     deleted_at DATETIME NULL
+);
+
+CREATE TABLE special_attributes (
+    id INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE CHECK (code IN (
+        'strength', 'perception', 'endurance', 'charisma',
+        'intelligence', 'agility', 'luck'
+    ))
+);
+
+CREATE TABLE player_character_special_attributes (
+    player_character_id TEXT NOT NULL,
+    special_attribute_id INTEGER NOT NULL,
+    value INTEGER NOT NULL DEFAULT 1 CHECK (value >= 1),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    PRIMARY KEY (player_character_id, special_attribute_id),
+    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,
+    FOREIGN KEY (special_attribute_id) REFERENCES special_attributes(id)
 );
 
 CREATE VIEW combatant_resistance_global AS
@@ -253,6 +272,9 @@ ON monster_templates(lower(trim(name)));
 
 CREATE INDEX idx_monster_templates_deleted_name
 ON monster_templates(deleted_at, name COLLATE NOCASE);
+
+CREATE INDEX idx_player_character_special_attribute
+ON player_character_special_attributes(special_attribute_id, player_character_id);
 
 CREATE TRIGGER trg_combatants_delete_stat_profile
 AFTER DELETE ON combatants

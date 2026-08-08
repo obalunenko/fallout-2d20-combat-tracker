@@ -37,7 +37,7 @@ WHERE spr.body_location_id <> 0
 
 | Name                                                                          | Columns | Comment | Type  |
 | ----------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [player_characters](player_characters.md)                                     | 9       |         | table |
+| [player_characters](player_characters.md)                                     | 10      |         | table |
 | [stat_profile_resistance_by_location](stat_profile_resistance_by_location.md) | 7       |         | table |
 
 ## Triggers

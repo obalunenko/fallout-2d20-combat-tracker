@@ -1005,6 +1005,12 @@
           "name": "deleted_at",
           "type": "DATETIME",
           "nullable": true
+        },
+        {
+          "name": "notes",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
         }
       ],
       "indexes": [
@@ -1153,7 +1159,7 @@
           "def": "CREATE TRIGGER trg_player_characters_player_update_keeps_combatants_consistent\nBEFORE UPDATE OF player_id ON player_characters\nWHEN EXISTS (\n    SELECT 1\n    FROM combatants c\n    JOIN encounters e ON e.id = c.encounter_id\n    JOIN players p ON p.id = NEW.player_id\n    WHERE c.player_character_id = NEW.id\n      AND p.campaign_id \u003c\u003e e.campaign_id\n)\nBEGIN\n    SELECT RAISE(ABORT, 'player character player update would mismatch linked combatants');\nEND"
         }
       ],
-      "def": "CREATE TABLE \"player_characters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    player_id TEXT NOT NULL CHECK (trim(player_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n    availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
+      "def": "CREATE TABLE \"player_characters\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    player_id TEXT NOT NULL CHECK (trim(player_id) \u003c\u003e ''),\n    stat_profile_id TEXT NOT NULL CHECK (trim(stat_profile_id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),\n    availability_status TEXT NOT NULL DEFAULT 'active' CHECK (availability_status IN ('active', 'inactive')),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL, notes TEXT NOT NULL DEFAULT '',\n    FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,\n    FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles(id)\n)"
     },
     {
       "name": "body_locations",
@@ -1989,6 +1995,182 @@
         }
       ],
       "def": "CREATE TABLE \"campaigns\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    name TEXT NOT NULL CHECK (trim(name) \u003c\u003e ''),\n    start_date DATETIME NOT NULL,\n    party_ap INTEGER NOT NULL DEFAULT 0 CHECK (party_ap \u003e= 0 AND party_ap \u003c= 6),\n    gm_threat INTEGER NOT NULL DEFAULT 0 CHECK (gm_threat \u003e= 0),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL\n)"
+    },
+    {
+      "name": "special_attributes",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "code",
+          "type": "TEXT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_special_attributes_1",
+          "def": "UNIQUE (code)",
+          "table": "special_attributes",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "special_attributes",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_special_attributes_1",
+          "type": "UNIQUE",
+          "def": "UNIQUE (code)",
+          "table": "special_attributes",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (code IN ( 'strength', 'perception', 'endurance', 'charisma', 'intelligence', 'agility', 'luck' ))",
+          "table": "special_attributes",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE special_attributes (\n    id INTEGER PRIMARY KEY,\n    code TEXT NOT NULL UNIQUE CHECK (code IN (\n        'strength', 'perception', 'endurance', 'charisma',\n        'intelligence', 'agility', 'luck'\n    ))\n)"
+    },
+    {
+      "name": "player_character_special_attributes",
+      "type": "table",
+      "columns": [
+        {
+          "name": "player_character_id",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "special_attribute_id",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_player_character_special_attribute",
+          "def": "CREATE INDEX idx_player_character_special_attribute\nON player_character_special_attributes(special_attribute_id, player_character_id)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "special_attribute_id",
+            "player_character_id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_player_character_special_attributes_1",
+          "def": "PRIMARY KEY (player_character_id, special_attribute_id)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "player_character_id",
+            "special_attribute_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "player_character_id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (player_character_id)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "player_character_id"
+          ]
+        },
+        {
+          "name": "special_attribute_id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (special_attribute_id)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "special_attribute_id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (special_attribute_id) REFERENCES special_attributes (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE",
+          "table": "player_character_special_attributes",
+          "referenced_table": "special_attributes",
+          "columns": [
+            "special_attribute_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 1)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_character_id) REFERENCES player_characters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "player_character_special_attributes",
+          "referenced_table": "player_characters",
+          "columns": [
+            "player_character_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_player_character_special_attributes_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (player_character_id, special_attribute_id)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "player_character_id",
+            "special_attribute_id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (value \u003e= 1)",
+          "table": "player_character_special_attributes",
+          "columns": [
+            "value"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE player_character_special_attributes (\n    player_character_id TEXT NOT NULL,\n    special_attribute_id INTEGER NOT NULL,\n    value INTEGER NOT NULL DEFAULT 1 CHECK (value \u003e= 1),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    PRIMARY KEY (player_character_id, special_attribute_id),\n    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,\n    FOREIGN KEY (special_attribute_id) REFERENCES special_attributes(id)\n)"
     }
   ],
   "relations": [
@@ -2160,6 +2342,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (stat_profile_id) REFERENCES stat_profiles (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "player_character_special_attributes",
+      "columns": [
+        "special_attribute_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "special_attributes",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (special_attribute_id) REFERENCES special_attributes (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+    },
+    {
+      "table": "player_character_special_attributes",
+      "columns": [
+        "player_character_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "player_characters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_character_id) REFERENCES player_characters (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     }
   ],
   "driver": {
