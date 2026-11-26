@@ -54,6 +54,14 @@ Encounter operation logs are useful feedback, not critical state. Failure to app
 - Fyne UI: `internal/ui/fyneui`.
 - Database documentation: `docs/db` and `docs/db-normalization.md`.
 - Build and verification commands: `Makefile`.
+- Pinned development tools (goose, sqlc, tbls, golangci-lint, goreleaser): each tool MUST live in
+  its own isolated Go module, `tools/<tool>/go.mod` and `go.sum`, declared with a `tool`
+  directive. A tool MUST be built from its own module (`go -C tools/<tool> install` or `build`)
+  into `tools/bin` and run from there; locally this goes through the `Makefile` `*-install`
+  targets. Tool dependencies MUST NOT be added to the application `go.mod`, and tools MUST NOT be
+  run through `go tool -modfile`. Rationale: tool dependencies stay out of the application module
+  graph, each tool module can be tidied and upgraded on its own, and CI cache keys that hash
+  `tools/*/go.sum` stay accurate.
 
 ## Naming And Style
 
@@ -92,4 +100,4 @@ make goreleaser-check
 
 This constitution overrides generic Spec Kit template guidance for this repository. New specs must include a Constitution Check that names affected layers, persistence impact, tests, and generation steps. Amendments require a short rationale in the changing spec/plan and an update to this file. Brownfield migrated specs must be marked `status: migrated` and should document discovered gaps honestly rather than inventing behavior.
 
-**Version**: 1.0.1 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-11-26
+**Version**: 1.1.0 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-11-26
