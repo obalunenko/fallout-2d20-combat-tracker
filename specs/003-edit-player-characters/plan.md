@@ -12,7 +12,7 @@ Add migration `00043` with a notes field on player characters plus dictionary-ba
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.3
+**Language/Version**: Go 1.27.4
 
 **Primary Dependencies**: Fyne v2.7.4, modernc.org/sqlite v1.50.1, Goose v3.27.1, sqlc, google/uuid, testify
 

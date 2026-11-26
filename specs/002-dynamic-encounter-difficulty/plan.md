@@ -11,7 +11,7 @@ The rule calculation belongs in `internal/domain` so the UI, encounter summaries
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.3
+**Language/Version**: Go 1.27.4
 **Primary Dependencies**: Fyne v2.7.4, modernc.org/sqlite v1.50.1, Goose v3.27.1, sqlc, google/uuid, testify
 **Storage**: Local SQLite database; default path `~/.config/fallout-tracker/tracker.db`; override via `FALLOUT_TRACKER_DB_PATH`
 **Testing**: `go test ./...`; focused domain tests for difficulty math; focused UI helper/formatter tests for draft preview and unavailable states; app/store tests updated only where summaries expose recalculated difficulty

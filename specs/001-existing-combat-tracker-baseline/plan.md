@@ -9,7 +9,7 @@ The current application is a local native desktop Fallout 2d20 combat tracker. I
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.3
+**Language/Version**: Go 1.27.4
 **Primary Dependencies**: Fyne v2.7.4, modernc.org/sqlite v1.50.1, Goose v3.27.1, sqlc, google/uuid, testify
 **Storage**: Local SQLite database with embedded Goose migrations; default path `~/.config/fallout-tracker/tracker.db`; `FALLOUT_TRACKER_DB_PATH` override
 **Testing**: Go tests across `internal/domain`, `internal/app`, `internal/store/sqlite`, and `internal/ui/fyneui`

@@ -1,6 +1,6 @@
 module github.com/obalunenko/fallout/tools/goose
 
-go 1.26.3
+go 1.27.4
 
 tool github.com/pressly/goose/v3/cmd/goose
 
