@@ -31,5 +31,5 @@
 - For new combat stat dimensions, extend dictionary tables first (`body_locations`, `damage_types`) and then add row-based data, not new wide columns.
 - Keep data migrations idempotent where possible (`INSERT ... ON CONFLICT` / `INSERT OR IGNORE`).
 - If a migration changes write/read paths, run:
-  - `go tool -modfile=tools/sqlc/go.tool.mod sqlc generate`
+  - `make sqlc-generate`
   - `go test ./...`

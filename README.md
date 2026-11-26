@@ -63,12 +63,12 @@ Labels use these difference bands:
   - `internal/store/sqlite/sqlc/schema.sql`
   - `internal/store/sqlite/sqlc/query.sql`
 - generated sqlc code: `internal/store/sqlite/dbgen`
-- Tooling is split into dedicated modules:
-  - `tools/goose/go.tool.mod`
-  - `tools/sqlc/go.tool.mod`
-  - `tools/tbls/go.tool.mod`
-  - `tools/golangci-lint/go.tool.mod`
-  - `tools/goreleaser/go.tool.mod`
+- Each tool lives in its own isolated Go module (`tools/<tool>/go.mod` with a `tool` directive), installed into `tools/bin` by `make <tool>-install`:
+  - `tools/goose/go.mod`
+  - `tools/sqlc/go.mod`
+  - `tools/tbls/go.mod`
+  - `tools/golangci-lint/go.mod`
+  - `tools/goreleaser/go.mod`
 - DB docs: `docs/db`
 
 Examples:

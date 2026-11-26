@@ -41,11 +41,20 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            tools/*/go.sum
 
       - name: Download dependencies
         run: |
           go mod download
           go -C tools/goreleaser mod download
+
+      - name: Install GoReleaser
+        shell: bash
+        run: |
+          mkdir -p tools/bin
+          go -C tools/goreleaser build -o ../bin/ github.com/goreleaser/goreleaser/v2
 
       - name: Install Linux GUI build dependencies (Fyne/GLFW)
         if: matrix.goos == 'linux'
@@ -85,7 +94,7 @@ jobs:
             "${CC}" --version
           fi
 
-          go tool -modfile=tools/goreleaser/go.tool.mod goreleaser build \
+          tools/bin/goreleaser build \
             --clean \
             --single-target \
             --id fallout-tracker \
@@ -102,7 +111,7 @@ jobs:
             flags+=(--snapshot)
           fi
 
-          go tool -modfile=tools/goreleaser/go.tool.mod goreleaser release \
+          tools/bin/goreleaser release \
             --config .goreleaser.darwin.yaml \
             "${flags[@]}"
           cp dist/fallout-tracker_darwin_all/fallout-tracker dist/fallout-tracker-darwin-universal
