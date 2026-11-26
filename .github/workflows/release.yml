@@ -25,7 +25,7 @@ jobs:
             goos: windows
             goarch: amd64
             ext: ".exe"
-          - runner: macos-14
+          - runner: macos-latest
             goos: darwin
             goarch: universal
             ext: ""
@@ -94,11 +94,12 @@ jobs:
             "${CC}" --version
           fi
 
-          tools/bin/goreleaser build \
-            --clean \
-            --single-target \
-            --id fallout-tracker \
-            --output "${OUT_FILE}"
+          flags=(--clean --single-target --id fallout-tracker --output "${OUT_FILE}")
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            flags+=(--snapshot)
+          fi
+
+          tools/bin/goreleaser build "${flags[@]}"
 
       - name: Build universal macOS binary
         if: matrix.goos == 'darwin'
