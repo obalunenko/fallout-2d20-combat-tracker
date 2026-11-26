@@ -1,6 +1,6 @@
 module github.com/obalunenko/fallout
 
-go 1.26.3
+go 1.27.4
 
 require (
 	fyne.io/fyne/v2 v2.7.4
