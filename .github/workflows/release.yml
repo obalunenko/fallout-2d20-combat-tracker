@@ -76,6 +76,16 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-pkgconf
 
+      # gcc.exe runs cc1.exe, as.exe and ld.exe, which load their DLLs from
+      # PATH, not from gcc's directory. Without UCRT64 on PATH they miss them
+      # or load the runner image's own MinGW DLLs and exit silently.
+      - name: Add MSYS2 UCRT64 toolchain to PATH
+        if: matrix.goos == 'windows'
+        shell: bash
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: printf '%s\\ucrt64\\bin\n' "${MSYS2_LOCATION}" >> "${GITHUB_PATH}"
+
       - name: Build with GoReleaser (single target)
         if: matrix.goos != 'darwin'
         shell: bash
@@ -92,6 +102,7 @@ jobs:
             export CC="${MSYS2_LOCATION//\\//}/ucrt64/bin/gcc.exe"
             test -x "${CC}"
             "${CC}" --version
+            echo 'int main(void) { return 0; }' | "${CC}" -x c - -o "${RUNNER_TEMP}/cc-smoke.exe"
           fi
 
           flags=(--clean --single-target --id fallout-tracker --output "${OUT_FILE}")
