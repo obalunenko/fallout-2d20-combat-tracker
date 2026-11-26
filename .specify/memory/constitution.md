@@ -60,8 +60,8 @@ Encounter operation logs are useful feedback, not critical state. Failure to app
 - Go package and file naming follows the existing lowercase/snake_case Go style, with tests named `*_test.go`.
 - Public API names should be exported only when used across packages or useful for tests.
 - Commit history currently follows Conventional Commit prefixes such as `feat:`, `fix:`, `refactor:`, `ci:`, and `build(deps):`; future branches and commits should preserve that style where practical.
-- Keep generated, build, and local database artifacts out of source control (`tools/bin/`, `bin/`, `dist/`, `tracker.db` are already ignored).
-- Do not store secrets or personal credentials in `.agents/`; it is used here for checked-in Spec Kit skills and project agent guidance.
+- Keep generated, build, and local database artifacts out of source control (`tools/bin/`, `tools/uv/`, `bin/`, `dist/`, `tracker.db` are already ignored).
+- Do not store secrets or personal credentials in `.claude/`, `.speckit/`, or `.specify/`; they are used here for checked-in Spec Kit skills, extensions, and project agent guidance.
 
 ## Quality Gates
 
@@ -92,4 +92,4 @@ make goreleaser-check
 
 This constitution overrides generic Spec Kit template guidance for this repository. New specs must include a Constitution Check that names affected layers, persistence impact, tests, and generation steps. Amendments require a short rationale in the changing spec/plan and an update to this file. Brownfield migrated specs must be marked `status: migrated` and should document discovered gaps honestly rather than inventing behavior.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-06-20
+**Version**: 1.0.1 | **Ratified**: 2026-06-20 | **Last Amended**: 2026-11-26

@@ -22,7 +22,26 @@ GORELEASER_TOOL_DIR := ./tools/goreleaser
 GORELEASER_TOOL_MODFILE := go.tool.mod
 GORELEASER_BIN := $(TOOLS_BIN_DIR)/goreleaser
 
-.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install tbls-install schema-generate sqlc-generate db-doc-generate db-check goose-status goose-create vet lint lint-install goreleaser-install goreleaser-check goreleaser-local goreleaser-snapshot ci-check clean
+# Spec Kit pins. agent-context ships with the Specify CLI, so SPECKIT_VERSION
+# pins it too.
+SPECKIT_VERSION := 1.2.5
+SPECKIT_COMPANION_VERSION := 0.25.0
+SPECKIT_BROWNFIELD_VERSION := 1.0.0
+SPECKIT_BUGFIX_VERSION := 1.1.0
+SPECKIT_FEATURE_NUMBERING_VERSION := 1.0.0
+SPECKIT_TOOL_DIR := ./tools/uv
+SPECIFY_BIN := $(TOOLS_BIN_DIR)/specify
+SPECKIT_ENV := \
+	SPECKIT_VERSION='$(SPECKIT_VERSION)' \
+	SPECKIT_COMPANION_VERSION='$(SPECKIT_COMPANION_VERSION)' \
+	SPECKIT_BROWNFIELD_VERSION='$(SPECKIT_BROWNFIELD_VERSION)' \
+	SPECKIT_BUGFIX_VERSION='$(SPECKIT_BUGFIX_VERSION)' \
+	SPECKIT_FEATURE_NUMBERING_VERSION='$(SPECKIT_FEATURE_NUMBERING_VERSION)' \
+	UV_TOOL_DIR='$(abspath $(SPECKIT_TOOL_DIR))' \
+	UV_TOOL_BIN_DIR='$(abspath $(TOOLS_BIN_DIR))' \
+	SPECIFY_BIN='$(abspath $(SPECIFY_BIN))'
+
+.PHONY: help run test build fmt tidy tools-list tools-verify goose-install sqlc-install tbls-install schema-generate sqlc-generate db-doc-generate db-check goose-status goose-create vet lint lint-install goreleaser-install goreleaser-check goreleaser-local goreleaser-snapshot ci-check speckit-install speckit-skills-normalize speckit-update-check speckit-update-test clean
 
 help:
 	@echo "Targets:"
@@ -42,9 +61,13 @@ help:
 	@echo "  make goreleaser-check - Validate .goreleaser.yaml"
 	@echo "  make goreleaser-local - Build binary for current OS/ARCH via GoReleaser"
 	@echo "  make goreleaser-snapshot - Build release artifacts locally (no publish)"
-	@echo "  make ci-check - Run vet, lint, tests and build"
+	@echo "  make ci-check - Run vet, lint, tests, build and Spec Kit checker tests"
 	@echo "  make goose-status                   - Goose status via go mod tool"
 	@echo "  make goose-create NAME=add_table    - Create SQL migration"
+	@echo "  make speckit-install - Install pinned Spec Kit, extensions and Claude Code skills"
+	@echo "  make speckit-skills-normalize - Rewrite Spec Kit skill invocations to /speckit-name"
+	@echo "  make speckit-update-check - Check Spec Kit updates without installing them"
+	@echo "  make speckit-update-test - Run the Spec Kit update-checker tests"
 	@echo "  make clean  - Remove build artifacts"
 
 run: build
@@ -144,13 +167,25 @@ goreleaser-local:
 goreleaser-snapshot:
 	go tool -modfile=$(GORELEASER_TOOL_DIR)/$(GORELEASER_TOOL_MODFILE) goreleaser release --snapshot --clean --skip=publish
 
-ci-check: vet lint test build
+ci-check: vet lint test build speckit-update-test
 
 goose-status: goose-install
 	$(GOOSE_BIN) -dir $(MIGRATIONS_DIR) sqlite3 $(DB) status
 
 goose-create: goose-install
 	$(GOOSE_BIN) -dir $(MIGRATIONS_DIR) create $(NAME) sql
+
+speckit-install:
+	$(SPECKIT_ENV) scripts/install-speckit.sh
+
+speckit-skills-normalize:
+	scripts/normalize-speckit-skills.sh
+
+speckit-update-check:
+	$(SPECKIT_ENV) scripts/check-speckit-updates.py
+
+speckit-update-test:
+	python3 scripts/test_check_speckit_updates.py
 
 clean:
 	rm -rf $(BIN_DIR)
