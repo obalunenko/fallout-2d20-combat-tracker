@@ -13,7 +13,7 @@ The section between the `SPECKIT` markers is managed by the Spec Kit agent-conte
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/003-edit-player-characters/plan.md
+at specs/004-mcp-server/plan.md
 <!-- SPECKIT END -->
 
 ## Claude Code configuration
