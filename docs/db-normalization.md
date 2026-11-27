@@ -43,6 +43,27 @@ intentional whitespace and line breaks survive a round trip.
 `combatants` does not store `active`; active combatants are derived from
 `combatants.position = encounters.turn_index`.
 
+## Assistant Connection And Audit Data
+
+Migration `00044` adds the assistant (MCP) connection data:
+
+- `encounter_logs.source` records who performed a logged operation. It is a
+  `TEXT` column with `CHECK (source IN ('desktop', 'assistant'))` and a
+  `'desktop'` default that backfills existing rows. It is not a dictionary
+  table: it is a two-value audit attribute of a log entry, not a combat stat
+  dimension, so the preference for dictionary tables and row-based data does
+  not apply.
+- `assistant_connection_settings` holds the GM's connection choice (enabled
+  flag, loopback port, access secret). Like `app_state`, it is a single row
+  enforced by `CHECK (id = 1)`: it is application-wide configuration, not
+  per-campaign data, so it has no owner key. The migration seeds no row; the
+  application creates it on first read.
+- `assistant_activity` is an append-only audit log. Its `entity_kind` and
+  `outcome` columns are CHECK-constrained enums for the same reason as
+  `encounter_logs.source`. `entity_id` and `entity_label` are snapshots taken
+  when the action ran and are not foreign keys, so entries survive deletion of
+  the entity they describe. The repository keeps only the newest 1,000 rows.
+
 ## Deliberate Caches And Snapshots
 
 The following fields are intentionally stored even though they can be derived

@@ -6,6 +6,11 @@ builds:
   - id: fallout-tracker
     main: ./cmd/fallout-tracker
     binary: fallout-tracker
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+      # cgo repeats -lobjc per Objective-C package; Apple's ld warns about it.
+      # Only Apple's linker knows the flag.
+      - '{{ if eq .Os "darwin" }}-extldflags=-Wl,-no_warn_duplicate_libraries{{ end }}'
     env:
       - CGO_ENABLED=1
     goos:

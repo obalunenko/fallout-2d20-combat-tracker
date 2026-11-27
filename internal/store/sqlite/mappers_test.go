@@ -249,6 +249,7 @@ func TestEncounterLogFromRowFormatsCreatedAt(t *testing.T) {
 	actual := encounterLogFromRow(dbgen.ListEncounterLogsByEncounterIDRow{
 		Round:     3,
 		Message:   "Turn advanced",
+		Source:    "assistant",
 		CreatedAt: createdAt,
 	})
 
@@ -256,5 +257,15 @@ func TestEncounterLogFromRowFormatsCreatedAt(t *testing.T) {
 		Round:     3,
 		Message:   "Turn advanced",
 		CreatedAt: createdAt,
+		Source:    domain.SourceAssistant,
 	}, actual)
+}
+
+func TestEncounterLogFromRowTreatsEmptySourceAsDesktop(t *testing.T) {
+	actual := encounterLogFromRow(dbgen.ListEncounterLogsByEncounterIDRow{
+		Round:   1,
+		Message: "Encounter created",
+	})
+
+	assert.Equal(t, domain.SourceDesktop, actual.Source)
 }

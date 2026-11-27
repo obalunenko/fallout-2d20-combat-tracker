@@ -1,13 +1,17 @@
 package fyneui
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
+	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	appsvc "github.com/obalunenko/fallout/internal/app"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -53,4 +57,51 @@ func mustEntryInt(t *testing.T, value string) int {
 	parsed, err := strconv.Atoi(value)
 	require.NoError(t, err)
 	return parsed
+}
+
+type renamedCampaignRepo struct {
+	*refresherRepo
+	campaigns []domain.Campaign
+}
+
+func (r *renamedCampaignRepo) ListCampaigns(context.Context) ([]domain.Campaign, error) {
+	return r.campaigns, nil
+}
+
+func entryTexts(obj fyne.CanvasObject) []string {
+	var out []string
+	var walk func(fyne.CanvasObject)
+	walk = func(o fyne.CanvasObject) {
+		switch v := o.(type) {
+		case *widget.Entry:
+			out = append(out, v.Text)
+		case *fyne.Container:
+			for _, child := range v.Objects {
+				walk(child)
+			}
+		case fyne.Widget:
+			for _, child := range test.WidgetRenderer(v).Objects() {
+				walk(child)
+			}
+		}
+	}
+	walk(obj)
+	return out
+}
+
+func TestCampaignEditorOpensWithStoredState(t *testing.T) {
+	test.NewTempApp(t).Settings().SetTheme(newPipBoyTheme())
+	w := test.NewTempWindow(t, widget.NewLabel("main"))
+	w.Resize(fyne.NewSize(1100, 700))
+	// The list showed "Old Name"; the assistant renamed it since.
+	repo := &renamedCampaignRepo{refresherRepo: &refresherRepo{}, campaigns: []domain.Campaign{{ID: "c1", Name: "Renamed by AI"}}}
+	svc := appsvc.NewServiceWithLogfAndTimeout(repo, func(string, ...any) {}, 0)
+
+	openCampaignEditor(t.Context(), w, svc, "c1", func() {})
+
+	var entries []string
+	for _, o := range w.Canvas().Overlays().List() {
+		entries = append(entries, entryTexts(o)...)
+	}
+	require.Contains(t, entries, "Renamed by AI", "the editor reads the campaign, not the list's copy")
 }

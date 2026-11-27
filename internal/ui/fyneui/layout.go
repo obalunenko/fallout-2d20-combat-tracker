@@ -76,13 +76,17 @@ func newMainContentWithHeader(
 	openCampaignBtn,
 	openEncounterBtn,
 	newCampaignBtn,
-	newEncounterBtn *widget.Button,
+	newEncounterBtn,
+	assistantBtn *widget.Button,
 ) fyne.CanvasObject {
 	header := widget.NewLabel("PIP-BOY // FALLOUT 2D20 COMBAT TRACKER")
 	header.Alignment = fyne.TextAlignCenter
 	header.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	header.Importance = widget.HighImportance
 	leftControls := container.NewHBox(openCampaignBtn, openEncounterBtn)
+	if assistantBtn != nil {
+		leftControls.Add(assistantBtn)
+	}
 	rightControls := container.NewHBox(newCampaignBtn, newEncounterBtn)
 	headerBar := container.NewBorder(nil, nil, leftControls, rightControls, header)
 	topBar := container.NewVBox(headerBar, campaignStatusLabel)

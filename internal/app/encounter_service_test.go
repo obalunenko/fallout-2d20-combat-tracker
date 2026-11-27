@@ -130,7 +130,7 @@ func TestResourceCommands(t *testing.T) {
 	_, err := svc.CreateEncounter(t.Context(), "enc-1", "test", []domain.Combatant{{ID: "c1", Name: "Alpha", Initiative: 10}})
 	require.NoError(t, err)
 
-	_, err = svc.AddPartyAP(t.Context(), 2)
+	_, _, err = svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
 	_, err = svc.SpendPartyAP(t.Context(), 1)
 	require.NoError(t, err)
@@ -159,9 +159,10 @@ func TestResourceCommands(t *testing.T) {
 	assert.Equal(t, 1, first.Resources.PartyAP)
 	assert.Equal(t, 1, first.Resources.GMThreat)
 
-	capped, err := svc.AddPartyAP(t.Context(), 20)
+	full, capped, err := svc.AddPartyAP(t.Context(), 20)
 	require.NoError(t, err)
-	assert.Equal(t, domain.MaxPartyAP, capped.Resources.PartyAP)
+	assert.Equal(t, domain.MaxPartyAP, full.Resources.PartyAP)
+	assert.True(t, capped, "the cap kept part of the addition out")
 
 	uncappedThreat, err := svc.AddThreat(t.Context(), 100)
 	require.NoError(t, err)
@@ -200,7 +201,7 @@ func TestUpdateEncounterPreservesTurnIndexAndActiveCombatant(t *testing.T) {
 
 	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	_, err = svc.AddPartyAP(t.Context(), 2)
+	_, _, err = svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
 
 	beforeUpdate, err := svc.GetEncounter(t.Context())
@@ -325,7 +326,7 @@ func TestRestartEncounterResetsRoundAndPreservesCampaignResources(t *testing.T) 
 	require.NoError(t, err)
 	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	_, err = svc.AddPartyAP(t.Context(), 3)
+	_, _, err = svc.AddPartyAP(t.Context(), 3)
 	require.NoError(t, err)
 	_, err = svc.AddThreat(t.Context(), 2)
 	require.NoError(t, err)

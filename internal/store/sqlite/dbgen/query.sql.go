@@ -37,6 +37,15 @@ func (q *Queries) ActivateEncounterByCampaign(ctx context.Context, arg ActivateE
 	return result.RowsAffected()
 }
 
+const clearAssistantActivity = `-- name: ClearAssistantActivity :exec
+DELETE FROM assistant_activity
+`
+
+func (q *Queries) ClearAssistantActivity(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, clearAssistantActivity)
+	return err
+}
+
 const deactivateActiveCharactersByPlayerID = `-- name: DeactivateActiveCharactersByPlayerID :exec
 UPDATE player_characters
 SET active = 0,
@@ -138,6 +147,25 @@ func (q *Queries) GetActivePlayerCharacterByPlayerID(ctx context.Context, player
 	row := q.db.QueryRowContext(ctx, getActivePlayerCharacterByPlayerID, playerID)
 	var i GetActivePlayerCharacterByPlayerIDRow
 	err := row.Scan(&i.ID, &i.Name)
+	return i, err
+}
+
+const getAssistantConnectionSettings = `-- name: GetAssistantConnectionSettings :one
+SELECT enabled, port, access_secret
+FROM assistant_connection_settings
+WHERE id = 1
+`
+
+type GetAssistantConnectionSettingsRow struct {
+	Enabled      int64
+	Port         int64
+	AccessSecret string
+}
+
+func (q *Queries) GetAssistantConnectionSettings(ctx context.Context) (GetAssistantConnectionSettingsRow, error) {
+	row := q.db.QueryRowContext(ctx, getAssistantConnectionSettings)
+	var i GetAssistantConnectionSettingsRow
+	err := row.Scan(&i.Enabled, &i.Port, &i.AccessSecret)
 	return i, err
 }
 
@@ -273,6 +301,49 @@ func (q *Queries) GetMonsterTemplateIDByName(ctx context.Context, name string) (
 	return id, err
 }
 
+const insertAssistantActivity = `-- name: InsertAssistantActivity :exec
+INSERT INTO assistant_activity (
+  id, occurred_at, operation, entity_kind, entity_id, entity_label, outcome, detail, created_at, updated_at
+)
+VALUES (
+  ?1,
+  CAST(?2 AS TEXT),
+  ?3,
+  ?4,
+  ?5,
+  ?6,
+  ?7,
+  ?8,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+`
+
+type InsertAssistantActivityParams struct {
+	ID          string
+	OccurredAt  string
+	Operation   string
+	EntityKind  interface{}
+	EntityID    interface{}
+	EntityLabel string
+	Outcome     string
+	Detail      string
+}
+
+func (q *Queries) InsertAssistantActivity(ctx context.Context, arg InsertAssistantActivityParams) error {
+	_, err := q.db.ExecContext(ctx, insertAssistantActivity,
+		arg.ID,
+		arg.OccurredAt,
+		arg.Operation,
+		arg.EntityKind,
+		arg.EntityID,
+		arg.EntityLabel,
+		arg.Outcome,
+		arg.Detail,
+	)
+	return err
+}
+
 const insertCampaign = `-- name: InsertCampaign :exec
 INSERT INTO campaigns (id, name, start_date, created_at, updated_at)
 VALUES (
@@ -339,12 +410,13 @@ func (q *Queries) InsertCombatant(ctx context.Context, arg InsertCombatantParams
 }
 
 const insertEncounterLog = `-- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (id, encounter_id, round, message, created_at, updated_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, source, created_at, updated_at)
 VALUES (
   ?1,
   ?2,
   ?3,
   ?4,
+  ?5,
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 )
@@ -355,6 +427,7 @@ type InsertEncounterLogParams struct {
 	EncounterID string
 	Round       int64
 	Message     string
+	Source      string
 }
 
 func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLogParams) error {
@@ -363,6 +436,7 @@ func (q *Queries) InsertEncounterLog(ctx context.Context, arg InsertEncounterLog
 		arg.EncounterID,
 		arg.Round,
 		arg.Message,
+		arg.Source,
 	)
 	return err
 }
@@ -632,6 +706,56 @@ func (q *Queries) ListActivePlayerCharacterSpecialValuesByCampaignID(ctx context
 	for rows.Next() {
 		var i ListActivePlayerCharacterSpecialValuesByCampaignIDRow
 		if err := rows.Scan(&i.PlayerCharacterID, &i.SpecialAttribute, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAssistantActivity = `-- name: ListAssistantActivity :many
+SELECT id, occurred_at, operation, entity_kind, entity_id, entity_label, outcome, detail
+FROM assistant_activity
+ORDER BY occurred_at DESC, rowid DESC
+LIMIT ?1
+`
+
+type ListAssistantActivityRow struct {
+	ID          string
+	OccurredAt  time.Time
+	Operation   string
+	EntityKind  interface{}
+	EntityID    interface{}
+	EntityLabel string
+	Outcome     string
+	Detail      string
+}
+
+func (q *Queries) ListAssistantActivity(ctx context.Context, limit int64) ([]ListAssistantActivityRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAssistantActivity, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAssistantActivityRow
+	for rows.Next() {
+		var i ListAssistantActivityRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OccurredAt,
+			&i.Operation,
+			&i.EntityKind,
+			&i.EntityID,
+			&i.EntityLabel,
+			&i.Outcome,
+			&i.Detail,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -983,7 +1107,7 @@ func (q *Queries) ListEncounterIDsByCampaignID(ctx context.Context, campaignID s
 }
 
 const listEncounterLogsByEncounterID = `-- name: ListEncounterLogsByEncounterID :many
-SELECT round, message, created_at
+SELECT round, message, source, created_at
 FROM encounter_logs
 WHERE encounter_id = ?1
 ORDER BY created_at DESC, rowid DESC
@@ -992,6 +1116,7 @@ ORDER BY created_at DESC, rowid DESC
 type ListEncounterLogsByEncounterIDRow struct {
 	Round     int64
 	Message   string
+	Source    string
 	CreatedAt time.Time
 }
 
@@ -1004,7 +1129,12 @@ func (q *Queries) ListEncounterLogsByEncounterID(ctx context.Context, encounterI
 	var items []ListEncounterLogsByEncounterIDRow
 	for rows.Next() {
 		var i ListEncounterLogsByEncounterIDRow
-		if err := rows.Scan(&i.Round, &i.Message, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.Round,
+			&i.Message,
+			&i.Source,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1483,6 +1613,21 @@ func (q *Queries) ListSpecialAttributes(ctx context.Context) ([]SpecialAttribute
 	return items, nil
 }
 
+const pruneAssistantActivity = `-- name: PruneAssistantActivity :exec
+DELETE FROM assistant_activity
+WHERE id NOT IN (
+  SELECT id
+  FROM assistant_activity
+  ORDER BY occurred_at DESC, rowid DESC
+  LIMIT 1000
+)
+`
+
+func (q *Queries) PruneAssistantActivity(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, pruneAssistantActivity)
+	return err
+}
+
 const setActiveCampaign = `-- name: SetActiveCampaign :execrows
 UPDATE app_state
 SET active_campaign_id = ?1
@@ -1670,6 +1815,34 @@ func (q *Queries) UpdateLinkedCombatantSnapshotStatsByID(ctx context.Context, ar
 		arg.Defense,
 		arg.CombatantID,
 	)
+	return err
+}
+
+const upsertAssistantConnectionSettings = `-- name: UpsertAssistantConnectionSettings :exec
+INSERT INTO assistant_connection_settings (id, enabled, port, access_secret, created_at, updated_at)
+VALUES (
+  1,
+  ?1,
+  ?2,
+  ?3,
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+ON CONFLICT(id) DO UPDATE SET
+  enabled = excluded.enabled,
+  port = excluded.port,
+  access_secret = excluded.access_secret,
+  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+`
+
+type UpsertAssistantConnectionSettingsParams struct {
+	Enabled      int64
+	Port         int64
+	AccessSecret string
+}
+
+func (q *Queries) UpsertAssistantConnectionSettings(ctx context.Context, arg UpsertAssistantConnectionSettingsParams) error {
+	_, err := q.db.ExecContext(ctx, upsertAssistantConnectionSettings, arg.Enabled, arg.Port, arg.AccessSecret)
 	return err
 }
 

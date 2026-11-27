@@ -9,10 +9,13 @@ import (
 )
 
 func (s *Service) ListEncounterLogs(ctx context.Context, encounterID string) ([]domain.EncounterLog, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	if encounterID == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, invalidf("encounter id is required")
 	}
 	return s.repo.ListEncounterLogs(ctx, encounterID)
 }
@@ -22,7 +25,7 @@ func (s *Service) appendOperationLog(ctx context.Context, enc *domain.Encounter,
 		return
 	}
 	s.runNonCriticalSideEffect(sideEffectCategoryAudit, sideEffectNameAppendEncounterLog, func() error {
-		if err := s.repo.AppendEncounterLog(ctx, enc.ID, enc.Round, message); err != nil {
+		if err := s.repo.AppendEncounterLog(ctx, enc.ID, enc.Round, message, SourceFromContext(ctx)); err != nil {
 			return fmt.Errorf("encounter_id=%s round=%d message=%q: %w", enc.ID, enc.Round, message, err)
 		}
 		return nil

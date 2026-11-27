@@ -390,3 +390,34 @@ func TestEncounterStoreCreateCampaignRejectsZeroStartDate(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "campaign start date is required")
 }
+
+func TestEncounterStoreUpdateCampaignRemovedPlayerLeavesEncounters(t *testing.T) {
+	store := newTestStore(t)
+	party, err := store.ListPartyMembers(t.Context())
+	require.NoError(t, err)
+	require.Len(t, party, 1)
+	require.NoError(t, store.Save(t.Context(), &domain.Encounter{
+		ID:   "enc-with-party",
+		Name: "Party Encounter",
+		Combatants: []domain.Combatant{
+			party[0],
+			{ID: "npc-1", Name: "Raider", Side: domain.SideNPC, Level: 1, XP: 30, Initiative: 6, HP: 5, MaxHP: 5},
+		},
+	}))
+
+	// Player 1 is left out of the roster: one save drops the player and
+	// takes their character out of the campaign's encounters (baseline US1/AC3).
+	_, err = store.UpdateCampaign(t.Context(), "repo-test-campaign", "Repo Test Campaign", testCampaignStartDate(t), []domain.NewCampaignPlayer{
+		{PlayerName: "Player 2", Character: domain.Combatant{Name: "Medic", Side: domain.SideParty, Level: 1, Initiative: 5, HP: 4, MaxHP: 4}},
+	})
+	require.NoError(t, err)
+
+	players, err := store.ListCampaignPlayers(t.Context(), "repo-test-campaign")
+	require.NoError(t, err)
+	require.Len(t, players, 1)
+	assert.Equal(t, "Player 2", players[0].PlayerName)
+	enc, err := store.GetEncounterByID(t.Context(), "enc-with-party")
+	require.NoError(t, err)
+	require.Len(t, enc.Combatants, 1)
+	assert.Equal(t, "npc-1", enc.Combatants[0].ID)
+}

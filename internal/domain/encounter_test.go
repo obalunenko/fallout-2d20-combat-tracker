@@ -74,7 +74,7 @@ func TestPartyAPBoundaries(t *testing.T) {
 	t.Parallel()
 
 	resources := Resources{}
-	resources.AddPartyAP(2)
+	assert.False(t, resources.AddPartyAP(2))
 	assert.Equal(t, 2, resources.PartyAP)
 
 	require.Error(t, resources.SpendPartyAP(3))
@@ -85,7 +85,7 @@ func TestPartyAPBoundaries(t *testing.T) {
 	resources.AddPartyAP(-100)
 	assert.Equal(t, 0, resources.PartyAP)
 
-	resources.AddPartyAP(MaxPartyAP + 10)
+	assert.True(t, resources.AddPartyAP(MaxPartyAP+10), "the maximum cuts the addition")
 	assert.Equal(t, MaxPartyAP, resources.PartyAP)
 }
 

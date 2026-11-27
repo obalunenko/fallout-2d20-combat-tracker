@@ -94,7 +94,7 @@ func sqliteDSN(dbPath string) string {
 		if strings.Contains(dbPath, "?") {
 			separator = "&"
 		}
-		return dbPath + separator + "_pragma=foreign_keys(1)"
+		return dbPath + separator + "_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
 	}
 
 	u := url.URL{
@@ -103,6 +103,7 @@ func sqliteDSN(dbPath string) string {
 	}
 	q := u.Query()
 	q.Add("_pragma", "foreign_keys(1)")
+	q.Add("_pragma", "busy_timeout(5000)")
 	u.RawQuery = q.Encode()
 	return u.String()
 }

@@ -14,6 +14,28 @@ type AppState struct {
 	UpdatedAt        time.Time
 }
 
+type AssistantActivity struct {
+	ID          string
+	OccurredAt  time.Time
+	Operation   string
+	EntityKind  interface{}
+	EntityID    interface{}
+	EntityLabel string
+	Outcome     string
+	Detail      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type AssistantConnectionSetting struct {
+	ID           int64
+	Enabled      int64
+	Port         int64
+	AccessSecret string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type BodyLocation struct {
 	ID   int64
 	Code string
@@ -86,6 +108,7 @@ type EncounterLog struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   interface{}
+	Source      string
 }
 
 type MonsterTemplate struct {

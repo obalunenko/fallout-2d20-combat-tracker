@@ -152,10 +152,28 @@ func (r *logFailingRepo) Activate(_ context.Context, _ string) error { return ni
 
 func (r *logFailingRepo) SoftDelete(_ context.Context, _ string) error { return nil }
 
-func (r *logFailingRepo) AppendEncounterLog(_ context.Context, _ string, _ int, _ string) error {
+func (r *logFailingRepo) AppendEncounterLog(_ context.Context, _ string, _ int, _ string, _ domain.OperationSource) error {
 	r.appendCalls++
 	return r.appendErr
 }
+
+func (r *logFailingRepo) GetAssistantConnectionSettings(context.Context) (domain.AssistantConnectionSettings, bool, error) {
+	return domain.AssistantConnectionSettings{}, false, nil
+}
+
+func (r *logFailingRepo) SaveAssistantConnectionSettings(context.Context, domain.AssistantConnectionSettings) error {
+	return nil
+}
+
+func (r *logFailingRepo) AppendAssistantActivity(context.Context, domain.AssistantActivityEntry) error {
+	return nil
+}
+
+func (r *logFailingRepo) ListAssistantActivity(context.Context, int) ([]domain.AssistantActivityEntry, error) {
+	return nil, nil
+}
+
+func (r *logFailingRepo) ClearAssistantActivity(context.Context) error { return nil }
 
 func (r *logFailingRepo) ListEncounterLogs(_ context.Context, _ string) ([]domain.EncounterLog, error) {
 	return nil, nil

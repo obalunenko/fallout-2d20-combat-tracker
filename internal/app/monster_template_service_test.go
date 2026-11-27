@@ -39,3 +39,18 @@ func TestSaveAndListMonsterTemplates(t *testing.T) {
 	assert.Equal(t, 4, monsters[0].ResistPoison)
 	assert.Equal(t, domain.SideNPC, monsters[0].Side)
 }
+
+func TestSaveMonsterTemplatesReportsReplacedNames(t *testing.T) {
+	svc := newSQLiteService(t)
+	monster := domain.Combatant{Name: "Mirelurk", Level: 2, HP: 12, MaxHP: 12}
+
+	saved, err := svc.ExecuteSaveMonsterTemplates(t.Context(), SaveMonsterTemplatesCommand{Monsters: []domain.Combatant{monster}})
+	require.NoError(t, err)
+	require.Len(t, saved, 1)
+	require.False(t, saved[0].ReplacedExisting)
+
+	monster.Name, monster.HP = " MIRELURK ", 10
+	saved, err = svc.ExecuteSaveMonsterTemplates(t.Context(), SaveMonsterTemplatesCommand{Monsters: []domain.Combatant{monster}})
+	require.NoError(t, err)
+	require.True(t, saved[0].ReplacedExisting, "names match case-insensitively")
+}

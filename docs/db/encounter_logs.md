@@ -13,7 +13,7 @@ CREATE TABLE "encounter_logs" (
     message TEXT NOT NULL CHECK (trim(message) <> ''),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL,
+    deleted_at DATETIME NULL, source TEXT NOT NULL DEFAULT 'desktop' CHECK (source IN ('desktop', 'assistant')),
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
 )
 ```
@@ -31,6 +31,7 @@ CREATE TABLE "encounter_logs" (
 | created_at   | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                             |
 | updated_at   | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f', 'now') | false    |                             |
 | deleted_at   | DATETIME |                                      | true     |                             |
+| source       | TEXT     | 'desktop'                            | false    |                             |
 
 ## Constraints
 
@@ -43,6 +44,7 @@ CREATE TABLE "encounter_logs" (
 | -                                 | CHECK       | CHECK (trim(encounter_id) <> '')                                                                       |
 | -                                 | CHECK       | CHECK (round >= 1)                                                                                     |
 | -                                 | CHECK       | CHECK (trim(message) <> '')                                                                            |
+| -                                 | CHECK       | CHECK (source IN ('desktop', 'assistant'))                                                             |
 
 ## Indexes
 

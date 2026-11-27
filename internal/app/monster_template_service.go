@@ -10,23 +10,54 @@ import (
 )
 
 func (s *Service) ListMonsterTemplates(ctx context.Context) ([]domain.Combatant, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	return s.repo.ListMonsterTemplates(ctx)
 }
 
 func (s *Service) SaveMonsterTemplates(ctx context.Context, monsters []domain.Combatant) ([]domain.Combatant, error) {
-	return s.ExecuteSaveMonsterTemplates(ctx, SaveMonsterTemplatesCommand{Monsters: monsters})
+	saved, err := s.ExecuteSaveMonsterTemplates(ctx, SaveMonsterTemplatesCommand{Monsters: monsters})
+	if err != nil {
+		return nil, err
+	}
+	templates := make([]domain.Combatant, len(saved))
+	for i := range saved {
+		templates[i] = saved[i].Template
+	}
+	return templates, nil
 }
 
-func (s *Service) ExecuteSaveMonsterTemplates(ctx context.Context, cmd SaveMonsterTemplatesCommand) ([]domain.Combatant, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+// SavedMonsterTemplate is a stored template and whether it replaced a
+// template with the same name (case-insensitive).
+type SavedMonsterTemplate struct {
+	Template         domain.Combatant
+	ReplacedExisting bool
+}
+
+// ExecuteSaveMonsterTemplates stores monsters as templates. A monster
+// replaces the template with the same name (case-insensitive).
+func (s *Service) ExecuteSaveMonsterTemplates(ctx context.Context, cmd SaveMonsterTemplatesCommand) ([]SavedMonsterTemplate, error) {
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	if len(cmd.Monsters) == 0 {
-		return nil, fmt.Errorf("add at least one monster")
+		return nil, invalidf("add at least one monster")
 	}
 
-	saved := make([]domain.Combatant, 0, len(cmd.Monsters))
+	existing, err := s.repo.ListMonsterTemplates(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stored := make(map[string]bool, len(existing))
+	for _, t := range existing {
+		stored[strings.ToLower(strings.TrimSpace(t.Name))] = true
+	}
+	saved := make([]SavedMonsterTemplate, 0, len(cmd.Monsters))
 	seen := make(map[string]struct{}, len(cmd.Monsters))
 	for i := range cmd.Monsters {
 		monster, err := prepareMonsterTemplate(cmd.Monsters[i])
@@ -43,22 +74,23 @@ func (s *Service) ExecuteSaveMonsterTemplates(ctx context.Context, cmd SaveMonst
 		if err != nil {
 			return nil, err
 		}
-		saved = append(saved, created)
+		saved = append(saved, SavedMonsterTemplate{Template: created, ReplacedExisting: stored[key]})
 	}
+	op.changed(ctx, ChangeEvent{Kinds: []domain.AssistantEntityKind{domain.EntityMonsterTemplate}})
 	return saved, nil
 }
 
 func prepareMonsterTemplate(monster domain.Combatant) (domain.Combatant, error) {
 	monster.Name = strings.TrimSpace(monster.Name)
 	if monster.Name == "" {
-		return domain.Combatant{}, fmt.Errorf("monster name is required")
+		return domain.Combatant{}, invalidf("monster name is required")
 	}
 	if err := domain.ValidateCombatant(monster, domain.CombatantValidationOptions{
 		Label:       fmt.Sprintf("monster %q", monster.Name),
 		RequireName: true,
 		MinLevel:    1,
 	}); err != nil {
-		return domain.Combatant{}, err
+		return domain.Combatant{}, domain.InvalidInput(err)
 	}
 	if strings.TrimSpace(monster.ID) == "" {
 		monster.ID = uuid.NewString()

@@ -44,7 +44,7 @@ func (s *EncounterStore) ListMonsterTemplates(ctx context.Context) ([]domain.Com
 func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster domain.Combatant) (domain.Combatant, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(monster.Name) == "" {
-		return domain.Combatant{}, fmt.Errorf("monster name is required")
+		return domain.Combatant{}, domain.InvalidInput(fmt.Errorf("monster name is required"))
 	}
 	if strings.TrimSpace(monster.ID) == "" {
 		monster.ID = uuid.NewString()

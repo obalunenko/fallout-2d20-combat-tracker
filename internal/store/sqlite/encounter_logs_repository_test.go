@@ -18,8 +18,8 @@ func TestEncounterStoreAppendAndListLogs(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c1", Name: "A", Side: domain.SideParty, Initiative: 10, Active: true}},
 	}))
 
-	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 1, "Encounter created"))
-	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 2, "Turn advanced -> A"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 1, "Encounter created", domain.SourceDesktop))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-1", 2, "Turn advanced -> A", domain.SourceDesktop))
 
 	logs, err := store.ListEncounterLogs(t.Context(), "enc-1")
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestEncounterStoreMaintainsEncounterLogAuditFields(t *testing.T) {
 		Combatants: []domain.Combatant{{ID: "c-log-audit", Name: "Scout", Side: domain.SideParty, Initiative: 10, HP: 5, MaxHP: 5, Active: true}},
 	}))
 
-	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-log-audit", 1, "Audit log entry"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "enc-log-audit", 1, "Audit log entry", domain.SourceDesktop))
 	fields := queryEncounterLogAuditFields(t, store.db, "enc-log-audit", "Audit log entry")
 
 	assert.True(t, fields.createdAt.Valid)

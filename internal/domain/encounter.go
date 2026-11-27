@@ -95,9 +95,13 @@ func (r *Resources) Normalize() {
 	}
 }
 
-func (r *Resources) AddPartyAP(v int) {
-	r.PartyAP += v
+// AddPartyAP adds v party AP. capped reports that the pool's maximum kept
+// part of v out.
+func (r *Resources) AddPartyAP(v int) (capped bool) {
+	want := r.PartyAP + v
+	r.PartyAP = want
 	r.Normalize()
+	return r.PartyAP < want
 }
 
 func (r *Resources) SpendPartyAP(v int) error {
@@ -158,6 +162,9 @@ type EncounterLog struct {
 	Round     int
 	Message   string
 	CreatedAt time.Time
+	// Source tells who performed the logged operation. The zero value means
+	// the desktop app.
+	Source OperationSource
 }
 
 func NewEncounter(id, name string, combatants []Combatant) *Encounter {
@@ -250,7 +257,7 @@ func (e *Encounter) ApplyDamage(combatantID string, damageType DamageType, locat
 		}
 	}
 	if combatantIdx < 0 {
-		return 0, fmt.Errorf("combatant %q not found", combatantID)
+		return 0, NotFound(fmt.Errorf("combatant %q not found", combatantID))
 	}
 
 	target := &e.Combatants[combatantIdx]
@@ -288,7 +295,7 @@ func (e *Encounter) Heal(combatantID string, amount int) (int, error) {
 		}
 	}
 	if combatantIdx < 0 {
-		return 0, fmt.Errorf("combatant %q not found", combatantID)
+		return 0, NotFound(fmt.Errorf("combatant %q not found", combatantID))
 	}
 
 	target := &e.Combatants[combatantIdx]

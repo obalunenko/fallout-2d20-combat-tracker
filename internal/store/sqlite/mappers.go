@@ -294,6 +294,49 @@ func encounterLogFromRow(r dbgen.ListEncounterLogsByEncounterIDRow) domain.Encou
 		Round:     int(r.Round),
 		Message:   r.Message,
 		CreatedAt: r.CreatedAt,
+		Source:    domain.OperationSource(r.Source).Normalize(),
+	}
+}
+
+func assistantConnectionSettingsFromRow(r dbgen.GetAssistantConnectionSettingsRow) domain.AssistantConnectionSettings {
+	return domain.AssistantConnectionSettings{
+		Enabled:      r.Enabled == 1,
+		Port:         int(r.Port),
+		AccessSecret: domain.AccessSecret(r.AccessSecret),
+	}
+}
+
+func upsertAssistantConnectionSettingsParams(s domain.AssistantConnectionSettings) dbgen.UpsertAssistantConnectionSettingsParams {
+	return dbgen.UpsertAssistantConnectionSettingsParams{
+		Enabled:      boolToInt64(s.Enabled),
+		Port:         int64(s.Port),
+		AccessSecret: string(s.AccessSecret),
+	}
+}
+
+func insertAssistantActivityParams(e domain.AssistantActivityEntry) dbgen.InsertAssistantActivityParams {
+	return dbgen.InsertAssistantActivityParams{
+		ID:          e.ID,
+		OccurredAt:  e.OccurredAt.UTC().Format(assistantActivityTimeLayout),
+		Operation:   e.Operation,
+		EntityKind:  nullString(string(e.EntityKind)),
+		EntityID:    nullString(e.EntityID),
+		EntityLabel: e.EntityLabel,
+		Outcome:     string(e.Outcome),
+		Detail:      e.Detail,
+	}
+}
+
+func assistantActivityFromRow(r dbgen.ListAssistantActivityRow) domain.AssistantActivityEntry {
+	return domain.AssistantActivityEntry{
+		ID:          r.ID,
+		OccurredAt:  r.OccurredAt.UTC(),
+		Operation:   r.Operation,
+		EntityKind:  domain.AssistantEntityKind(interfaceToString(r.EntityKind)),
+		EntityID:    interfaceToString(r.EntityID),
+		EntityLabel: r.EntityLabel,
+		Outcome:     domain.AssistantOutcome(r.Outcome),
+		Detail:      r.Detail,
 	}
 }
 

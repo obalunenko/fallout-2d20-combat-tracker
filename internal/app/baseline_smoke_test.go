@@ -106,7 +106,7 @@ func TestBaselineSmokeFlowPersistsCampaignEncounterResourcesActionsAndLogs(t *te
 
 	_, err = svc.AdvanceTurn(t.Context())
 	require.NoError(t, err)
-	withAP, err := svc.AddPartyAP(t.Context(), 10)
+	withAP, _, err := svc.AddPartyAP(t.Context(), 10)
 	require.NoError(t, err)
 	assert.Equal(t, domain.MaxPartyAP, withAP.Resources.PartyAP)
 

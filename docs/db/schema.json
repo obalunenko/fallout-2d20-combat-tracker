@@ -42,6 +42,12 @@
           "name": "deleted_at",
           "type": "DATETIME",
           "nullable": true
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "'desktop'"
         }
       ],
       "indexes": [
@@ -132,9 +138,18 @@
           "columns": [
             "message"
           ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (source IN ('desktop', 'assistant'))",
+          "table": "encounter_logs",
+          "columns": [
+            "source"
+          ]
         }
       ],
-      "def": "CREATE TABLE \"encounter_logs\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    message TEXT NOT NULL CHECK (trim(message) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL,\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE\n)"
+      "def": "CREATE TABLE \"encounter_logs\" (\n    id TEXT PRIMARY KEY CHECK (trim(id) \u003c\u003e ''),\n    encounter_id TEXT NOT NULL CHECK (trim(encounter_id) \u003c\u003e ''),\n    round INTEGER NOT NULL CHECK (round \u003e= 1),\n    message TEXT NOT NULL CHECK (trim(message) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    deleted_at DATETIME NULL, source TEXT NOT NULL DEFAULT 'desktop' CHECK (source IN ('desktop', 'assistant')),\n    FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE\n)"
     },
     {
       "name": "players",
@@ -2171,6 +2186,220 @@
         }
       ],
       "def": "CREATE TABLE player_character_special_attributes (\n    player_character_id TEXT NOT NULL,\n    special_attribute_id INTEGER NOT NULL,\n    value INTEGER NOT NULL DEFAULT 1 CHECK (value \u003e= 1),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    PRIMARY KEY (player_character_id, special_attribute_id),\n    FOREIGN KEY (player_character_id) REFERENCES player_characters(id) ON DELETE CASCADE,\n    FOREIGN KEY (special_attribute_id) REFERENCES special_attributes(id)\n)"
+    },
+    {
+      "name": "assistant_connection_settings",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "enabled",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "port",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "47823"
+        },
+        {
+          "name": "access_secret",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "assistant_connection_settings",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (id = 1)",
+          "table": "assistant_connection_settings",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (enabled IN (0, 1))",
+          "table": "assistant_connection_settings",
+          "columns": [
+            "enabled"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (port BETWEEN 1024 AND 65535)",
+          "table": "assistant_connection_settings",
+          "columns": [
+            "port"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(access_secret) \u003c\u003e '')",
+          "table": "assistant_connection_settings",
+          "columns": [
+            "access_secret"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE assistant_connection_settings (\n    id INTEGER PRIMARY KEY CHECK (id = 1),\n    enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),\n    port INTEGER NOT NULL DEFAULT 47823 CHECK (port BETWEEN 1024 AND 65535),\n    access_secret TEXT NOT NULL CHECK (trim(access_secret) \u003c\u003e ''),\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n)"
+    },
+    {
+      "name": "assistant_activity",
+      "type": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "occurred_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "operation",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "entity_kind",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "entity_id",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "entity_label",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "outcome",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "detail",
+          "type": "TEXT",
+          "nullable": false,
+          "default": "''"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'now')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_assistant_activity_occurred",
+          "def": "CREATE INDEX idx_assistant_activity_occurred\nON assistant_activity(occurred_at DESC)",
+          "table": "assistant_activity",
+          "columns": [
+            "occurred_at"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_assistant_activity_1",
+          "def": "PRIMARY KEY (id)",
+          "table": "assistant_activity",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "id",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "assistant_activity",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_assistant_activity_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "assistant_activity",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (trim(operation) \u003c\u003e '')",
+          "table": "assistant_activity",
+          "columns": [
+            "operation"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (entity_kind IN ( 'campaign', 'player_character', 'encounter', 'combatant', 'monster_template' ))",
+          "table": "assistant_activity",
+          "columns": [
+            "entity_kind"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (outcome IN ('done', 'rejected', 'declined', 'timed_out', 'refused'))",
+          "table": "assistant_activity",
+          "columns": [
+            "outcome"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE assistant_activity (\n    id TEXT PRIMARY KEY,\n    occurred_at DATETIME NOT NULL,\n    operation TEXT NOT NULL CHECK (trim(operation) \u003c\u003e ''),\n    entity_kind TEXT NULL CHECK (entity_kind IN (\n        'campaign', 'player_character', 'encounter', 'combatant', 'monster_template'\n    )),\n    entity_id TEXT NULL,\n    entity_label TEXT NOT NULL DEFAULT '',\n    outcome TEXT NOT NULL CHECK (outcome IN ('done', 'rejected', 'declined', 'timed_out', 'refused')),\n    detail TEXT NOT NULL DEFAULT '',\n    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),\n    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))\n)"
     }
   ],
   "relations": [

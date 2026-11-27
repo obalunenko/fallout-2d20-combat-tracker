@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type Service struct {
@@ -14,6 +16,17 @@ type Service struct {
 	sideEffectFailuresMu sync.Mutex
 	sideEffectFailures   map[string]uint64
 	operationTimeout     time.Duration
+
+	// gate serializes writers and lets readers share (see gate.go).
+	gate *semaphore.Weighted
+
+	subsMu    sync.Mutex
+	subs      map[uint64]func(ChangeEvent)
+	nextSubID uint64
+
+	revMu     sync.Mutex
+	revisions map[EntityKey]uint64
+	deleted   map[EntityKey]bool
 }
 
 type sideEffectCategory string
@@ -23,8 +36,9 @@ const (
 	sideEffectCategoryTelemetry     sideEffectCategory = "telemetry"
 	sideEffectCategoryNotifications sideEffectCategory = "notifications"
 
-	sideEffectNameAppendEncounterLog = "append_encounter_log"
-	defaultOperationTimeout          = 5 * time.Second
+	sideEffectNameAppendEncounterLog      = "append_encounter_log"
+	sideEffectNameAppendAssistantActivity = "append_assistant_activity"
+	defaultOperationTimeout               = 5 * time.Second
 )
 
 func NewService(repo EncounterRepository) *Service {
@@ -44,6 +58,10 @@ func NewServiceWithLogfAndTimeout(repo EncounterRepository, logf func(string, ..
 		logf:               logf,
 		sideEffectFailures: make(map[string]uint64),
 		operationTimeout:   operationTimeout,
+		gate:               semaphore.NewWeighted(gateWeight),
+		subs:               make(map[uint64]func(ChangeEvent)),
+		revisions:          make(map[EntityKey]uint64),
+		deleted:            make(map[EntityKey]bool),
 	}
 }
 

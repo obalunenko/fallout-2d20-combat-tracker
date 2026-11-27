@@ -36,8 +36,17 @@ func refreshEncounterDataLog(
 
 	lines := make([]string, 0, len(logs))
 	for _, logEntry := range logs {
-		lines = append(lines, fmt.Sprintf("[%s] [R%d] %s",
-			formatTimestamp(logEntry.CreatedAt), logEntry.Round, logEntry.Message))
+		lines = append(lines, formatLogLine(logEntry))
 	}
 	output.SetText(strings.Join(lines, "\n"))
+}
+
+// formatLogLine renders one DATA view line. Entries from the assistant carry
+// an [AI] marker (FR-023).
+func formatLogLine(l domain.EncounterLog) string {
+	marker := ""
+	if l.Source.Normalize() == domain.SourceAssistant {
+		marker = "[AI] "
+	}
+	return fmt.Sprintf("[%s] [R%d] %s%s", formatTimestamp(l.CreatedAt), l.Round, marker, l.Message)
 }

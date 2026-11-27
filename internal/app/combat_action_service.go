@@ -17,10 +17,13 @@ func (s *Service) ApplyDamage(ctx context.Context, combatantID string, damageTyp
 }
 
 func (s *Service) ExecuteApplyDamage(ctx context.Context, cmd ApplyDamageCommand) (*domain.Encounter, int, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer op.end()
 	if cmd.CombatantID == "" {
-		return nil, 0, fmt.Errorf("combatant id is required")
+		return nil, 0, invalidf("combatant id is required")
 	}
 	enc, err := s.repo.Get(ctx)
 	if err != nil {
@@ -29,7 +32,7 @@ func (s *Service) ExecuteApplyDamage(ctx context.Context, cmd ApplyDamageCommand
 
 	applied, err := enc.ApplyDamage(cmd.CombatantID, cmd.DamageType, cmd.Location, cmd.Amount)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, domain.InvalidInput(err)
 	}
 
 	if err := s.repo.Save(ctx, enc); err != nil {
@@ -40,6 +43,8 @@ func (s *Service) ExecuteApplyDamage(ctx context.Context, cmd ApplyDamageCommand
 		targetLabel = combatant.Name
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Damage -> %s type:%s location:%s raw:%d applied:%d", targetLabel, cmd.DamageType, cmd.Location, cmd.Amount, applied))
+	s.bumpRevisions(ctx, encounterChangeKeys(enc)...)
+	op.changed(ctx, encounterEvent(enc))
 	return enc, applied, nil
 }
 
@@ -51,10 +56,13 @@ func (s *Service) Heal(ctx context.Context, combatantID string, amount int) (*do
 }
 
 func (s *Service) ExecuteHeal(ctx context.Context, cmd HealCommand) (*domain.Encounter, int, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer op.end()
 	if cmd.CombatantID == "" {
-		return nil, 0, fmt.Errorf("combatant id is required")
+		return nil, 0, invalidf("combatant id is required")
 	}
 	enc, err := s.repo.Get(ctx)
 	if err != nil {
@@ -63,7 +71,7 @@ func (s *Service) ExecuteHeal(ctx context.Context, cmd HealCommand) (*domain.Enc
 
 	healed, err := enc.Heal(cmd.CombatantID, cmd.Amount)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, domain.InvalidInput(err)
 	}
 
 	if err := s.repo.Save(ctx, enc); err != nil {
@@ -74,6 +82,8 @@ func (s *Service) ExecuteHeal(ctx context.Context, cmd HealCommand) (*domain.Enc
 		targetLabel = combatant.Name
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Heal -> %s value:%d", targetLabel, healed))
+	s.bumpRevisions(ctx, encounterChangeKeys(enc)...)
+	op.changed(ctx, encounterEvent(enc))
 	return enc, healed, nil
 }
 
