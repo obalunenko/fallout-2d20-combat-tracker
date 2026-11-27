@@ -37,8 +37,23 @@ type CampaignRepository interface {
 }
 
 type EncounterLogRepository interface {
-	AppendEncounterLog(ctx context.Context, encounterID string, round int, message string) error
+	AppendEncounterLog(ctx context.Context, encounterID string, round int, message string, source domain.OperationSource) error
 	ListEncounterLogs(ctx context.Context, encounterID string) ([]domain.EncounterLog, error)
+}
+
+// AssistantSettingsRepository stores the assistant connection settings.
+type AssistantSettingsRepository interface {
+	// GetAssistantConnectionSettings reports found=false when nothing is
+	// stored yet.
+	GetAssistantConnectionSettings(ctx context.Context) (settings domain.AssistantConnectionSettings, found bool, err error)
+	SaveAssistantConnectionSettings(ctx context.Context, settings domain.AssistantConnectionSettings) error
+}
+
+// AssistantActivityRepository stores the assistant activity log.
+type AssistantActivityRepository interface {
+	AppendAssistantActivity(ctx context.Context, entry domain.AssistantActivityEntry) error
+	ListAssistantActivity(ctx context.Context, limit int) ([]domain.AssistantActivityEntry, error)
+	ClearAssistantActivity(ctx context.Context) error
 }
 
 type EncounterRepository interface {
@@ -47,4 +62,6 @@ type EncounterRepository interface {
 	MonsterTemplateRepository
 	CampaignRepository
 	EncounterLogRepository
+	AssistantSettingsRepository
+	AssistantActivityRepository
 }

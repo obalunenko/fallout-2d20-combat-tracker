@@ -13,7 +13,7 @@ The section between the `SPECKIT` markers is managed by the Spec Kit agent-conte
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/003-edit-player-characters/plan.md
+at specs/004-mcp-server/plan.md
 <!-- SPECKIT END -->
 
 ## Claude Code configuration
@@ -53,6 +53,7 @@ Bugs in specified behavior:
 - `internal/app`: use-case services, commands, repository contracts, operation-log side effects, and context timeouts. This layer may depend on `internal/domain`, but not on Fyne or concrete SQLite details.
 - `internal/store/sqlite`: SQLite repository implementation, migrations, sqlc schema/query files, generated db access, and schema tests. Do not push SQLite-specific concerns into `internal/domain`.
 - `internal/ui/fyneui`: Fyne UI composition, dialogs, presenters, collectors, refresh behavior, formatting, and UI tests. UI should call `internal/app` services instead of reimplementing rules.
+- `internal/mcpserver`: MCP adapter: tools, resources, skills, request admission, and the stdio bridge. It may depend on `internal/app` and `internal/domain`, but not on `internal/store` or `internal/ui`. It talks to the Fyne UI only through ports in `internal/app`.
 - `cmd/fallout-tracker`: application assembly only.
 - `docs/db`: generated database documentation; regenerate when schema changes.
 

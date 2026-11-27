@@ -60,7 +60,7 @@ func TestAddPartyAPSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	}
 	svc := NewService(repo)
 
-	updated, err := svc.AddPartyAP(t.Context(), 2)
+	updated, _, err := svc.AddPartyAP(t.Context(), 2)
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	assert.Equal(t, 2, updated.Resources.PartyAP)
@@ -94,7 +94,7 @@ func TestAddPartyAPLogsWhenLogWriteFails(t *testing.T) {
 		logEntries = append(logEntries, fmt.Sprintf(format, args...))
 	})
 
-	updated, err := svc.AddPartyAP(t.Context(), 1)
+	updated, _, err := svc.AddPartyAP(t.Context(), 1)
 	require.NoError(t, err)
 	require.NotNil(t, updated)
 	require.NotEmpty(t, logEntries)
@@ -192,4 +192,19 @@ func TestApplyDamageSucceedsWhenLogWriteFailsAndStateIsSaved(t *testing.T) {
 	persisted, getErr := repo.Get(t.Context())
 	require.NoError(t, getErr)
 	assert.Equal(t, 7, persisted.Combatants[0].HP)
+}
+
+func TestOperationLogRecordsAssistantSource(t *testing.T) {
+	svc := newSQLiteService(t)
+	enc := newSQLiteEncounter(t, svc, 20)
+
+	_, err := svc.ActivateEncounter(WithSource(t.Context(), domain.SourceAssistant), enc.ID)
+	require.NoError(t, err)
+
+	logs, err := svc.ListEncounterLogs(t.Context(), enc.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, logs)
+	require.Equal(t, "Encounter activated", logs[0].Message, "newest entry first")
+	require.Equal(t, domain.SourceAssistant, logs[0].Source)
+	require.Equal(t, domain.SourceDesktop, logs[len(logs)-1].Source.Normalize(), "the desktop-created entry keeps the desktop source")
 }

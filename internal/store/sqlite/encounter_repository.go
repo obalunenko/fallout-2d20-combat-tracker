@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -82,7 +82,7 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 			if partyCharacter, ok := activeParty[playerCharacterID]; ok {
 				c.PlayerCharacterID = playerCharacterID
 				if strings.TrimSpace(c.ID) == "" || c.ID == playerCharacterID {
-					c.ID = uuid.NewString()
+					c.ID = uuid.New().String()
 				}
 				if _, existsInEncounter := existingCombatants[c.ID]; !existsInEncounter {
 					partyCharacter.Active = c.Active
@@ -147,11 +147,11 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 
 func normalizeEncounterForSave(enc *domain.Encounter) error {
 	if strings.TrimSpace(enc.ID) == "" {
-		return fmt.Errorf("encounter id is required")
+		return domain.InvalidInput(fmt.Errorf("encounter id is required"))
 	}
 	enc.Name = strings.TrimSpace(enc.Name)
 	if enc.Name == "" {
-		return fmt.Errorf("encounter name is required")
+		return domain.InvalidInput(fmt.Errorf("encounter name is required"))
 	}
 	if enc.Round < 1 {
 		enc.Round = 1
@@ -189,7 +189,7 @@ func validateUniquePlayerCharacters(combatants []domain.Combatant) error {
 			continue
 		}
 		if _, ok := seen[playerCharacterID]; ok {
-			return fmt.Errorf("player character %s is already in this encounter", playerCharacterID)
+			return domain.InvalidInput(fmt.Errorf("player character %s is already in this encounter", playerCharacterID))
 		}
 		seen[playerCharacterID] = struct{}{}
 	}
@@ -254,7 +254,7 @@ func (s *EncounterStore) List(ctx context.Context) ([]domain.EncounterSummary, e
 func (s *EncounterStore) GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(encounterID) == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, domain.InvalidInput(fmt.Errorf("encounter id is required"))
 	}
 	campaignID, err := s.activeCampaignID(ctx)
 	if err != nil {
@@ -288,7 +288,7 @@ func encounterByIDByCampaign(ctx context.Context, qtx *dbgen.Queries, campaignID
 func (s *EncounterStore) UpdateEncounter(ctx context.Context, encounterID, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(encounterID) == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, domain.InvalidInput(fmt.Errorf("encounter id is required"))
 	}
 	existing, err := s.GetEncounterByID(ctx, encounterID)
 	if err != nil {

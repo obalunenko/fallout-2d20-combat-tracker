@@ -2,7 +2,9 @@ package fyneui
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -19,6 +21,9 @@ func showEncounterListDialogWindow(
 	svc *appsvc.Service,
 	refresh func(),
 	handleErr func(error),
+	// track registers reload so assistant changes refresh the open list; it
+	// returns the function that unregisters it. Nil disables live reload.
+	track func(reload func()) (untrack func()),
 ) {
 	summaries, err := svc.ListEncounters(ctx)
 	if err != nil {
@@ -101,11 +106,9 @@ func showEncounterListDialogWindow(
 	scroll := container.NewScroll(list)
 	scroll.SetMinSize(fyne.NewSize(dialogSize.Width*0.5, dialogSize.Height*0.62))
 
-	refreshSummaries := func(keepID string) error {
-		updated, err := svc.ListEncounters(ctx)
-		if err != nil {
-			return err
-		}
+	// showSummaries shows updated and selects keepID, or the first row when
+	// keepID is empty or not listed.
+	showSummaries := func(updated []domain.EncounterSummary, keepID string) {
 		summaries = updated
 		list.Refresh()
 
@@ -113,7 +116,7 @@ func showEncounterListDialogWindow(
 			selectedID = ""
 			selectedInfo.SetText("No saved encounters left")
 			updateActionButtons()
-			return nil
+			return
 		}
 
 		nextIdx := 0
@@ -128,7 +131,35 @@ func showEncounterListDialogWindow(
 		renderSelected(nextIdx)
 		list.Select(nextIdx)
 		updateActionButtons()
+	}
+
+	refreshSummaries := func(keepID string) error {
+		updated, err := svc.ListEncounters(ctx)
+		if err != nil {
+			return err
+		}
+		showSummaries(updated, keepID)
 		return nil
+	}
+
+	// reload re-reads the list after an assistant change. It keeps the
+	// selection, and clears it with a note when the encounter was deleted.
+	reload := func() {
+		prevID := selectedID
+		updated, err := svc.ListEncounters(ctx)
+		if err != nil {
+			return
+		}
+		if prevID == "" || slices.ContainsFunc(updated, func(s domain.EncounterSummary) bool { return s.ID == prevID }) {
+			showSummaries(updated, prevID)
+			return
+		}
+		summaries = updated
+		list.UnselectAll()
+		list.Refresh()
+		selectedID = ""
+		selectedInfo.SetText("The selected encounter was deleted by the assistant.")
+		updateActionButtons()
 	}
 
 	var encounterDialog *dialog.CustomDialog
@@ -201,31 +232,8 @@ func showEncounterListDialogWindow(
 			return
 		}
 		targetID := selectedID
-		targetName := summaries[selectedIdx].Name
-		encForEdit, err := svc.GetEncounterByID(ctx, targetID)
-		if err != nil {
-			dialog.ShowError(err, w)
-			return
-		}
 		encounterDialog.Hide()
-		showEncounterEditorDialog(
-			ctx,
-			w,
-			svc,
-			fmt.Sprintf("Edit Encounter: %s", targetName),
-			"Save",
-			encForEdit.Name,
-			encForEdit.Combatants,
-			func(name string, combatants []domain.Combatant) error {
-				_, updateErr := svc.ExecuteUpdateEncounter(ctx, appsvc.UpdateEncounterCommand{
-					EncounterID: targetID,
-					Name:        name,
-					Combatants:  combatants,
-				})
-				return updateErr
-			},
-			refresh,
-		)
+		openEncounterEditor(ctx, w, svc, targetID, refresh)
 	})
 
 	renderSelected(0)
@@ -248,6 +256,51 @@ func showEncounterListDialogWindow(
 	content := container.NewBorder(nil, nil, nil, nil, split)
 
 	encounterDialog = dialog.NewCustom("Encounters", "Close", content, w)
+	if track != nil {
+		untrack := track(reload)
+		encounterDialog.SetOnClosed(untrack)
+	}
 	encounterDialog.Resize(dialogSize)
 	encounterDialog.Show()
+}
+
+// openEncounterEditor opens the edit dialog for encounter id. It captures the
+// encounter revision before reading, so a save over an assistant change made
+// since offers Reload or Overwrite, and a save after an assistant delete only
+// closes (FR-022).
+func openEncounterEditor(ctx context.Context, w fyne.Window, svc *appsvc.Service, id string, refresh func()) {
+	key := appsvc.EntityKey{Kind: domain.EntityEncounter, ID: id}
+	opened := svc.Revision(key)
+	enc, err := svc.GetEncounterByID(ctx, id)
+	if err != nil {
+		dialog.ShowError(err, w)
+		return
+	}
+	showEncounterEditorDialog(
+		ctx,
+		w,
+		svc,
+		fmt.Sprintf("Edit Encounter: %s", enc.Name),
+		"Save",
+		enc.Name,
+		enc.Combatants,
+		func(name string, combatants []domain.Combatant) error {
+			save := func(expected uint64) error {
+				_, err := svc.ExecuteUpdateEncounter(ctx, appsvc.UpdateEncounterCommand{
+					EncounterID: id, Name: name, Combatants: combatants, ExpectedRevision: expected,
+				})
+				return err
+			}
+			err := save(opened)
+			if errors.Is(err, domain.ErrStaleEdit) {
+				return &staleEdit{
+					entity:    "encounter",
+					overwrite: func() error { return save(svc.Revision(key)) },
+					reload:    func() { openEncounterEditor(ctx, w, svc, id, refresh) },
+				}
+			}
+			return err
+		},
+		refresh,
+	)
 }

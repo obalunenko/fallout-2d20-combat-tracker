@@ -220,7 +220,27 @@ func (r *refresherRepo) Activate(context.Context, string) error { return nil }
 
 func (r *refresherRepo) SoftDelete(context.Context, string) error { return nil }
 
-func (r *refresherRepo) AppendEncounterLog(context.Context, string, int, string) error { return nil }
+func (r *refresherRepo) AppendEncounterLog(context.Context, string, int, string, domain.OperationSource) error {
+	return nil
+}
+
+func (r *refresherRepo) GetAssistantConnectionSettings(context.Context) (domain.AssistantConnectionSettings, bool, error) {
+	return domain.AssistantConnectionSettings{}, false, nil
+}
+
+func (r *refresherRepo) SaveAssistantConnectionSettings(context.Context, domain.AssistantConnectionSettings) error {
+	return nil
+}
+
+func (r *refresherRepo) AppendAssistantActivity(context.Context, domain.AssistantActivityEntry) error {
+	return nil
+}
+
+func (r *refresherRepo) ListAssistantActivity(context.Context, int) ([]domain.AssistantActivityEntry, error) {
+	return nil, nil
+}
+
+func (r *refresherRepo) ClearAssistantActivity(context.Context) error { return nil }
 
 func (r *refresherRepo) ListEncounterLogs(context.Context, string) ([]domain.EncounterLog, error) {
 	r.listEncounterLogsCalls++

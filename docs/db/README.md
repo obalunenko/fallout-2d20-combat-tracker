@@ -8,7 +8,7 @@ Fallout 2d20 Combat Tracker SQLite schema.
 
 | Name                                                                                  | Columns | Comment | Type  |
 | ------------------------------------------------------------------------------------- | ------- | ------- | ----- |
-| [encounter_logs](encounter_logs.md)                                                   | 7       |         | table |
+| [encounter_logs](encounter_logs.md)                                                   | 8       |         | table |
 | [players](players.md)                                                                 | 6       |         | table |
 | [app_state](app_state.md)                                                             | 3       |         | table |
 | [damage_types](damage_types.md)                                                       | 2       |         | table |
@@ -28,6 +28,8 @@ Fallout 2d20 Combat Tracker SQLite schema.
 | [campaigns](campaigns.md)                                                             | 8       |         | table |
 | [special_attributes](special_attributes.md)                                           | 2       |         | table |
 | [player_character_special_attributes](player_character_special_attributes.md)         | 5       |         | table |
+| [assistant_connection_settings](assistant_connection_settings.md)                     | 6       |         | table |
+| [assistant_activity](assistant_activity.md)                                           | 10      |         | table |
 
 ---
 

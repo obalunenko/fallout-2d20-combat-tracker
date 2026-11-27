@@ -18,6 +18,9 @@ type UpdateCampaignCommand struct {
 	Name       string
 	StartDate  time.Time
 	Players    []domain.NewCampaignPlayer
+	// ExpectedRevision is the campaign revision the editor opened at
+	// (Service.Revision). 0 skips the stale-edit check.
+	ExpectedRevision uint64
 }
 
 type CreateEncounterCommand struct {
@@ -30,6 +33,9 @@ type UpdateEncounterCommand struct {
 	EncounterID string
 	Name        string
 	Combatants  []domain.Combatant
+	// ExpectedRevision is the encounter revision the editor opened at
+	// (Service.Revision). 0 skips the stale-edit check.
+	ExpectedRevision uint64
 }
 
 type ApplyDamageCommand struct {

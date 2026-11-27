@@ -5,6 +5,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+
+	appsvc "github.com/obalunenko/fallout/internal/app"
 )
 
 type mainScreenActions struct {
@@ -12,6 +14,9 @@ type mainScreenActions struct {
 	showCreateCampaign  func()
 	showEncounterList   func()
 	showCreateEncounter func()
+	// showAssistant opens the assistant connection dialog. Nil hides the
+	// ASSISTANT button.
+	showAssistant func()
 }
 
 type mainScreenLabels struct {
@@ -59,6 +64,7 @@ type mainScreenControls struct {
 }
 
 type mainScreen struct {
+	assistantBtn        *widget.Button
 	roundLabel          *widget.Label
 	activeTurnLabel     *widget.Label
 	selectedLabel       *widget.Label
@@ -206,6 +212,9 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 	openCampaignBtn := newRoleButton("OPEN CAMPAIGN", uiActionSubtle, func() {
 		actions.showCampaignList()
 	})
+	if actions.showAssistant != nil {
+		screen.assistantBtn = newRoleButton(assistantButtonLabel(appsvc.ConnectionStatus{State: appsvc.ConnectionStopped}), uiActionSubtle, actions.showAssistant)
+	}
 
 	screen.setupHint = newMonospaceLabel("No active encounter.\nCreate one from scratch to begin tracking combat.")
 	screen.setupHint.Alignment = fyne.TextAlignCenter
@@ -236,6 +245,7 @@ func newMainScreen(encounterOrder *encounterOrderView, labels mainScreenLabels, 
 		openEncounterBtn,
 		newCampaignBtn,
 		newEncounterBtn,
+		screen.assistantBtn,
 	)
 	return screen
 }

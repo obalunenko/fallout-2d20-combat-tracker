@@ -4,43 +4,58 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
 func (s *Service) GetEncounter(ctx context.Context) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	return s.repo.Get(ctx)
 }
 
 func (s *Service) ListEncounters(ctx context.Context) ([]domain.EncounterSummary, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	return s.repo.List(ctx)
 }
 
 func (s *Service) ListPartyMembers(ctx context.Context) ([]domain.Combatant, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	return s.repo.ListPartyMembers(ctx)
 }
 
 func (s *Service) GetEncounterByID(ctx context.Context, encounterID string) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginRead(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	if strings.TrimSpace(encounterID) == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, invalidf("encounter id is required")
 	}
 	return s.repo.GetEncounterByID(ctx, encounterID)
 }
 
 func (s *Service) ActivateEncounter(ctx context.Context, encounterID string) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	if encounterID == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, invalidf("encounter id is required")
 	}
 	if err := s.repo.Activate(ctx, encounterID); err != nil {
 		return nil, err
@@ -50,14 +65,18 @@ func (s *Service) ActivateEncounter(ctx context.Context, encounterID string) (*d
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, "Encounter activated")
+	op.changed(ctx, encounterEvent(enc))
 	return enc, nil
 }
 
 func (s *Service) RestartEncounter(ctx context.Context, encounterID string) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	if encounterID == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, invalidf("encounter id is required")
 	}
 	if err := s.repo.Activate(ctx, encounterID); err != nil {
 		return nil, err
@@ -83,16 +102,26 @@ func (s *Service) RestartEncounter(ctx context.Context, encounterID string) (*do
 		return nil, err
 	}
 	s.appendOperationLog(ctx, restarted, "Encounter restarted")
+	s.bumpRevisions(ctx, encounterChangeKeys(restarted)...)
+	op.changed(ctx, encounterEvent(restarted))
 	return restarted, nil
 }
 
 func (s *Service) DeleteEncounter(ctx context.Context, encounterID string) error {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
-	if encounterID == "" {
-		return fmt.Errorf("encounter id is required")
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return err
 	}
-	return s.repo.SoftDelete(ctx, encounterID)
+	defer op.end()
+	if encounterID == "" {
+		return invalidf("encounter id is required")
+	}
+	if err := s.repo.SoftDelete(ctx, encounterID); err != nil {
+		return err
+	}
+	s.tombstone(ctx, encounterKey(encounterID))
+	op.changed(ctx, ChangeEvent{Kinds: []domain.AssistantEntityKind{domain.EntityEncounter}, EncounterID: encounterID})
+	return nil
 }
 
 func (s *Service) CreateEncounter(ctx context.Context, id, name string, combatants []domain.Combatant) (*domain.Encounter, error) {
@@ -104,17 +133,26 @@ func (s *Service) CreateEncounter(ctx context.Context, id, name string, combatan
 }
 
 func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounterCommand) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
+	return s.createEncounter(ctx, op, cmd)
+}
+
+// createEncounter creates an encounter in the active campaign. The caller
+// holds the write gate.
+func (s *Service) createEncounter(ctx context.Context, op *operation, cmd CreateEncounterCommand) (*domain.Encounter, error) {
 	if len(cmd.Combatants) == 0 {
-		return nil, fmt.Errorf("cannot create encounter without combatants")
+		return nil, invalidf("cannot create encounter without combatants")
 	}
 	activeCampaign, err := s.repo.GetActiveCampaign(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(cmd.ID) == "" {
-		cmd.ID = uuid.NewString()
+		cmd.ID = uuid.New().String()
 	}
 	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
 		return nil, err
@@ -129,6 +167,8 @@ func (s *Service) ExecuteCreateEncounter(ctx context.Context, cmd CreateEncounte
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter created (%s)", cmd.Name))
+	s.bumpRevisions(ctx, encounterChangeKeys(enc)...)
+	op.changed(ctx, encounterEvent(enc))
 	return enc, nil
 }
 
@@ -140,17 +180,33 @@ func (s *Service) UpdateEncounter(ctx context.Context, encounterID, name string,
 	})
 }
 
+// ExecuteUpdateEncounter replaces the encounter's name and roster. When
+// cmd.ExpectedRevision is set and the assistant changed or deleted the
+// encounter after that revision, it saves nothing and returns
+// domain.ErrStaleEdit or domain.ErrEntityDeleted.
 func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounterCommand) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
+	if err := s.checkRevision(encounterKey(cmd.EncounterID), cmd.ExpectedRevision); err != nil {
+		return nil, err
+	}
+	return s.updateEncounter(ctx, op, cmd)
+}
+
+// updateEncounter replaces an encounter's name and roster. The caller holds
+// the write gate.
+func (s *Service) updateEncounter(ctx context.Context, op *operation, cmd UpdateEncounterCommand) (*domain.Encounter, error) {
 	if strings.TrimSpace(cmd.EncounterID) == "" {
-		return nil, fmt.Errorf("encounter id is required")
+		return nil, invalidf("encounter id is required")
 	}
 	if strings.TrimSpace(cmd.Name) == "" {
-		return nil, fmt.Errorf("encounter name is required")
+		return nil, invalidf("encounter name is required")
 	}
 	if len(cmd.Combatants) == 0 {
-		return nil, fmt.Errorf("cannot update encounter without combatants")
+		return nil, invalidf("cannot update encounter without combatants")
 	}
 	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
 		return nil, err
@@ -163,18 +219,23 @@ func (s *Service) ExecuteUpdateEncounter(ctx context.Context, cmd UpdateEncounte
 		return nil, err
 	}
 	s.appendOperationLog(ctx, enc, fmt.Sprintf("Encounter updated (%s)", cmd.Name))
+	s.bumpRevisions(ctx, encounterChangeKeys(enc)...)
+	op.changed(ctx, encounterEvent(enc))
 	return enc, nil
 }
 
 func (s *Service) AdvanceTurn(ctx context.Context) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
+	ctx, op, err := s.beginWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer op.end()
 	enc, err := s.repo.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if err := enc.AdvanceTurn(); err != nil {
-		return nil, err
+		return nil, domain.InvalidInput(err)
 	}
 	if err := s.repo.Save(ctx, enc); err != nil {
 		return nil, err
@@ -182,60 +243,69 @@ func (s *Service) AdvanceTurn(ctx context.Context) (*domain.Encounter, error) {
 	if active := enc.ActiveCombatant(); active != nil {
 		s.appendOperationLog(ctx, enc, fmt.Sprintf("Turn advanced -> %s", active.Name))
 	}
+	s.bumpRevisions(ctx, encounterChangeKeys(enc)...)
+	op.changed(ctx, encounterEvent(enc))
 	return enc, nil
 }
 
-func (s *Service) AddPartyAP(ctx context.Context, v int) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
-	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
-		resources.AddPartyAP(v)
+// AddPartyAP adds v party AP to the active campaign. capped reports that the
+// maximum kept part of v out.
+func (s *Service) AddPartyAP(ctx context.Context, v int) (enc *domain.Encounter, capped bool, err error) {
+	enc, err = s.changeResources(ctx, func(resources *domain.Resources) error {
+		capped = resources.AddPartyAP(v)
 		return nil
+	}, func(enc *domain.Encounter) string {
+		return fmt.Sprintf("Party AP %+d (total: %d)", v, enc.Resources.PartyAP)
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("Party AP %+d (total: %d)", v, enc.Resources.PartyAP))
-	return enc, nil
+	return enc, capped, nil
 }
 
 func (s *Service) SpendPartyAP(ctx context.Context, v int) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
-	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+	return s.changeResources(ctx, func(resources *domain.Resources) error {
 		return resources.SpendPartyAP(v)
+	}, func(enc *domain.Encounter) string {
+		return fmt.Sprintf("Party AP -%d (total: %d)", v, enc.Resources.PartyAP)
 	})
-	if err != nil {
-		return nil, err
-	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("Party AP -%d (total: %d)", v, enc.Resources.PartyAP))
-	return enc, nil
 }
 
 func (s *Service) AddThreat(ctx context.Context, v int) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
-	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+	return s.changeResources(ctx, func(resources *domain.Resources) error {
 		resources.AddThreat(v)
 		return nil
+	}, func(enc *domain.Encounter) string {
+		return fmt.Sprintf("GM Threat %+d (total: %d)", v, enc.Resources.GMThreat)
 	})
-	if err != nil {
-		return nil, err
-	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("GM Threat %+d (total: %d)", v, enc.Resources.GMThreat))
-	return enc, nil
 }
 
 func (s *Service) SpendThreat(ctx context.Context, v int) (*domain.Encounter, error) {
-	ctx, cancel := s.contextForOperation(ctx)
-	defer cancel()
-	enc, err := s.updateActiveEncounterResources(ctx, func(resources *domain.Resources) error {
+	return s.changeResources(ctx, func(resources *domain.Resources) error {
 		return resources.SpendThreat(v)
+	}, func(enc *domain.Encounter) string {
+		return fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat)
 	})
+}
+
+// changeResources applies update to the active campaign's shared resources
+// under the write gate and logs logMessage on success.
+func (s *Service) changeResources(ctx context.Context, update func(*domain.Resources) error, logMessage func(*domain.Encounter) string) (*domain.Encounter, error) {
+	ctx, op, err := s.beginWrite(ctx)
 	if err != nil {
 		return nil, err
 	}
-	s.appendOperationLog(ctx, enc, fmt.Sprintf("GM Threat -%d (total: %d)", v, enc.Resources.GMThreat))
+	defer op.end()
+	enc, err := s.updateActiveEncounterResources(ctx, update)
+	if err != nil {
+		return nil, err
+	}
+	s.appendOperationLog(ctx, enc, logMessage(enc))
+	op.changed(ctx, ChangeEvent{
+		Kinds:       []domain.AssistantEntityKind{domain.EntityCampaign, domain.EntityEncounter},
+		CampaignID:  enc.CampaignID,
+		EncounterID: enc.ID,
+	})
 	return enc, nil
 }
 
@@ -247,7 +317,7 @@ func (s *Service) updateActiveEncounterResources(ctx context.Context, update fun
 	resources := enc.Resources
 	if update != nil {
 		if err := update(&resources); err != nil {
-			return nil, err
+			return nil, domain.InvalidInput(err)
 		}
 	}
 	if err := s.repo.UpdateCampaignResources(ctx, enc.CampaignID, resources); err != nil {
@@ -267,7 +337,7 @@ func prepareEncounterCombatants(combatants []domain.Combatant) error {
 			return err
 		}
 		if strings.TrimSpace(combatants[i].ID) == "" {
-			combatants[i].ID = uuid.NewString()
+			combatants[i].ID = uuid.New().String()
 		}
 		domain.NormalizeCombatantHP(&combatants[i])
 	}
@@ -282,12 +352,12 @@ func validateEncounterCombatant(index int, c domain.Combatant) error {
 	if label == "" {
 		label = fmt.Sprintf("#%d", index+1)
 	}
-	return domain.ValidateCombatant(c, domain.CombatantValidationOptions{
+	return domain.InvalidInput(domain.ValidateCombatant(c, domain.CombatantValidationOptions{
 		Label:       fmt.Sprintf("combatant %q", label),
 		RequireName: true,
 		RequireSide: true,
 		MinLevel:    0,
-	})
+	}))
 }
 
 func (s *Service) resolveLinkedPartyCombatants(ctx context.Context, combatants []domain.Combatant) error {

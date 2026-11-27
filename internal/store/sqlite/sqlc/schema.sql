@@ -8,7 +8,7 @@ CREATE TABLE "encounter_logs" (
     message TEXT NOT NULL CHECK (trim(message) <> ''),
     created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
     updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
-    deleted_at DATETIME NULL,
+    deleted_at DATETIME NULL, source TEXT NOT NULL DEFAULT 'desktop' CHECK (source IN ('desktop', 'assistant')),
     FOREIGN KEY (encounter_id) REFERENCES encounters(id) ON DELETE CASCADE
 );
 
@@ -166,6 +166,30 @@ CREATE TABLE player_character_special_attributes (
     FOREIGN KEY (special_attribute_id) REFERENCES special_attributes(id)
 );
 
+CREATE TABLE assistant_connection_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+    port INTEGER NOT NULL DEFAULT 47823 CHECK (port BETWEEN 1024 AND 65535),
+    access_secret TEXT NOT NULL CHECK (trim(access_secret) <> ''),
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
+);
+
+CREATE TABLE assistant_activity (
+    id TEXT PRIMARY KEY,
+    occurred_at DATETIME NOT NULL,
+    operation TEXT NOT NULL CHECK (trim(operation) <> ''),
+    entity_kind TEXT NULL CHECK (entity_kind IN (
+        'campaign', 'player_character', 'encounter', 'combatant', 'monster_template'
+    )),
+    entity_id TEXT NULL,
+    entity_label TEXT NOT NULL DEFAULT '',
+    outcome TEXT NOT NULL CHECK (outcome IN ('done', 'rejected', 'declined', 'timed_out', 'refused')),
+    detail TEXT NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now')),
+    updated_at DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
+);
+
 CREATE VIEW combatant_resistance_global AS
 SELECT
     c.id AS combatant_id,
@@ -275,6 +299,9 @@ ON monster_templates(deleted_at, name COLLATE NOCASE);
 
 CREATE INDEX idx_player_character_special_attribute
 ON player_character_special_attributes(special_attribute_id, player_character_id);
+
+CREATE INDEX idx_assistant_activity_occurred
+ON assistant_activity(occurred_at DESC);
 
 CREATE TRIGGER trg_combatants_delete_stat_profile
 AFTER DELETE ON combatants

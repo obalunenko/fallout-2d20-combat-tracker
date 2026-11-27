@@ -53,6 +53,15 @@ Labels use these difference bands:
 - `2` through `5`: `Hard`
 - `> 5`: `Deadly`
 
+## Assistant (MCP)
+
+The tracker can connect to an AI assistant (Claude Code, Claude Desktop, or any Model Context Protocol client) to manage campaigns and encounters and run live combat. Open **ASSISTANT** in the header to turn it on. See [docs/assistant.md](docs/assistant.md) for setup.
+
+- Off by default; listens on `127.0.0.1` only and refuses web pages.
+- Every request needs the tracker's access secret, which you can regenerate.
+- Destructive actions ask you to confirm, in the assistant's chat or in the tracker window.
+- Assistant changes are marked `[AI]` in the DATA view and listed in the ASSISTANT activity log.
+
 ## Storage
 
 - DB path: `~/.config/fallout-tracker/tracker.db` by default

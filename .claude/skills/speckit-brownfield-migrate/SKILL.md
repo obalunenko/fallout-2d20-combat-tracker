@@ -5,6 +5,9 @@ compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: Quratulain-bilal
   source: brownfield:commands/speckit.brownfield.migrate.md
+  version: 1.0.0
+user-invocable: true
+disable-model-invocation: false
 ---
 
 # Migrate Existing Features

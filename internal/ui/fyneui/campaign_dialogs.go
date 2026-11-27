@@ -2,6 +2,7 @@ package fyneui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -122,14 +123,22 @@ func showCampaignEditorDialog(
 			validationError.SetText(err.Error())
 			return
 		}
+		saved := func() {
+			if refresh != nil {
+				refresh()
+			}
+			editorDialog.Hide()
+		}
 		if err := onSubmit(campaignName, parsedStartDate, players); err != nil {
-			validationError.SetText(err.Error())
+			if !handleEditorSaveError(err, editorCallbacks{
+				window: w, entity: "campaign", saved: saved, close: editorDialog.Hide,
+				showErr: validationError.SetText,
+			}) {
+				validationError.SetText(err.Error())
+			}
 			return
 		}
-		if refresh != nil {
-			refresh()
-		}
-		editorDialog.Hide()
+		saved()
 	})
 
 	editorDialog = dialog.NewCustomWithoutButtons(title, formContent, w)
@@ -273,26 +282,9 @@ func showCampaignListDialogWindow(
 		if selectedID == "" || selectedIdx < 0 || selectedIdx >= len(campaigns) {
 			return
 		}
-		players, err := svc.ListCampaignPlayers(ctx, selectedID)
-		if err != nil {
-			dialog.ShowError(err, w)
-			return
-		}
-		current := campaigns[selectedIdx]
+		id := campaigns[selectedIdx].ID
 		campaignDialog.Hide()
-		showCampaignEditorDialog(
-			w,
-			"Edit Campaign",
-			"Save",
-			current.Name,
-			formatCampaignStartDate(current.StartDate),
-			players,
-			func(name string, startDate time.Time, editedPlayers []domain.NewCampaignPlayer) error {
-				_, updateErr := svc.UpdateCampaign(ctx, current.ID, name, startDate, editedPlayers)
-				return updateErr
-			},
-			refresh,
-		)
+		openCampaignEditor(ctx, w, svc, id, refresh)
 	})
 	infoBtn := newRoleButton("Use Selected", uiActionPrimary, func() {
 		if selectedIdx >= 0 && selectedIdx < len(campaigns) {
@@ -327,4 +319,61 @@ func showCampaignListDialogWindow(
 	campaignDialog = dialog.NewCustom("Campaigns", "Close", content, w)
 	campaignDialog.Resize(dialogSize)
 	campaignDialog.Show()
+}
+
+// openCampaignEditor opens the edit dialog for campaign id with its stored
+// state. It captures the campaign revision before reading, so a save over an
+// assistant change made since offers Reload or Overwrite (FR-022).
+func openCampaignEditor(ctx context.Context, w fyne.Window, svc *appsvc.Service, id string, refresh func()) {
+	key := appsvc.EntityKey{Kind: domain.EntityCampaign, ID: id}
+	opened := svc.Revision(key)
+	c, err := campaignByID(ctx, svc, id)
+	if err != nil {
+		dialog.ShowError(err, w)
+		return
+	}
+	players, err := svc.ListCampaignPlayers(ctx, id)
+	if err != nil {
+		dialog.ShowError(err, w)
+		return
+	}
+	showCampaignEditorDialog(
+		w,
+		"Edit Campaign",
+		"Save",
+		c.Name,
+		formatCampaignStartDate(c.StartDate),
+		players,
+		func(name string, startDate time.Time, editedPlayers []domain.NewCampaignPlayer) error {
+			save := func(expected uint64) error {
+				_, err := svc.ExecuteUpdateCampaign(ctx, appsvc.UpdateCampaignCommand{
+					CampaignID: c.ID, Name: name, StartDate: startDate, Players: editedPlayers, ExpectedRevision: expected,
+				})
+				return err
+			}
+			err := save(opened)
+			if errors.Is(err, domain.ErrStaleEdit) {
+				return &staleEdit{
+					entity:    "campaign",
+					overwrite: func() error { return save(svc.Revision(key)) },
+					reload:    func() { openCampaignEditor(ctx, w, svc, id, refresh) },
+				}
+			}
+			return err
+		},
+		refresh,
+	)
+}
+
+func campaignByID(ctx context.Context, svc *appsvc.Service, id string) (domain.Campaign, error) {
+	campaigns, err := svc.ListCampaigns(ctx)
+	if err != nil {
+		return domain.Campaign{}, err
+	}
+	for _, c := range campaigns {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+	return domain.Campaign{}, domain.ErrCampaignNotFound
 }

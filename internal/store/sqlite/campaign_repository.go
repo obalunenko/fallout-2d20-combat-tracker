@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -15,7 +15,7 @@ import (
 func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID string) ([]domain.NewCampaignPlayer, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
-		return nil, fmt.Errorf("campaign id is required")
+		return nil, domain.InvalidInput(fmt.Errorf("campaign id is required"))
 	}
 	rows, err := s.q.ListActivePartyCharactersByCampaignID(ctx, campaignID)
 	if err != nil {
@@ -43,11 +43,15 @@ func (s *EncounterStore) ListCampaignPlayers(ctx context.Context, campaignID str
 	return players, nil
 }
 
-func removeInactiveCampaignCharactersFromEncounters(ctx context.Context, qtx *dbgen.Queries, campaignID string) error {
+// removeInactiveCampaignCharactersFromEncounters removes unavailable party
+// characters, and the characters of players removedIDs lists, from every
+// encounter of the campaign (baseline US1/AC3).
+func removeInactiveCampaignCharactersFromEncounters(ctx context.Context, qtx *dbgen.Queries, campaignID string, removedIDs []string) error {
 	inactiveIDs, err := qtx.ListInactiveCurrentPlayerCharacterIDsByCampaignID(ctx, campaignID)
 	if err != nil {
 		return fmt.Errorf("list inactive campaign characters: %w", err)
 	}
+	inactiveIDs = append(inactiveIDs, removedIDs...)
 	if len(inactiveIDs) == 0 {
 		return nil
 	}
@@ -119,10 +123,10 @@ func removeInactiveCampaignCharactersFromEncounters(ctx context.Context, qtx *db
 func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
-		return nil, fmt.Errorf("campaign id is required")
+		return nil, domain.InvalidInput(fmt.Errorf("campaign id is required"))
 	}
 	if startDate.IsZero() {
-		return nil, fmt.Errorf("campaign start date is required")
+		return nil, domain.InvalidInput(fmt.Errorf("campaign start date is required"))
 	}
 
 	if err := s.runInTx(ctx, func(qtx *dbgen.Queries) error {
@@ -149,7 +153,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 			if err := normalizeCampaignPlayerForSave(&p); err != nil {
 				return err
 			}
-			playerID := uuid.NewString()
+			playerID := uuid.New().String()
 			if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
 				ID:         playerID,
 				CampaignID: campaignID,
@@ -160,7 +164,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 
 			charID := strings.TrimSpace(p.Character.ID)
 			if charID == "" {
-				charID = uuid.NewString()
+				charID = uuid.New().String()
 			}
 			if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 				return fmt.Errorf("sync normalized player character stats: %w", err)
@@ -199,10 +203,10 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name string, startDate time.Time, players []domain.NewCampaignPlayer) (*domain.Campaign, error) {
 	ctx = normalizeContext(ctx)
 	if strings.TrimSpace(campaignID) == "" {
-		return nil, fmt.Errorf("campaign id is required")
+		return nil, domain.InvalidInput(fmt.Errorf("campaign id is required"))
 	}
 	if startDate.IsZero() {
-		return nil, fmt.Errorf("campaign start date is required")
+		return nil, domain.InvalidInput(fmt.Errorf("campaign start date is required"))
 	}
 	if err := s.runInTx(ctx, func(qtx *dbgen.Queries) error {
 		affected, err := qtx.UpdateCampaignByID(ctx, dbgen.UpdateCampaignByIDParams{
@@ -239,16 +243,16 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			playerName := strings.TrimSpace(p.PlayerName)
 			playerKey := normalizeNameKey(playerName)
 			if playerKey == "" {
-				return fmt.Errorf("player name is required")
+				return domain.InvalidInput(fmt.Errorf("player name is required"))
 			}
 			if _, exists := updatedPlayers[playerKey]; exists {
-				return fmt.Errorf("player %q already has an active character in this campaign", playerName)
+				return domain.InvalidInput(fmt.Errorf("player %q already has an active character in this campaign", playerName))
 			}
 			updatedPlayers[playerKey] = struct{}{}
 
 			playerID, exists := playerIDsByName[playerKey]
 			if !exists {
-				playerID = uuid.NewString()
+				playerID = uuid.New().String()
 				if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
 					ID:         playerID,
 					CampaignID: campaignID,
@@ -273,7 +277,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 				}
 				charID = strings.TrimSpace(p.Character.ID)
 				if charID == "" {
-					charID = uuid.NewString()
+					charID = uuid.New().String()
 				}
 				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 					return fmt.Errorf("sync normalized player character stats: %w", err)
@@ -298,9 +302,17 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 			}
 		}
 
+		var removedCharacterIDs []string
 		for playerKey, playerID := range playerIDsByName {
 			if _, keep := updatedPlayers[playerKey]; keep {
 				continue
+			}
+			removed, err := getActivePlayerCharacterByPlayerID(ctx, qtx, playerID)
+			if err != nil {
+				return fmt.Errorf("get removed campaign player's character: %w", err)
+			}
+			if removed.ID != "" {
+				removedCharacterIDs = append(removedCharacterIDs, removed.ID)
 			}
 			if err := deactivateActiveCharactersByPlayerID(ctx, qtx, playerID); err != nil {
 				return fmt.Errorf("deactivate removed campaign players: %w", err)
@@ -309,7 +321,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 		if err := syncEffectiveActiveEncounterPlayerCharacters(ctx, qtx, ids, campaignID, savedPlayersByCharacterID); err != nil {
 			return err
 		}
-		if err := removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID); err != nil {
+		if err := removeInactiveCampaignCharactersFromEncounters(ctx, qtx, campaignID, removedCharacterIDs); err != nil {
 			return err
 		}
 		return nil
@@ -411,14 +423,14 @@ func deactivateActiveCharactersByPlayerID(ctx context.Context, qtx *dbgen.Querie
 func normalizeCampaignPlayerForSave(player *domain.NewCampaignPlayer) error {
 	player.PlayerName = strings.TrimSpace(player.PlayerName)
 	if player.PlayerName == "" {
-		return fmt.Errorf("player name is required")
+		return domain.InvalidInput(fmt.Errorf("player name is required"))
 	}
 	player.Character.Name = strings.TrimSpace(player.Character.Name)
 	if player.Character.Name == "" {
-		return fmt.Errorf("character name is required for player %q", player.PlayerName)
+		return domain.InvalidInput(fmt.Errorf("character name is required for player %q", player.PlayerName))
 	}
 	if player.Character.ID == "" {
-		player.Character.ID = uuid.NewString()
+		player.Character.ID = uuid.New().String()
 	}
 	player.Character.Side = domain.SideParty
 	player.Character.XP = 0
@@ -495,7 +507,7 @@ func (s *EncounterStore) UpdateCampaignResources(ctx context.Context, campaignID
 	ctx = normalizeContext(ctx)
 	campaignID = strings.TrimSpace(campaignID)
 	if campaignID == "" {
-		return fmt.Errorf("campaign id is required")
+		return domain.InvalidInput(fmt.Errorf("campaign id is required"))
 	}
 	resources.Normalize()
 	affected, err := s.q.UpdateCampaignResourcesByID(ctx, dbgen.UpdateCampaignResourcesByIDParams{

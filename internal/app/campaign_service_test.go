@@ -53,3 +53,26 @@ func TestPrepareCampaignPlayerRejectsInvalidSPECIAL(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "luck must be at least 1")
 }
+
+func TestCampaignRosterRejectsDuplicatePlayerNamesInAnyScript(t *testing.T) {
+	svc := newSQLiteService(t)
+	start := testCampaignStartDate(t)
+	pc := func(name string) domain.NewCampaignPlayer {
+		return domain.NewCampaignPlayer{PlayerName: name, Character: domain.Combatant{Name: "PC " + name, Level: 1, HP: 5, MaxHP: 5}}
+	}
+	for _, names := range [][2]string{{"Ann", " ann "}, {"Иван", "иван"}} {
+		_, err := svc.CreateCampaign(t.Context(), "", "Twins", start, []domain.NewCampaignPlayer{pc(names[0]), pc(names[1])})
+		require.ErrorIs(t, err, domain.ErrInvalidInput, "%v", names)
+		require.ErrorContains(t, err, "duplicate player name")
+	}
+
+	c, err := svc.CreateCampaign(t.Context(), "", "Solo", start, []domain.NewCampaignPlayer{pc("Иван")})
+	require.NoError(t, err)
+	_, err = svc.UpdateCampaign(t.Context(), c.ID, c.Name, start, []domain.NewCampaignPlayer{pc("Иван"), pc("ИВАН")})
+	require.ErrorIs(t, err, domain.ErrInvalidInput, "the desktop editor gets the same rule")
+	campaigns, err := svc.ListCampaigns(t.Context())
+	require.NoError(t, err)
+	for _, stored := range campaigns {
+		require.NotEqual(t, "Twins", stored.Name, "a rejected roster is not stored")
+	}
+}

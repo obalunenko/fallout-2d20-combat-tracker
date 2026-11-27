@@ -530,21 +530,78 @@ SET deleted_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
 WHERE encounters.id = sqlc.arg(encounter_id) AND encounters.deleted_at IS NULL AND encounters.campaign_id = sqlc.arg(campaign_id);
 
 -- name: InsertEncounterLog :exec
-INSERT INTO encounter_logs (id, encounter_id, round, message, created_at, updated_at)
+INSERT INTO encounter_logs (id, encounter_id, round, message, source, created_at, updated_at)
 VALUES (
   sqlc.arg(id),
   sqlc.arg(encounter_id),
   sqlc.arg(round),
   sqlc.arg(message),
+  sqlc.arg(source),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
   STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
 );
 
 -- name: ListEncounterLogsByEncounterID :many
-SELECT round, message, created_at
+SELECT round, message, source, created_at
 FROM encounter_logs
 WHERE encounter_id = sqlc.arg(encounter_id)
 ORDER BY created_at DESC, rowid DESC;
+
+-- name: GetAssistantConnectionSettings :one
+SELECT enabled, port, access_secret
+FROM assistant_connection_settings
+WHERE id = 1;
+
+-- name: UpsertAssistantConnectionSettings :exec
+INSERT INTO assistant_connection_settings (id, enabled, port, access_secret, created_at, updated_at)
+VALUES (
+  1,
+  sqlc.arg(enabled),
+  sqlc.arg(port),
+  sqlc.arg(access_secret),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+)
+ON CONFLICT(id) DO UPDATE SET
+  enabled = excluded.enabled,
+  port = excluded.port,
+  access_secret = excluded.access_secret,
+  updated_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now');
+
+-- name: InsertAssistantActivity :exec
+INSERT INTO assistant_activity (
+  id, occurred_at, operation, entity_kind, entity_id, entity_label, outcome, detail, created_at, updated_at
+)
+VALUES (
+  sqlc.arg(id),
+  CAST(sqlc.arg(occurred_at) AS TEXT),
+  sqlc.arg(operation),
+  sqlc.narg(entity_kind),
+  sqlc.narg(entity_id),
+  sqlc.arg(entity_label),
+  sqlc.arg(outcome),
+  sqlc.arg(detail),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'),
+  STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+);
+
+-- name: PruneAssistantActivity :exec
+DELETE FROM assistant_activity
+WHERE id NOT IN (
+  SELECT id
+  FROM assistant_activity
+  ORDER BY occurred_at DESC, rowid DESC
+  LIMIT 1000
+);
+
+-- name: ListAssistantActivity :many
+SELECT id, occurred_at, operation, entity_kind, entity_id, entity_label, outcome, detail
+FROM assistant_activity
+ORDER BY occurred_at DESC, rowid DESC
+LIMIT sqlc.arg(limit);
+
+-- name: ClearAssistantActivity :exec
+DELETE FROM assistant_activity;
 
 -- name: UpsertMonsterTemplate :exec
 INSERT INTO monster_templates (

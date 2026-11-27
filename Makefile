@@ -18,10 +18,17 @@ GOLANGCI_BIN := $(TOOLS_BIN_DIR)/golangci-lint
 GORELEASER_TOOL_DIR := ./tools/goreleaser
 GORELEASER_BIN := $(TOOLS_BIN_DIR)/goreleaser
 
+# cgo adds -lobjc once for every Objective-C package (Fyne, GLFW, systray), and
+# Apple's linker warns about the repeats: "ignoring duplicate libraries:
+# '-lobjc'". Only Apple's linker knows the flag that silences it.
+ifeq ($(shell go env GOOS),darwin)
+GO_EXTLDFLAGS := -extldflags=-Wl,-no_warn_duplicate_libraries
+endif
+
 # Spec Kit pins. agent-context ships with the Specify CLI, so SPECKIT_VERSION
 # pins it too.
-SPECKIT_VERSION := 1.2.5
-SPECKIT_COMPANION_VERSION := 0.25.0
+SPECKIT_VERSION := 1.4.5
+SPECKIT_COMPANION_VERSION := 0.29.0
 SPECKIT_BROWNFIELD_VERSION := 1.0.0
 SPECKIT_BUGFIX_VERSION := 1.1.0
 SPECKIT_FEATURE_NUMBERING_VERSION := 1.0.0
@@ -79,11 +86,11 @@ run: build
 	exit $$status
 
 test:
-	go test ./...
+	go test -ldflags "$(GO_EXTLDFLAGS)" ./...
 
 build:
 	mkdir -p $(BIN_DIR)
-	go build -o $(BIN_DIR)/$(APP_NAME) $(CMD_PATH)
+	go build -ldflags "-X main.version=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev) $(GO_EXTLDFLAGS)" -o $(BIN_DIR)/$(APP_NAME) $(CMD_PATH)
 
 fmt:
 	gofmt -w $$(go list -f '{{.Dir}}' ./...)

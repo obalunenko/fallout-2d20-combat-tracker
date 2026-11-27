@@ -1064,7 +1064,7 @@ func TestOpenAndMigrateEnforcesBaseTableCheckConstraints(t *testing.T) {
 			MaxHP:      6,
 		}},
 	}))
-	require.NoError(t, store.AppendEncounterLog(t.Context(), "schema-check-encounter", 1, "Started"))
+	require.NoError(t, store.AppendEncounterLog(t.Context(), "schema-check-encounter", 1, "Started", domain.SourceDesktop))
 	monster, err := store.UpsertMonsterTemplate(t.Context(), domain.Combatant{
 		Name:       "Schema Mutant",
 		Level:      1,

@@ -314,15 +314,22 @@ func showEncounterEditorDialog(
 			return
 		}
 
+		saved := func() {
+			if refresh != nil {
+				refresh()
+			}
+			editorDialog.Hide()
+		}
 		if err := onSubmit(name, combatants); err != nil {
-			validationError.SetText(err.Error())
+			if !handleEditorSaveError(err, editorCallbacks{
+				window: w, entity: "encounter", saved: saved, close: editorDialog.Hide,
+				showErr: validationError.SetText,
+			}) {
+				validationError.SetText(err.Error())
+			}
 			return
 		}
-
-		if refresh != nil {
-			refresh()
-		}
-		editorDialog.Hide()
+		saved()
 	})
 
 	editorDialog = dialog.NewCustomWithoutButtons(title, formContent, w)

@@ -18,6 +18,13 @@ type uiController struct {
 
 	encounterOrder *encounterOrderView
 	refresh        func()
+
+	// assistant is the assistant (MCP) connection; nil when not wired.
+	assistant      appsvc.AssistantConnection
+	assistantBtn   *widget.Button
+	assistantPanel *assistantPanel
+	// encounterListReload reloads the open encounter list; nil when closed.
+	encounterListReload func()
 }
 
 func newUIController(ctx context.Context, window fyne.Window, svc *appsvc.Service, state *uiState) *uiController {
@@ -48,12 +55,16 @@ func (c *uiController) newEncounterOrderView(selectedLabel *widget.Label) *encou
 }
 
 func (c *uiController) mainScreenActions() mainScreenActions {
-	return mainScreenActions{
+	actions := mainScreenActions{
 		showCampaignList:    c.showCampaignListDialog,
 		showCreateCampaign:  c.showCreateCampaignDialog,
 		showEncounterList:   c.showEncounterListDialog,
 		showCreateEncounter: c.showCreateEncounterDialog,
 	}
+	if c.assistant != nil {
+		actions.showAssistant = c.showAssistantDialog
+	}
+	return actions
 }
 
 func (c *uiController) mainScreenControls() mainScreenControls {
@@ -90,7 +101,7 @@ func (c *uiController) advanceTurn() error {
 }
 
 func (c *uiController) addPartyAP() error {
-	_, err := c.svc.AddPartyAP(c.ctx, 1)
+	_, _, err := c.svc.AddPartyAP(c.ctx, 1)
 	return err
 }
 
@@ -128,7 +139,7 @@ func (c *uiController) showCreateEncounterDialog() {
 }
 
 func (c *uiController) showEncounterListDialog() {
-	showEncounterListDialogWindow(c.ctx, c.window, c.svc, c.refresh, c.handleErr)
+	showEncounterListDialogWindow(c.ctx, c.window, c.svc, c.refresh, c.handleErr, c.trackEncounterList)
 }
 
 func (c *uiController) showApplyDamageDialogForIndex(targetIndex int) {

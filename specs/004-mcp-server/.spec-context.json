@@ -1,0 +1,2185 @@
+{
+  "workflow": "companion",
+  "specName": "Assistant Control Of Campaigns And Encounters (MCP Server)",
+  "branch": "develop",
+  "currentStep": "implement",
+  "status": "completed",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-27T12:00:14.000Z"
+    },
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-27T12:18:13.264Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-27T12:39:02.465Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-27T12:59:39.333Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-27T13:03:27.132Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-27T13:07:48.329Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-27T14:03:16.139Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T001",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:04:18.109Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T002",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:06:34.221Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T003",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:06:34.290Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T004",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:06:34.358Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T005",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:07:35.327Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T006",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:07:35.396Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T007",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:07:35.465Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T008",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:07:35.531Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T009",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.034Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T010",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.092Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T011",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.145Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T012",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.197Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T013",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.250Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T014",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.302Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T015",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.355Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T016",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.408Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T017",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:16:51.460Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T018",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:30.995Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T019",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:31.065Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T020",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:31.134Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T021",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:31.203Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T022",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:31.277Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T023",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:31.347Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T024",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:39.059Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T025",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:39.128Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T026",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:39.198Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T027",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:39.269Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T028",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:26:39.341Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T029",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.234Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T030",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.304Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T031",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.374Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T032",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.444Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T033",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.518Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T034",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.588Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T035",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.657Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T036",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.727Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T037",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:28:10.799Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T038",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:30:33.454Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T039",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:30:33.522Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T040",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:30:33.592Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T041",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:30:33.660Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T042",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:32:11.336Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T043",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:32:11.405Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T044",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:32:11.475Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T045",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:32:11.544Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T081",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:38:30.002Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T082",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:38:30.072Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T083",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:38:30.140Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T084",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:43:48.961Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T085",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:43:49.039Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T049",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:44:46.761Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T046",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:44:46.814Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T050",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:51:59.500Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T047",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:51:59.553Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T053",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:59:48.385Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T048",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T14:59:48.439Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T051",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:03:49.397Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T052",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:03:49.450Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T058",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.152Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T059",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.222Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T060",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.293Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T062",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.364Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T063",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.437Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T064",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.507Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T065",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.579Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T066",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.649Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T067",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.720Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T068",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.790Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T069",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.862Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T070",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:08.933Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T071",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:09.007Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T072",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:09.080Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T073",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:09.151Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T074",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.149Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T075",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.221Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T076",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.293Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T077",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.364Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T078",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.437Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T079",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.508Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T080",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:11:19.579Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T054",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:18:42.710Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T056",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:18:42.762Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T055",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:27:06.130Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T057",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:27:06.184Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T061",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:28:49.442Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T086",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:41:30.993Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T087",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T15:49:03.443Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T089",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T16:28:54.455Z"
+    },
+    {
+      "step": "converge",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-11-27T16:33:58.004Z"
+    },
+    {
+      "step": "converge",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-11-27T16:51:36.078Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T090",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:08:53.294Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T091",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:08:53.368Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T092",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:09:20.149Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T093",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:13:48.802Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T095",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:17:01.940Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T096",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:19:05.264Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T094",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:20:22.588Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T097",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:20:22.661Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T098",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:21:31.469Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T099",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:22:16.472Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T100",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:24:48.715Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T101",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:27:03.729Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T102",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:27:47.426Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T103",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:27:47.507Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T104",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:27:47.581Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T105",
+      "kind": "complete",
+      "by": "ai",
+      "at": "2026-11-27T18:27:47.660Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "task": "T088",
+      "kind": "complete",
+      "by": "human",
+      "at": "2026-11-27T23:07:56.552Z"
+    },
+    {
+      "step": "implement",
+      "substep": null,
+      "kind": "complete",
+      "by": "human",
+      "at": "2026-11-27T23:07:56.577Z"
+    }
+  ],
+  "telemetryInstanceId": "b6242a2b-1dfa-470b-973a-6e29b1a7adbe",
+  "currentTask": null,
+  "task_summaries": {
+    "T001": {
+      "status": "DONE",
+      "did": "Constitution v1.2.0 (mcpserver adapter, VI loopback exception) and CLAUDE.md boundary",
+      "files": [
+        ".specify/memory/constitution.md",
+        "CLAUDE.md"
+      ]
+    },
+    "T002": {
+      "status": "DONE",
+      "did": "Added go-sdk v1.8.0; x/sync becomes direct once gate.go imports it (T020)",
+      "files": [
+        "go.mod",
+        "go.sum"
+      ]
+    },
+    "T003": {
+      "status": "DONE",
+      "did": "Package doc for internal/mcpserver with allowed imports",
+      "files": [
+        "internal/mcpserver/doc.go"
+      ]
+    },
+    "T004": {
+      "status": "DONE",
+      "did": "Stateless spike passes for 2026-07-28 and 2025-11-25; Claude Code 2.1.326 sends no Origin/Sec-Fetch (R3)",
+      "files": [
+        "internal/mcpserver/protocol_compat_test.go",
+        "specs/004-mcp-server/research.md"
+      ]
+    },
+    "T005": {
+      "status": "DONE",
+      "did": "ErrTrackerBusy, ErrStaleEdit, ErrEntityDeleted",
+      "files": [
+        "internal/domain/errors.go"
+      ]
+    },
+    "T006": {
+      "status": "DONE",
+      "did": "OperationSource, outcomes, entity kinds, settings with port validation, redacted AccessSecret, activity entry",
+      "files": [
+        "internal/domain/assistant.go"
+      ]
+    },
+    "T007": {
+      "status": "DONE",
+      "did": "Port bounds, blank secret, redaction, enum-vs-CHECK tests",
+      "files": [
+        "internal/domain/assistant_test.go"
+      ]
+    },
+    "T008": {
+      "status": "DONE",
+      "did": "EncounterLog.Source",
+      "files": [
+        "internal/domain/encounter.go"
+      ]
+    },
+    "T009": {
+      "status": "DONE",
+      "did": "Added migration 00044: assistant_connection_settings, assistant_activity + index, encounter_logs.source; Down rebuilds encounter_logs keeping rows, FK, checks, index",
+      "files": [
+        "internal/store/sqlite/migrations/00044_add_assistant_connection.sql"
+      ]
+    },
+    "T010": {
+      "status": "DONE",
+      "did": "Added assistant settings/activity queries and source to InsertEncounterLog/ListEncounterLogsByEncounterID",
+      "files": [
+        "internal/store/sqlite/sqlc/query.sql"
+      ]
+    },
+    "T011": {
+      "status": "DONE",
+      "did": "Ran make sqlc-generate; regenerated schema.sql and dbgen",
+      "files": [
+        "internal/store/sqlite/sqlc/schema.sql",
+        "internal/store/sqlite/dbgen/models.go",
+        "internal/store/sqlite/dbgen/query.sql.go"
+      ]
+    },
+    "T012": {
+      "status": "DONE",
+      "did": "Added _pragma=busy_timeout(5000) to both DSN forms, with a DSN pragma test",
+      "files": [
+        "internal/store/sqlite/db.go",
+        "internal/store/sqlite/db_test.go"
+      ]
+    },
+    "T013": {
+      "status": "DONE",
+      "did": "Added assistant settings get/save and activity append(insert+prune in one tx)/list/clear on EncounterStore",
+      "files": [
+        "internal/store/sqlite/assistant_repository.go",
+        "internal/store/sqlite/mappers.go"
+      ]
+    },
+    "T014": {
+      "status": "DONE",
+      "did": "AppendEncounterLog takes source (empty stored as desktop); ListEncounterLogs maps source; updated store callers/tests",
+      "files": [
+        "internal/store/sqlite/encounter_logs_repository.go",
+        "internal/store/sqlite/mappers.go",
+        "internal/store/sqlite/mappers_test.go",
+        "internal/store/sqlite/encounter_logs_repository_test.go",
+        "internal/store/sqlite/db_schema_test.go"
+      ]
+    },
+    "T015": {
+      "status": "DONE",
+      "did": "Tests: settings not-found/round-trip/validation/CHECKs, 1001 inserts keep newest 1000, ordering/limit, defaults and NULLs, clear, invalid outcome/entity_kind, log source round-trip and legacy rows as desktop",
+      "files": [
+        "internal/store/sqlite/assistant_repository_test.go"
+      ]
+    },
+    "T016": {
+      "status": "DONE",
+      "did": "Migration 00044 up/down/up test: rows survive, source backfills desktop, Down restores exact encounter_logs definition, FK cascade, checks and index",
+      "files": [
+        "internal/store/sqlite/migration_test.go"
+      ]
+    },
+    "T017": {
+      "status": "DONE",
+      "did": "Ran make db-doc-generate; added assistant connection/audit section to db-normalization.md",
+      "files": [
+        "docs/db/README.md",
+        "docs/db/encounter_logs.md",
+        "docs/db/schema.json",
+        "docs/db/assistant_connection_settings.md",
+        "docs/db/assistant_activity.md",
+        "docs/db-normalization.md"
+      ]
+    },
+    "T018": {
+      "status": "DONE",
+      "did": "Assistant settings/activity repo contracts; AppendEncounterLog(+source); fakes updated",
+      "files": [
+        "internal/app/repository_contracts.go",
+        "internal/app/service_test.go",
+        "internal/ui/fyneui/main_view_refresher_test.go"
+      ]
+    },
+    "T019": {
+      "status": "DONE",
+      "did": "WithSource/SourceFromContext; log entries carry the source",
+      "files": [
+        "internal/app/source.go",
+        "internal/app/operation_log.go"
+      ]
+    },
+    "T020": {
+      "status": "DONE",
+      "did": "Weighted-semaphore read/write gate with ctx; busy on deadline",
+      "files": [
+        "internal/app/gate.go",
+        "internal/app/service.go"
+      ]
+    },
+    "T021": {
+      "status": "DONE",
+      "did": "Every exported Service method gated once; wrapper pairs gate in Execute*",
+      "files": [
+        "internal/app/campaign_service.go",
+        "internal/app/encounter_service.go",
+        "internal/app/combat_action_service.go",
+        "internal/app/monster_template_service.go",
+        "internal/app/operation_log.go"
+      ]
+    },
+    "T022": {
+      "status": "DONE",
+      "did": "ChangeEvent + SubscribeChanges, published after gate release",
+      "files": [
+        "internal/app/changes.go"
+      ]
+    },
+    "T023": {
+      "status": "DONE",
+      "did": "Revisions start at 1, assistant-only bumps, tombstones, ExpectedRevision checks",
+      "files": [
+        "internal/app/revisions.go",
+        "internal/app/commands.go"
+      ]
+    },
+    "T024": {
+      "status": "DONE",
+      "did": "Gate tests: 70 concurrent writes lose nothing under -race, busy on held gate, no wrapper deadlock",
+      "files": [
+        "internal/app/gate_test.go"
+      ]
+    },
+    "T025": {
+      "status": "DONE",
+      "did": "Event, revision and log-source tests",
+      "files": [
+        "internal/app/changes_test.go",
+        "internal/app/revisions_test.go",
+        "internal/app/operation_log_test.go"
+      ]
+    },
+    "T026": {
+      "status": "DONE",
+      "did": "AssistantConnection, ConnectionStatus, DesktopConfirmer, ConfirmationRequest/Decision, ConfirmationRouter",
+      "files": [
+        "internal/app/assistant_ports.go"
+      ]
+    },
+    "T027": {
+      "status": "DONE",
+      "did": "Settings with lazy secret, regenerate, gated non-critical activity append/list/clear",
+      "files": [
+        "internal/app/assistant_service.go",
+        "internal/app/service.go"
+      ]
+    },
+    "T028": {
+      "status": "DONE",
+      "did": "Defaults off/47823, lazy secret once, regenerate, validation, limits, non-critical failure",
+      "files": [
+        "internal/app/assistant_service_test.go"
+      ]
+    },
+    "T029": {
+      "status": "DONE",
+      "did": "Domain/app errors to tool codes; JSON error object as text content",
+      "files": [
+        "internal/mcpserver/errors.go"
+      ]
+    },
+    "T030": {
+      "status": "DONE",
+      "did": "Shared DTOs and domain mappings, snake_case, enum schemas for damage type/location",
+      "files": [
+        "internal/mcpserver/dto.go"
+      ]
+    },
+    "T031": {
+      "status": "DONE",
+      "did": "Final-outcome activity recording helper",
+      "files": [
+        "internal/mcpserver/activity.go"
+      ]
+    },
+    "T032": {
+      "status": "DONE",
+      "did": "Origin/Sec-Fetch, loopback Host, constant-time bearer check; refusals collapsed per minute",
+      "files": [
+        "internal/mcpserver/admission.go"
+      ]
+    },
+    "T033": {
+      "status": "DONE",
+      "did": "Server, stateless JSON handler, addTool with explicit annotations and schema validation",
+      "files": [
+        "internal/mcpserver/server.go"
+      ]
+    },
+    "T034": {
+      "status": "DONE",
+      "did": "Connection lifecycle on 127.0.0.1, failed status on busy port, Apply swaps secret or moves port",
+      "files": [
+        "internal/mcpserver/connection.go"
+      ]
+    },
+    "T035": {
+      "status": "DONE",
+      "did": "Test env: temp SQLite service, live connection, bearer client, fake confirmer",
+      "files": [
+        "internal/mcpserver/testutil_test.go"
+      ]
+    },
+    "T036": {
+      "status": "DONE",
+      "did": "Admission matrix incl. own-origin/same-origin allowed, rotation, stopped; refusal collapse",
+      "files": [
+        "internal/mcpserver/admission_test.go"
+      ]
+    },
+    "T037": {
+      "status": "DONE",
+      "did": "StartIfEnabled, busy port, loopback after Apply, in-flight call finishes on Stop",
+      "files": [
+        "internal/mcpserver/connection_test.go"
+      ]
+    },
+    "T038": {
+      "status": "DONE",
+      "did": "fyneui.Options; StartIfEnabled after window build; assistant Stop in shutdown before quit",
+      "files": [
+        "internal/ui/fyneui/app.go",
+        "internal/ui/fyneui/ui_controller.go"
+      ]
+    },
+    "T039": {
+      "status": "DONE",
+      "did": "ASSISTANT header button with status; dialog with enable switch, status line, masked secret + copy",
+      "files": [
+        "internal/ui/fyneui/main_screen.go",
+        "internal/ui/fyneui/layout.go",
+        "internal/ui/fyneui/assistant_connection_dialog.go"
+      ]
+    },
+    "T040": {
+      "status": "DONE",
+      "did": "Wiring store-service-router-connection-UI; main.version via ldflags with BuildInfo fallback",
+      "files": [
+        "cmd/fallout-tracker/main.go",
+        "Makefile",
+        ".goreleaser.yaml",
+        ".goreleaser.darwin.yaml"
+      ]
+    },
+    "T041": {
+      "status": "DONE",
+      "did": "Dialog tests: toggle saves+starts, failure keeps switch on, masked secret, copy",
+      "files": [
+        "internal/ui/fyneui/assistant_connection_dialog_test.go"
+      ]
+    },
+    "T042": {
+      "status": "DONE",
+      "did": "Read tools vs seeded data, empty tracker, not_found/limit/unknown-arg errors, annotations, no activity, Cyrillic notes",
+      "files": [
+        "internal/mcpserver/tools_read_test.go",
+        "internal/mcpserver/testutil_test.go"
+      ]
+    },
+    "T043": {
+      "status": "DONE",
+      "did": "All read tools under 1 s at 50 campaigns / 200 encounters / 100 templates",
+      "files": [
+        "internal/mcpserver/tools_read_perf_test.go"
+      ]
+    },
+    "T044": {
+      "status": "DONE",
+      "did": "Nine read tools with FR-020 term descriptions and summaries",
+      "files": [
+        "internal/mcpserver/tools_read.go"
+      ]
+    },
+    "T045": {
+      "status": "DONE",
+      "did": "registerReadTools wired in newServer",
+      "files": [
+        "internal/mcpserver/server.go"
+      ]
+    },
+    "T081": {
+      "status": "DONE",
+      "did": "Relay test for 2025-11-25 and 2026-07-28 clients, header derivation, -32000/-32001, timeout option, exit 2",
+      "files": [
+        "internal/mcpserver/bridge_test.go"
+      ]
+    },
+    "T082": {
+      "status": "DONE",
+      "did": "Stdio-to-HTTP JSON-RPC relay with auth, protocol/method/name headers, 150 s default timeout",
+      "files": [
+        "internal/mcpserver/bridge.go"
+      ]
+    },
+    "T083": {
+      "status": "DONE",
+      "did": "mcp-bridge subcommand dispatched before DB and UI",
+      "files": [
+        "cmd/fallout-tracker/main.go"
+      ]
+    },
+    "T084": {
+      "status": "DONE",
+      "did": "GM setup guide: safety model, enable, Claude Code, Claude Desktop bridge, mcp-remote, secret rotation, troubleshooting",
+      "files": [
+        "docs/assistant.md"
+      ]
+    },
+    "T085": {
+      "status": "DONE",
+      "did": "README Assistant (MCP) section with the safety model",
+      "files": [
+        "README.md"
+      ]
+    },
+    "T049": {
+      "status": "DONE",
+      "did": "Service.ExecuteCampaignRosterPatch: read-patch-write of a campaign roster under one write-gate hold (details, add, update/rename, availability, remove)",
+      "files": [
+        "internal/app/campaign_roster_patch.go"
+      ]
+    },
+    "T046": {
+      "status": "DONE",
+      "did": "Roster patch tests: each kind, duplicate/rename/last-player rules, encounter removal, linked combatant sync, revisions/event, gate atomicity",
+      "files": [
+        "internal/app/campaign_roster_patch_test.go"
+      ]
+    },
+    "T050": {
+      "status": "DONE",
+      "did": "confirmer.require: MRTR input_required with HMAC single-use requestState (2m TTL, nonce grace 1m) or desktop router with 50s timeout; wired into deps via NewConnection",
+      "files": [
+        "internal/mcpserver/confirm.go",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/connection.go",
+        "internal/mcpserver/activity.go"
+      ]
+    },
+    "T047": {
+      "status": "DONE",
+      "did": "Confirmation tests: MRTR accept/decline/cancel, input_required round and activity, forged/reused/mismatched/expired tokens with injectable clock, desktop fallback outcomes and deadline, client cancel, no lock while waiting, stored-state wording",
+      "files": [
+        "internal/mcpserver/confirm_test.go",
+        "internal/mcpserver/testutil_test.go"
+      ]
+    },
+    "T053": {
+      "status": "DONE",
+      "did": "Campaign tools (create, update details, add player, update character, mark available/unavailable, activate, remove player) over ExecuteCampaignRosterPatch with stored-state confirmations, FR-020 descriptions and one activity entry per final outcome; CharacterInput DTO",
+      "files": [
+        "internal/mcpserver/tools_campaign.go",
+        "internal/mcpserver/dto.go",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/activity.go"
+      ]
+    },
+    "T048": {
+      "status": "DONE",
+      "did": "Campaign tool tests: desktop parity per tool (SC-002), invalid input names the field and stores nothing, only destructive tools confirm, annotations and FR-020 terms, activity outcomes",
+      "files": [
+        "internal/mcpserver/tools_campaign_test.go"
+      ]
+    },
+    "T051": {
+      "status": "DONE",
+      "did": "desktopConfirmer (app.DesktopConfirmer): FIFO one dialog at a time, danger Confirm/Cancel, 50s per-request deadline from enqueue with countdown and waiting line, expired queued requests time out unshown, ctx cancel declines, RequestFocus; registered via opts.Confirmations.SetDesktop",
+      "files": [
+        "internal/ui/fyneui/assistant_confirm_dialog.go",
+        "internal/ui/fyneui/app.go"
+      ]
+    },
+    "T052": {
+      "status": "DONE",
+      "did": "Desktop confirmer tests on an emulated UI loop: FIFO, waiting line, countdown with injectable clock, timeout, queued expiry never shown, cancel of queued and shown requests, Confirm accepted, danger importance",
+      "files": [
+        "internal/ui/fyneui/assistant_confirm_dialog_test.go"
+      ]
+    },
+    "T058": {
+      "status": "DONE",
+      "did": "Refresher coalesces assistant bursts to one redraw, ignores desktop; redraw leaves editor input",
+      "files": [
+        "internal/ui/fyneui/assistant_refresh_test.go"
+      ]
+    },
+    "T059": {
+      "status": "DONE",
+      "did": "Stale edit: Overwrite saves only after choice, Reload reopens, deleted closes only, busy keeps editor open",
+      "files": [
+        "internal/ui/fyneui/stale_edit_test.go"
+      ]
+    },
+    "T060": {
+      "status": "DONE",
+      "did": "Encounter list reload keeps selection; deleted selection clears with a note",
+      "files": [
+        "internal/ui/fyneui/encounter_list_dialog_test.go"
+      ]
+    },
+    "T062": {
+      "status": "DONE",
+      "did": "Assistant tool calls interleaved with direct service calls lose no hits (-race)",
+      "files": [
+        "internal/mcpserver/concurrency_test.go"
+      ]
+    },
+    "T063": {
+      "status": "DONE",
+      "did": "DATA line format test for [AI] marker",
+      "files": [
+        "internal/ui/fyneui/data_log_test.go"
+      ]
+    },
+    "T064": {
+      "status": "DONE",
+      "did": "list_assistant_activity read tool (limit 1..200, newest first)",
+      "files": [
+        "internal/mcpserver/tools_read.go"
+      ]
+    },
+    "T065": {
+      "status": "DONE",
+      "did": "Coalesced fyne.Do redraw on assistant ChangeEvents, subscribed in Run",
+      "files": [
+        "internal/ui/fyneui/assistant_refresh.go",
+        "internal/ui/fyneui/app.go",
+        "internal/ui/fyneui/ui_controller.go"
+      ]
+    },
+    "T066": {
+      "status": "DONE",
+      "did": "Encounter list live reload keeping selection; note when the selection was deleted",
+      "files": [
+        "internal/ui/fyneui/encounter_list_dialog.go"
+      ]
+    },
+    "T067": {
+      "status": "DONE",
+      "did": "Encounter editor captures revision; Reload/Overwrite, close-only on delete, busy message",
+      "files": [
+        "internal/ui/fyneui/encounter_list_dialog.go",
+        "internal/ui/fyneui/encounter_editor_dialog.go",
+        "internal/ui/fyneui/stale_edit.go"
+      ]
+    },
+    "T068": {
+      "status": "DONE",
+      "did": "Campaign editor captures revision with the same stale-edit handling",
+      "files": [
+        "internal/ui/fyneui/campaign_dialogs.go"
+      ]
+    },
+    "T069": {
+      "status": "DONE",
+      "did": "[AI] marker for assistant entries in the DATA view",
+      "files": [
+        "internal/ui/fyneui/data_log.go"
+      ]
+    },
+    "T070": {
+      "status": "DONE",
+      "did": "Port apply with validation, secret regeneration, Claude Code/Desktop snippets, activity list with clear",
+      "files": [
+        "internal/ui/fyneui/assistant_connection_dialog.go"
+      ]
+    },
+    "T071": {
+      "status": "DONE",
+      "did": "Dialog tests: bad port, regenerate applies new secret, snippets current and masked, clear confirms",
+      "files": [
+        "internal/ui/fyneui/assistant_connection_dialog_test.go"
+      ]
+    },
+    "T072": {
+      "status": "DONE",
+      "did": "Combat tools: DR/immunity/torso-only/poison, defeat, heal cap, AP cap, overspend, no active encounter, parity",
+      "files": [
+        "internal/mcpserver/tools_combat_test.go"
+      ]
+    },
+    "T073": {
+      "status": "DONE",
+      "did": "advance_turn, apply_damage, heal, change_party_ap, change_gm_threat with FR-020 descriptions",
+      "files": [
+        "internal/mcpserver/tools_combat.go",
+        "internal/mcpserver/server.go"
+      ]
+    },
+    "T074": {
+      "status": "DONE",
+      "did": "Extension capability, skills/list digests and sizes, skills/get -32602, frontmatter rules, resource fallback, instructions",
+      "files": [
+        "internal/mcpserver/skills_test.go"
+      ]
+    },
+    "T075": {
+      "status": "DONE",
+      "did": "start-campaign playbook",
+      "files": [
+        "internal/mcpserver/skills/start-campaign/SKILL.md"
+      ]
+    },
+    "T076": {
+      "status": "DONE",
+      "did": "prepare-encounter playbook with difficulty formula and preview loop",
+      "files": [
+        "internal/mcpserver/skills/prepare-encounter/SKILL.md"
+      ]
+    },
+    "T077": {
+      "status": "DONE",
+      "did": "run-combat-round playbook incl. corrections via activity log",
+      "files": [
+        "internal/mcpserver/skills/run-combat-round/SKILL.md"
+      ]
+    },
+    "T078": {
+      "status": "DONE",
+      "did": "fallout://reference/rules summary",
+      "files": [
+        "internal/mcpserver/reference/rules.md"
+      ]
+    },
+    "T079": {
+      "status": "DONE",
+      "did": "Hand-rolled SEP-2640 skills/list and skills/get, version-injected digests, skill and rules resources",
+      "files": [
+        "internal/mcpserver/skills.go",
+        "internal/mcpserver/server.go"
+      ]
+    },
+    "T080": {
+      "status": "DONE",
+      "did": "Final server instructions with guide and rules URIs; skills registered in newServer",
+      "files": [
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/connection.go"
+      ]
+    },
+    "T054": {
+      "status": "DONE",
+      "did": "App tests for draft expansion (quantity parity with desktop rows, initiative override), preview parity with no storage or events, kept-combatant state on update, and not-found/invalid-input/empty-roster errors",
+      "files": [
+        "internal/app/encounter_draft_test.go"
+      ]
+    },
+    "T056": {
+      "status": "DONE",
+      "did": "EncounterDraft/DraftMonster with gated PreviewEncounterDifficulty, ExecuteCreateEncounterFromDraft and ExecuteUpdateEncounterFromDraft reusing createEncounter/updateEncounter; expandDraft resolves party via ListPartyMembers and templates via ListMonsterTemplates under one gate hold",
+      "files": [
+        "internal/app/encounter_draft.go"
+      ]
+    },
+    "T055": {
+      "status": "DONE",
+      "did": "MCP tests: create_encounter parity with ExecuteCreateEncounter and preview, update confirmation only on removals (desktop and in-conversation) plus roster-changed-during-confirm refusal, R20 activation, restart/delete always confirm and decline leaves state, NPC-only restart, deleted encounter not_found, replaced_existing, activate log source, invalid input codes/fields, annotations and descriptions",
+      "files": [
+        "internal/mcpserver/tools_encounter_test.go"
+      ]
+    },
+    "T057": {
+      "status": "DONE",
+      "did": "Encounter tools (preview_encounter_difficulty, create/activate/update/restart/delete_encounter, save_monster_template) with stored-state confirmation wording, FR-020 descriptions, DraftMonster DTO and MonsterInput DR/torso-only descriptions; registered in newServer",
+      "files": [
+        "internal/mcpserver/tools_encounter.go",
+        "internal/mcpserver/dto.go",
+        "internal/mcpserver/server.go"
+      ]
+    },
+    "T061": {
+      "status": "DONE",
+      "did": "Every changing tool writes one entry with final outcome (done/declined/timed_out/rejected); reads none; bounded read-only listing; correction via log",
+      "files": [
+        "internal/mcpserver/activity_test.go"
+      ]
+    },
+    "T086": {
+      "status": "DONE",
+      "did": "Reviewed all changed Go code with go-code-quality-review and code-simplification-review; applied behavior-preserving cleanups (dead param, duplicated helpers/literals, redundant query, test cleanup, gofmt, doc comments)",
+      "files": [
+        "internal/mcpserver/errors.go",
+        "internal/mcpserver/bridge.go",
+        "internal/mcpserver/connection.go",
+        "internal/mcpserver/admission.go",
+        "internal/mcpserver/skills.go",
+        "internal/mcpserver/tools_read.go",
+        "internal/mcpserver/tools_campaign.go",
+        "internal/mcpserver/tools_encounter.go",
+        "internal/mcpserver/activity_test.go",
+        "internal/mcpserver/protocol_compat_test.go",
+        "internal/mcpserver/testutil_test.go",
+        "internal/mcpserver/connection_test.go",
+        "internal/app/revisions.go",
+        "internal/app/campaign_service.go",
+        "internal/app/encounter_service.go",
+        "internal/app/campaign_roster_patch_test.go",
+        "internal/app/encounter_draft_test.go",
+        "internal/ui/fyneui/app.go",
+        "internal/ui/fyneui/encounter_list_dialog.go"
+      ]
+    },
+    "T087": {
+      "status": "DONE",
+      "did": "Gates: regeneration no drift, go test, -race app+mcpserver, vet, lint 0 issues, build, gofmt",
+      "files": [
+        "specs/004-mcp-server/quickstart.md"
+      ]
+    },
+    "T089": {
+      "status": "DONE",
+      "did": "BUG-001: error kinds (ErrInvalidInput/ErrNotFound) marked at the source; adapter maps by errors.Is; guard test",
+      "files": [
+        "internal/domain/errors.go",
+        "internal/domain/encounter.go",
+        "internal/app/errors.go",
+        "internal/store/sqlite",
+        "internal/mcpserver/errors.go",
+        "internal/app/errors_test.go",
+        "internal/domain/errors_test.go",
+        "internal/mcpserver/errors_test.go"
+      ]
+    },
+    "T090": {
+      "status": "DONE",
+      "did": "Apply retries start for an enabled connection whose last start failed; test",
+      "files": [
+        "internal/mcpserver/connection.go",
+        "internal/mcpserver/connection_test.go"
+      ]
+    },
+    "T091": {
+      "status": "DONE",
+      "did": "Stop clears a failed status to stopped and notifies; test",
+      "files": [
+        "internal/mcpserver/connection.go",
+        "internal/mcpserver/connection_test.go"
+      ]
+    },
+    "T092": {
+      "status": "DONE",
+      "did": "Stop cancels pending desktop confirmations (declined, operation never runs), resume on start; panel stops off the UI goroutine; tests",
+      "files": [
+        "internal/mcpserver/confirm.go",
+        "internal/mcpserver/connection.go",
+        "internal/mcpserver/connection_test.go",
+        "internal/ui/fyneui/assistant_connection_dialog.go",
+        "internal/ui/fyneui/assistant_connection_dialog_test.go"
+      ]
+    },
+    "T093": {
+      "status": "DONE",
+      "did": "Bridge aborts the in-flight HTTP request on notifications/cancelled and sends no response; server exposes the HTTP request ctx so desktop confirmations of pre-2026-07-28 clients end as declined; test",
+      "files": [
+        "internal/mcpserver/bridge.go",
+        "internal/mcpserver/bridge_test.go",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/confirm.go"
+      ]
+    },
+    "T095": {
+      "status": "DONE",
+      "did": "Advertised tool schemas carry integer minimums, quantity max 50, non-empty ids and side/source enums; arguments still validate against the inferred schema so domain messages keep field and range; schema test",
+      "files": [
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/tools_read_test.go"
+      ]
+    },
+    "T096": {
+      "status": "DONE",
+      "did": "Duplicate player-name rule (Unicode, case-insensitive) moved into app prepareCampaignPlayers for create/update/add; adapter and roster pre-checks removed; app and adapter tests",
+      "files": [
+        "internal/app/campaign_service.go",
+        "internal/app/campaign_roster_patch.go",
+        "internal/app/campaign_service_test.go",
+        "internal/mcpserver/tools_campaign.go",
+        "internal/mcpserver/tools_campaign_test.go"
+      ]
+    },
+    "T094": {
+      "status": "DONE",
+      "did": "openCampaignEditor takes the campaign ID, captures the revision, then reads the stored campaign and players; Edit and Reload pass the ID; test",
+      "files": [
+        "internal/ui/fyneui/campaign_dialogs.go",
+        "internal/ui/fyneui/campaign_dialogs_test.go"
+      ]
+    },
+    "T097": {
+      "status": "DONE",
+      "did": "openEncounterEditor captures the revision before reading the encounter",
+      "files": [
+        "internal/ui/fyneui/encounter_list_dialog.go"
+      ]
+    },
+    "T098": {
+      "status": "DONE",
+      "did": "Admission schedules a flush at each refusal window's end and flushes on Stop, so every collapsed refusal is counted once; test",
+      "files": [
+        "internal/mcpserver/admission.go",
+        "internal/mcpserver/admission_test.go",
+        "internal/mcpserver/connection.go"
+      ]
+    },
+    "T099": {
+      "status": "DONE",
+      "did": "Activity detail is the mapped tool-error message, so internal errors show the generic text; test",
+      "files": [
+        "internal/mcpserver/activity.go",
+        "internal/mcpserver/activity_test.go"
+      ]
+    },
+    "T100": {
+      "status": "DONE",
+      "did": "remove_campaign_player is one save and one change event: the store's campaign save now takes a dropped player's character out of the campaign's encounters in the same transaction (baseline 001 US1/AC3); store and app tests",
+      "files": [
+        "internal/app/campaign_roster_patch.go",
+        "internal/app/campaign_roster_patch_test.go",
+        "internal/store/sqlite/campaign_repository.go",
+        "internal/store/sqlite/campaign_repository_test.go"
+      ]
+    },
+    "T101": {
+      "status": "DONE",
+      "did": "Resources.AddPartyAP and app AddPartyAP report capped; ExecuteSaveMonsterTemplates returns ReplacedExisting under the same gate hold; adapter re-derivation removed; domain, app tests",
+      "files": [
+        "internal/domain/encounter.go",
+        "internal/domain/encounter_test.go",
+        "internal/app/encounter_service.go",
+        "internal/app/monster_template_service.go",
+        "internal/app/monster_template_service_test.go",
+        "internal/app/encounter_service_test.go",
+        "internal/app/operation_log_test.go",
+        "internal/app/revisions_test.go",
+        "internal/app/baseline_smoke_test.go",
+        "internal/ui/fyneui/ui_controller.go",
+        "internal/mcpserver/tools_combat.go",
+        "internal/mcpserver/tools_encounter.go"
+      ]
+    },
+    "T102": {
+      "status": "DONE",
+      "did": "R3 records the as-built bearer check and why (missing-token refusals must reach the activity log)",
+      "files": [
+        "specs/004-mcp-server/research.md"
+      ]
+    },
+    "T103": {
+      "status": "DONE",
+      "did": "Bridge contract: headers aligned with R8 and the code; cancellation row added",
+      "files": [
+        "specs/004-mcp-server/contracts/mcp-connection.md"
+      ]
+    },
+    "T104": {
+      "status": "DONE",
+      "did": "Plan names jsonschema-go and yaml.v3 as direct dependencies",
+      "files": [
+        "specs/004-mcp-server/plan.md"
+      ]
+    },
+    "T105": {
+      "status": "DONE",
+      "did": "Tools contract documents the update_encounter re-check after confirmation and declines on connection stop",
+      "files": [
+        "specs/004-mcp-server/contracts/mcp-tools.md"
+      ]
+    },
+    "T088": {
+      "status": "DONE",
+      "did": "Manual quickstart §§2–5 passed in Claude Code 2.1.332 and Claude Desktop 6.28899.6 (GM report)",
+      "files": [
+        "specs/004-mcp-server/quickstart.md"
+      ]
+    }
+  },
+  "verified": [
+    {
+      "what": "full test suite",
+      "command": "go test -count=1 ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 18.9,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/ui/fyneui\t2.357s · # github.com/obalunenko/fallout/internal/ui/fyneui.test · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "go vet",
+      "command": "go vet ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.3,
+      "result": "no output"
+    },
+    {
+      "what": "lint",
+      "command": "make lint",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 1.8,
+      "result": "GOBIN=/Users/olegbalunenko/Code/Go/github.com/obalunenko/fallout/tools/bin go -C ./tools/golangci-lint install github.com/golangci/golangci-lint/v2/cmd/golangci-lint · ./tools/bin/golangci-lint run ./... · 0 issues."
+    },
+    {
+      "what": "build",
+      "command": "make build",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 2.5,
+      "result": "go build -ldflags \"-X main.version=v0.5.0-6-g6f941bc-dirty\" -o ./bin/fallout-tracker ./cmd/fallout-tracker · # github.com/obalunenko/fallout/cmd/fallout-tracker · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "gofmt clean",
+      "command": "test -z \"$(gofmt -l internal cmd)\"",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.0,
+      "result": "no output"
+    },
+    {
+      "what": "race tests app+mcpserver",
+      "command": "go test -race -count=1 ./internal/app/... ./internal/mcpserver/...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 418.4,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/app\t321.950s · ok  \tgithub.com/obalunenko/fallout/internal/mcpserver\t417.561s"
+    },
+    {
+      "what": "Headless smoke: Claude Code 2.1.326 health check against the live endpoint",
+      "command": "claude mcp list (temporary local server entry)",
+      "result": "Connected over 2026-07-28; no Origin/Sec-Fetch headers sent"
+    },
+    {
+      "what": "Headless smoke: admission on the live endpoint",
+      "command": "curl POST /mcp",
+      "result": "no token 401, foreign Origin 403, rebinding Host 403, listener 127.0.0.1 only, refusals logged once per reason"
+    },
+    {
+      "what": "Headless smoke: built binary as stdio bridge with a 2025-11-25 client",
+      "command": "./bin/fallout-tracker mcp-bridge",
+      "result": "initialize, tools/list (30 tools), tools/call ok; -32000 when tracker down; exit 2 without secret"
+    },
+    {
+      "what": "Regeneration drift",
+      "command": "make sqlc-generate && make db-doc-generate (checksums before/after)",
+      "result": "dbgen, sqlc and docs/db byte-identical"
+    },
+    {
+      "what": "full test suite after error-kind change",
+      "command": "go test -count=1 ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 14.8,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/ui/fyneui\t1.843s · # github.com/obalunenko/fallout/internal/ui/fyneui.test · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "go vet after error-kind change",
+      "command": "go vet ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.3,
+      "result": "no output"
+    },
+    {
+      "what": "lint after error-kind change",
+      "command": "make lint",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 2.2,
+      "result": "GOBIN=/Users/olegbalunenko/Code/Go/github.com/obalunenko/fallout/tools/bin go -C ./tools/golangci-lint install github.com/golangci/golangci-lint/v2/cmd/golangci-lint · ./tools/bin/golangci-lint run ./... · 0 issues."
+    },
+    {
+      "what": "build after error-kind change",
+      "command": "make build",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 2.3,
+      "result": "go build -ldflags \"-X main.version=v0.5.0-6-g6f941bc-dirty\" -o ./bin/fallout-tracker ./cmd/fallout-tracker · # github.com/obalunenko/fallout/cmd/fallout-tracker · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "gofmt after error-kind change",
+      "command": "test -z \"$(gofmt -l internal cmd)\"",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.0,
+      "result": "no output"
+    },
+    {
+      "what": "race tests after error-kind change",
+      "command": "go test -race -count=1 ./internal/app/... ./internal/mcpserver/...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 414.8,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/app\t327.375s · ok  \tgithub.com/obalunenko/fallout/internal/mcpserver\t413.434s"
+    },
+    {
+      "what": "Guard test that every user-caused Service error is marked",
+      "command": "go test ./internal/app/ -run TestUserCausedErrorsAreMarked",
+      "result": "17 validation and not-found paths all carry ErrInvalidInput or ErrNotFound"
+    },
+    {
+      "what": "race detector on app and mcpserver (Phase 11)",
+      "command": "go test -race -count=1 ./internal/app/... ./internal/mcpserver/...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 398.9,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/app\t287.625s · ok  \tgithub.com/obalunenko/fallout/internal/mcpserver\t397.515s"
+    },
+    {
+      "what": "full test suite (Phase 11)",
+      "command": "go test -count=1 ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 21.4,
+      "result": "ok  \tgithub.com/obalunenko/fallout/internal/ui/fyneui\t2.039s · # github.com/obalunenko/fallout/internal/ui/fyneui.test · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "go vet (Phase 11)",
+      "command": "go vet ./...",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.3,
+      "result": "no output"
+    },
+    {
+      "what": "golangci-lint (Phase 11)",
+      "command": "make lint",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 2.0,
+      "result": "GOBIN=/Users/olegbalunenko/Code/Go/github.com/obalunenko/fallout/tools/bin go -C ./tools/golangci-lint install github.com/golangci/golangci-lint/v2/cmd/golangci-lint · ./tools/bin/golangci-lint run ./... · 0 issues."
+    },
+    {
+      "what": "build (Phase 11)",
+      "command": "make build",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 2.2,
+      "result": "go build -ldflags \"-X main.version=v0.5.0-6-g6f941bc-dirty\" -o ./bin/fallout-tracker ./cmd/fallout-tracker · # github.com/obalunenko/fallout/cmd/fallout-tracker · ld: warning: ignoring duplicate libraries: '-lobjc'"
+    },
+    {
+      "what": "gofmt clean (Phase 11)",
+      "command": "test -z \"$(gofmt -l ./internal ./cmd)\"",
+      "source": "derived",
+      "exitCode": 0,
+      "durationSeconds": 0.0,
+      "result": "no output"
+    },
+    {
+      "what": "T088 manual quickstart §§2–5 in Claude Code and Claude Desktop (SC-001, SC-004, SC-006, SC-009, SC-011)",
+      "command": "manual GUI pass by the GM",
+      "result": "all checks pass per the GM report; per-trial timings not itemized"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Foundational built layer by layer (persistence via one worker, app and MCP core inline) instead of dispatch-briefs waves",
+      "why": "tasks.md has no wave markers, so the script grouped dependent tasks (T006/T007) as one parallel wave of trivial edits",
+      "rejected": "four workers for T005-T008"
+    },
+    {
+      "decision": "Own constant-time bearer check in the admission middleware",
+      "why": "the SDK middleware never calls the verifier for a missing token, so those refusals could not be logged",
+      "rejected": "auth.RequireBearerToken"
+    },
+    {
+      "decision": "Tools registered through a raw-handler wrapper (addTool) with our own schema validation; tool errors travel as JSON text content",
+      "why": "uniform error contract; structuredContent that does not match the output schema is rejected by strict clients",
+      "rejected": "typed mcp.AddTool; error object in structuredContent"
+    },
+    {
+      "decision": "Revisions start at 1 and only assistant operations bump them",
+      "why": "ExpectedRevision 0 can mean no check; warning text 'changed by the assistant' is always true",
+      "rejected": "0-based revisions; bumping on desktop changes"
+    },
+    {
+      "decision": "Connection.Stop force-closes after the 5 s grace period and returns nil",
+      "why": "idle StateNew connections from client pools made Shutdown hit the deadline and flake",
+      "rejected": "returning the deadline error"
+    },
+    {
+      "decision": "Skills extension hand-rolled in skills.go without a provider interface",
+      "why": "no released go-sdk support; one implementation, isolated in one file",
+      "rejected": "pinning go-sdk main; an interface with one implementation"
+    },
+    {
+      "decision": "remove_campaign_player also removes the character from encounters; update_encounter re-checks the removal set after confirmation",
+      "why": "matches the confirmation text; prevents removing a combatant the GM never confirmed (SC-003)",
+      "rejected": "plain roster omit; trusting the pre-confirmation roster"
+    },
+    {
+      "decision": "Classify tool errors by kind: domain.ErrInvalidInput / domain.ErrNotFound marked where errors arise (app checks and validation helpers, domain unknown-combatant, store user-caused guards); adapter uses errors.Is only",
+      "why": "removes the word-list heuristic that would report new validation messages as internal; messages unchanged so the desktop UI is unaffected",
+      "rejected": "FieldError at all 84 domain sites (larger); keeping the heuristic with a test (misses new messages)"
+    },
+    {
+      "decision": "Advertised tool schemas carry minimums, quantity max, non-empty ids and enums; arguments still validate against the inferred schema",
+      "why": "domain checks answer with messages that name the field and range (FR-017, SC-005)",
+      "rejected": "validating the constrained schema: the SDK error names no field and reads like \"0/1 is less than 1.000000\""
+    },
+    {
+      "decision": "The store campaign save takes a dropped player's character out of the campaign's encounters in the same transaction, so remove_campaign_player is one save and one event",
+      "why": "baseline 001 US1/AC3 already requires it, and only one transaction makes the removal atomic",
+      "rejected": "a compensating second save: it cannot restore encounter membership the first save removed"
+    },
+    {
+      "decision": "The HTTP handler keeps the request context as a context value; desktop confirmations also end when it ends",
+      "why": "the SDK drops request cancellation for clients older than 2026-07-28 (Claude Desktop through the bridge)",
+      "rejected": "forwarding notifications/cancelled: the stateless endpoint cannot match it to the waiting call"
+    },
+    {
+      "decision": "AddPartyAP returns capped and ExecuteSaveMonsterTemplates returns ReplacedExisting",
+      "why": "the rule result comes from the same gate hold as the write (Constitution II)",
+      "rejected": "a second read in the adapter, racy and outside the gate"
+    },
+    {
+      "decision": "GM accepted that removing a player in the campaign editor also removes their character from the campaign encounters",
+      "why": "checked in the manual pass; matches baseline 001 US1/AC3",
+      "rejected": "keeping the old desktop behavior"
+    }
+  ],
+  "concerns": [
+    {
+      "note": "T088 manual validation is open: GUI toggle/persistence, interactive Claude Code elicitation and skills, live STAT refresh timing, Claude Desktop with the desktop confirmation dialog, and the §4a timed trials need a person. The spec is left at implementing, not marked complete.",
+      "step": "implement"
+    },
+    {
+      "note": "Claude Desktop's real request timeout versus the 50 s desktop confirmation window is unverified (research R5); record it during T088.",
+      "step": "implement"
+    },
+    {
+      "note": "Plain domain errors are classified into invalid_input/not_found by wording (isValidationMessage, notFoundMarker); an unexpected message falls back to the generic internal code.",
+      "step": "implement"
+    },
+    {
+      "note": "-race runs of app+mcpserver take about 11 minutes because every test migrates a fresh SQLite database.",
+      "step": "implement"
+    },
+    {
+      "note": "Desktop behavior change: removing a player in the campaign editor now also takes their character out of the campaign's encounters (before, the character stayed). This follows baseline 001 US1/AC3 but the GM will notice it.",
+      "step": "implement"
+    },
+    {
+      "note": "T088 (manual GUI, Claude Desktop and interactive Claude Code validation) is still open, so the spec is not marked complete.",
+      "step": "implement"
+    }
+  ],
+  "coverage": {
+    "FR-001": {
+      "tests": [
+        "internal/mcpserver/protocol_compat_test.go"
+      ]
+    },
+    "FR-002": {
+      "tests": [
+        "internal/mcpserver/connection_test.go",
+        "internal/ui/fyneui/assistant_connection_dialog_test.go"
+      ]
+    },
+    "FR-003": {
+      "tests": [
+        "internal/app/assistant_service_test.go",
+        "internal/mcpserver/connection_test.go::TestConnectionStartIfEnabledRespectsSettings"
+      ]
+    },
+    "FR-004": {
+      "tests": [
+        "internal/mcpserver/connection_test.go::TestConnectionStopAfterFailedStartClearsFailure",
+        "internal/ui/fyneui/assistant_connection_dialog_test.go::TestAssistantPanel"
+      ]
+    },
+    "FR-005": {
+      "tests": [
+        "internal/mcpserver/admission_test.go"
+      ]
+    },
+    "FR-006": {
+      "tests": [
+        "internal/mcpserver/connection_test.go::TestConnectionApplyRecoversFromFailedStart"
+      ]
+    },
+    "FR-007": {
+      "tests": [
+        "internal/mcpserver/connection_test.go::TestConnectionStopDeclinesPendingDesktopConfirmation"
+      ]
+    },
+    "FR-008": {
+      "tests": [
+        "internal/mcpserver/bridge_test.go::TestBridgeClientCancelDeclinesDesktopConfirmation"
+      ]
+    },
+    "FR-009": {
+      "tests": [
+        "internal/mcpserver/tools_campaign_test.go",
+        "internal/mcpserver/tools_encounter_test.go",
+        "internal/mcpserver/tools_combat_test.go::TestCombatToolsMatchDesktopActions"
+      ]
+    },
+    "FR-010": {
+      "tests": [
+        "internal/mcpserver/tools_read_test.go"
+      ]
+    },
+    "FR-011": {
+      "tests": [
+        "internal/mcpserver/tools_campaign_test.go",
+        "internal/app/campaign_roster_patch_test.go"
+      ]
+    },
+    "FR-012": {
+      "tests": [
+        "internal/mcpserver/tools_encounter_test.go",
+        "internal/mcpserver/tools_read_test.go"
+      ]
+    },
+    "FR-013": {
+      "tests": [
+        "internal/app/encounter_draft_test.go",
+        "internal/mcpserver/tools_encounter_test.go"
+      ]
+    },
+    "FR-014": {
+      "tests": [
+        "internal/mcpserver/tools_combat_test.go"
+      ]
+    },
+    "FR-015": {
+      "tests": [
+        "internal/mcpserver/confirm_test.go",
+        "internal/ui/fyneui/assistant_confirm_dialog_test.go"
+      ]
+    },
+    "FR-016": {
+      "tests": [
+        "internal/mcpserver/tools_read_test.go::TestToolSchemasCarryDomainBounds"
+      ]
+    },
+    "FR-017": {
+      "tests": [
+        "internal/app/campaign_roster_patch_test.go::TestCampaignRosterPatchRemovePlayer",
+        "internal/store/sqlite/campaign_repository_test.go::TestEncounterStoreUpdateCampaignRemovedPlayerLeavesEncounters"
+      ]
+    },
+    "FR-018": {
+      "tests": [
+        "internal/mcpserver/skills_test.go::TestSkillsExtension"
+      ]
+    },
+    "FR-019": {
+      "tests": [
+        "internal/mcpserver/skills_test.go::TestSkillsAreOrdinaryResourcesToo"
+      ]
+    },
+    "FR-020": {
+      "tests": [
+        "internal/mcpserver/skills_test.go::TestServerInstructions",
+        "internal/mcpserver/tools_read_test.go::TestReadToolAnnotations"
+      ]
+    },
+    "FR-021": {
+      "tests": [
+        "internal/ui/fyneui/assistant_refresh_test.go",
+        "internal/ui/fyneui/encounter_list_dialog_test.go"
+      ]
+    },
+    "FR-022": {
+      "tests": [
+        "internal/ui/fyneui/campaign_dialogs_test.go::TestCampaignEditorOpensWithStoredState"
+      ]
+    },
+    "FR-023": {
+      "tests": [
+        "internal/app/operation_log_test.go::TestOperationLogRecordsAssistantSource",
+        "internal/ui/fyneui/data_log_test.go"
+      ]
+    },
+    "FR-024": {
+      "tests": [
+        "internal/mcpserver/activity_test.go::TestActivityDetailNeverCarriesInternalErrors",
+        "internal/mcpserver/admission_test.go::TestAdmissionCountsRefusalsCollapsedInTheLastWindow"
+      ]
+    },
+    "FR-025": {
+      "tests": [
+        "internal/app/campaign_service_test.go::TestCampaignRosterRejectsDuplicatePlayerNamesInAnyScript",
+        "internal/mcpserver/tools_campaign_test.go::TestCampaignToolsRejectInvalidInput"
+      ]
+    }
+  },
+  "step_summaries": {
+    "implement": {
+      "summary": "Phase 11 convergence: 16 tasks (T090-T105) done; connection lifecycle, cancellation, schema bounds, app-owned rules, atomic player removal, docs"
+    }
+  },
+  "last_action": "T088 closed after the GM manual pass; validation log updated",
+  "workingBranch": "004-mcp-server"
+}

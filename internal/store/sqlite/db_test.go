@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"database/sql"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -40,4 +41,28 @@ func setUserConfigDirEnv(t *testing.T, dir string) {
 	t.Setenv("APPDATA", dir)
 	t.Setenv("HOME", dir)
 	t.Setenv("XDG_CONFIG_HOME", dir)
+}
+
+func TestSQLiteDSNEnablesForeignKeysAndBusyTimeout(t *testing.T) {
+	dir := t.TempDir()
+	tests := []struct {
+		name   string
+		dbPath string
+	}{
+		{name: "plain path", dbPath: filepath.Join(dir, "plain.db")},
+		{name: "file URI", dbPath: "file:" + filepath.Join(dir, "uri.db") + "?mode=rwc"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db, err := sql.Open("sqlite", sqliteDSN(tc.dbPath))
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				assert.NoError(t, db.Close())
+			})
+
+			assert.Equal(t, int64(1), queryInt64(t, db, `PRAGMA foreign_keys`))
+			assert.Equal(t, int64(5000), queryInt64(t, db, `PRAGMA busy_timeout`))
+		})
+	}
 }
