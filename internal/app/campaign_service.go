@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -35,7 +35,7 @@ func (s *Service) ExecuteCreateCampaign(ctx context.Context, cmd CreateCampaignC
 		return nil, invalidf("add at least one player")
 	}
 	if strings.TrimSpace(cmd.ID) == "" {
-		cmd.ID = uuid.NewString()
+		cmd.ID = uuid.New().String()
 	}
 	if err := prepareCampaignPlayers(cmd.Players); err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func prepareCampaignPlayer(player *domain.NewCampaignPlayer) error {
 		return domain.InvalidInput(err)
 	}
 	if strings.TrimSpace(player.Character.ID) == "" {
-		player.Character.ID = uuid.NewString()
+		player.Character.ID = uuid.New().String()
 	}
 	domain.NormalizeCombatantHP(&player.Character)
 	player.Character.Side = domain.SideParty

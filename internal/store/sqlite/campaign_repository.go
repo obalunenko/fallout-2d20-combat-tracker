@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -153,7 +153,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 			if err := normalizeCampaignPlayerForSave(&p); err != nil {
 				return err
 			}
-			playerID := uuid.NewString()
+			playerID := uuid.New().String()
 			if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
 				ID:         playerID,
 				CampaignID: campaignID,
@@ -164,7 +164,7 @@ func (s *EncounterStore) CreateCampaign(ctx context.Context, campaignID, name st
 
 			charID := strings.TrimSpace(p.Character.ID)
 			if charID == "" {
-				charID = uuid.NewString()
+				charID = uuid.New().String()
 			}
 			if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 				return fmt.Errorf("sync normalized player character stats: %w", err)
@@ -252,7 +252,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 
 			playerID, exists := playerIDsByName[playerKey]
 			if !exists {
-				playerID = uuid.NewString()
+				playerID = uuid.New().String()
 				if err := qtx.InsertPlayer(ctx, dbgen.InsertPlayerParams{
 					ID:         playerID,
 					CampaignID: campaignID,
@@ -277,7 +277,7 @@ func (s *EncounterStore) UpdateCampaign(ctx context.Context, campaignID, name st
 				}
 				charID = strings.TrimSpace(p.Character.ID)
 				if charID == "" {
-					charID = uuid.NewString()
+					charID = uuid.New().String()
 				}
 				if err := upsertPlayerCharacterNormalizedStats(ctx, qtx, ids, charID, p.Character.Profile()); err != nil {
 					return fmt.Errorf("sync normalized player character stats: %w", err)
@@ -430,7 +430,7 @@ func normalizeCampaignPlayerForSave(player *domain.NewCampaignPlayer) error {
 		return domain.InvalidInput(fmt.Errorf("character name is required for player %q", player.PlayerName))
 	}
 	if player.Character.ID == "" {
-		player.Character.ID = uuid.NewString()
+		player.Character.ID = uuid.New().String()
 	}
 	player.Character.Side = domain.SideParty
 	player.Character.XP = 0

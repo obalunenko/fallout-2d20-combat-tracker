@@ -5,7 +5,6 @@ go 1.27.4
 require (
 	fyne.io/fyne/v2 v2.8.3
 	github.com/google/jsonschema-go v0.4.3
-	github.com/google/uuid v1.6.0
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/obalunenko/getenv v1.17.0
 	github.com/pressly/goose/v3 v3.30.2
@@ -32,6 +31,7 @@ require (
 	github.com/go-text/render v0.2.1 // indirect
 	github.com/go-text/typesetting v0.3.5 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
 	github.com/hack-pad/safejs v0.1.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade // indirect

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -50,7 +50,7 @@ func (s *EncounterStore) SaveAssistantConnectionSettings(ctx context.Context, se
 func (s *EncounterStore) AppendAssistantActivity(ctx context.Context, entry domain.AssistantActivityEntry) error {
 	ctx = normalizeContext(ctx)
 	if entry.ID == "" {
-		entry.ID = uuid.NewString()
+		entry.ID = uuid.New().String()
 	}
 	if entry.OccurredAt.IsZero() {
 		entry.OccurredAt = time.Now().UTC()

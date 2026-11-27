@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -93,7 +93,7 @@ func prepareMonsterTemplate(monster domain.Combatant) (domain.Combatant, error) 
 		return domain.Combatant{}, domain.InvalidInput(err)
 	}
 	if strings.TrimSpace(monster.ID) == "" {
-		monster.ID = uuid.NewString()
+		monster.ID = uuid.New().String()
 	}
 	monster.Side = domain.SideNPC
 	monster.PlayerCharacterID = ""

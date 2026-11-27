@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -47,7 +47,7 @@ func (s *EncounterStore) UpsertMonsterTemplate(ctx context.Context, monster doma
 		return domain.Combatant{}, domain.InvalidInput(fmt.Errorf("monster name is required"))
 	}
 	if strings.TrimSpace(monster.ID) == "" {
-		monster.ID = uuid.NewString()
+		monster.ID = uuid.New().String()
 	}
 	monster.Side = domain.SideNPC
 	monster.PlayerCharacterID = ""

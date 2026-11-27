@@ -3,8 +3,8 @@ package sqlite
 import (
 	"context"
 	"fmt"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -21,7 +21,7 @@ func (s *EncounterStore) AppendEncounterLog(ctx context.Context, encounterID str
 	}
 
 	if err := s.q.InsertEncounterLog(ctx, dbgen.InsertEncounterLogParams{
-		ID:          uuid.NewString(),
+		ID:          uuid.New().String(),
 		EncounterID: encounterID,
 		Round:       int64(round),
 		Message:     message,

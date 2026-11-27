@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 )
 
@@ -152,7 +152,7 @@ func (s *Service) createEncounter(ctx context.Context, op *operation, cmd Create
 		return nil, err
 	}
 	if strings.TrimSpace(cmd.ID) == "" {
-		cmd.ID = uuid.NewString()
+		cmd.ID = uuid.New().String()
 	}
 	if err := prepareEncounterCombatants(cmd.Combatants); err != nil {
 		return nil, err
@@ -337,7 +337,7 @@ func prepareEncounterCombatants(combatants []domain.Combatant) error {
 			return err
 		}
 		if strings.TrimSpace(combatants[i].ID) == "" {
-			combatants[i].ID = uuid.NewString()
+			combatants[i].ID = uuid.New().String()
 		}
 		domain.NormalizeCombatantHP(&combatants[i])
 	}

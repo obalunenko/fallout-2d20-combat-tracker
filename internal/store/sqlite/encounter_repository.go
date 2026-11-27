@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/obalunenko/fallout/internal/domain"
 	"github.com/obalunenko/fallout/internal/store/sqlite/dbgen"
 )
@@ -82,7 +82,7 @@ func saveEncounter(ctx context.Context, qtx *dbgen.Queries, enc *domain.Encounte
 			if partyCharacter, ok := activeParty[playerCharacterID]; ok {
 				c.PlayerCharacterID = playerCharacterID
 				if strings.TrimSpace(c.ID) == "" || c.ID == playerCharacterID {
-					c.ID = uuid.NewString()
+					c.ID = uuid.New().String()
 				}
 				if _, existsInEncounter := existingCombatants[c.ID]; !existsInEncounter {
 					partyCharacter.Active = c.Active
